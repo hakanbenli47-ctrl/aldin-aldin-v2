@@ -12,10 +12,10 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.52.1",
     "browser-image-compression": "^2.0.2",
-    "next": "^15.4.3",
+    "next": "^15.4.5",
     "nodemailer": "^7.0.5",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-icons": "^5.5.0",
     "uuid": "^11.1.0"
   },

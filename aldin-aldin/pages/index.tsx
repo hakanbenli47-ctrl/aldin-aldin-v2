@@ -416,7 +416,7 @@ const [reklamModalOpen, setReklamModalOpen] = useState(false);
                 textAlign: 'center'
               }}
             >
-              Sponsorlu Reklam
+              Reklam Vermek İçin Tıklayın
             </span>
             <img
               src="/300x250.png"
@@ -848,7 +848,7 @@ const [reklamModalOpen, setReklamModalOpen] = useState(false);
                 textAlign: 'center'
               }}
             >
-              Sponsorlu Reklam
+             Reklam Vermek İçin Tıklayın
             </span>
             <img
               src="/300x250.png"
