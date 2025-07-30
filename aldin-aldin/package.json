@@ -7,12 +7,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-     "export": "next export"
+    "export": "next export"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.52.1",
     "browser-image-compression": "^2.0.2",
-    "next": "15.4.3",
+    "next": "^15.4.3",
     "nodemailer": "^7.0.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
