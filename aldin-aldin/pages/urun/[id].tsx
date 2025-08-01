@@ -19,11 +19,12 @@ export default function UrunDetay() {
   const anasayfaPath = from === "index2" ? "/index2" : "/";
   const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
 
+  // Kullanıcıyı çek
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  // İlan ve benzerleri yükle
+  // İlan ve benzerleri çek
   useEffect(() => {
     if (!id) return;
     async function fetchIlan() {
@@ -75,7 +76,7 @@ export default function UrunDetay() {
     checkFavori();
   }, [user, ilan]);
 
-  // Sepete ekle fonksiyonu
+  // Sepete ekle
   const sepeteEkle = async (urun: any) => {
     if (!user) {
       alert("Lütfen giriş yapınız!");
@@ -133,16 +134,49 @@ export default function UrunDetay() {
     router.push(anasayfaPath);
   };
 
-  if (loading)
+  // YÜKLENİYORSA
+  if (loading) {
     return (
       <div style={{ textAlign: "center", marginTop: 50 }}>Yükleniyor...</div>
     );
-  if (!ilan)
+  }
+
+  // ÜRÜN YOKSA (SİLİNMİŞ, YANLIŞ ID, vb.)
+  if (!ilan) {
     return (
-      <div style={{ textAlign: "center", marginTop: 50, color: "#555" }}>
-        Ürün bulunamadı.
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "80vh",
+        }}
+      >
+        <Head>
+          <title>Ürün Bulunamadı - Aldın Aldın</title>
+        </Head>
+        <h2 style={{ color: "#fb8500", marginBottom: 10 }}>Ürün Bulunamadı</h2>
+        <p>Bu ürün yayında değil veya silinmiş olabilir.</p>
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            marginTop: 20,
+            background: "#1bbd8a",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 24px",
+            fontWeight: 600,
+            fontSize: 16,
+            cursor: "pointer",
+          }}
+        >
+          Anasayfa
+        </button>
       </div>
     );
+  }
 
   const badge = ilan.doped ? "Fırsat" : "Yeni";
   const url =
@@ -277,12 +311,10 @@ export default function UrunDetay() {
               boxShadow: "0 6px 22px #1bbd8a0a",
               transition: "transform 0.2s",
               transform: "scale(1)",
+              objectFit: "cover",
             }}
-            onMouseOver={(e) => {
-              (e.currentTarget as HTMLImageElement).style.transform = "scale(1.05)";
-            }}
-            onMouseOut={(e) => {
-              (e.currentTarget as HTMLImageElement).style.transform = "scale(1)";
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/placeholder.jpg";
             }}
           />
           {/* Fotoğraf Sliderı */}
@@ -302,6 +334,9 @@ export default function UrunDetay() {
                     objectFit: "cover",
                   }}
                   onClick={() => setMainImg(url)}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/placeholder.jpg";
+                  }}
                 />
               ))}
             </div>
@@ -490,6 +525,9 @@ export default function UrunDetay() {
                   width={46}
                   height={46}
                   style={{ borderRadius: 7, background: "#f6f6f6" }}
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/placeholder.jpg";
+                  }}
                 />
                 <div>
                   <div
