@@ -42,6 +42,7 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
   const [mainImg, setMainImg] = useState<string | null>(null);
   const [favori, setFavori] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [shareUrl, setShareUrl] = useState(`https://seninsiten.com/urun/${ilan.id}`); // Başlangıçta server URL
 
   const anasayfaPath = from === "index2" ? "/index2" : "/";
   const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
@@ -77,6 +78,13 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
     }
     checkFavori();
   }, [user, ilan]);
+
+  // Client yüklendikten sonra gerçek URL'yi al
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setShareUrl(window.location.href);
+    }
+  }, []);
 
   const sepeteEkle = async (urun: any) => {
     if (!user) {
@@ -133,10 +141,6 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
   };
 
   const badge = ilan.doped ? "Fırsat" : "Yeni";
-  const url =
-    typeof window !== "undefined"
-      ? window.location.href
-      : `https://seninsiten.com/urun/${ilan.id}`;
 
   return (
     <div
@@ -259,6 +263,7 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
             alt={ilan.title}
             width={240}
             height={240}
+             priority 
             style={{
               borderRadius: 14,
               marginBottom: 20,
@@ -321,7 +326,7 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
           >
             {/* Whatsapp */}
             <a
-              href={`https://wa.me/?text=${encodeURIComponent(url)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
               title="Whatsapp'ta paylaş"
@@ -332,7 +337,7 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
             </a>
             {/* Telegram */}
             <a
-              href={`https://t.me/share/url?url=${encodeURIComponent(url)}`}
+              href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
               title="Telegram'da paylaş"
@@ -343,7 +348,7 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
             </a>
             {/* X */}
             <a
-              href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}`}
+              href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
               title="X'te paylaş"
