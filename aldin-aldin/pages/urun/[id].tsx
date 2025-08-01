@@ -4,59 +4,61 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import Head from "next/head";
 
-export default function UrunDetay() {
-  const router = useRouter();
-  const { id, from } = router.query;
+export async function getServerSideProps(context: any) {
+  const { id } = context.params;
 
-  const [ilan, setIlan] = useState<any>(null);
+  const { data: ilan, error } = await supabase
+    .from("ilan")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !ilan) {
+    return {
+      notFound: true,
+    };
+  }
+
+  // Benzer ilanları da önceden alabiliriz
+  const { data: benzerler } = await supabase
+    .from("ilan")
+    .select("*")
+    .eq("kategori_id", ilan.kategori_id)
+    .neq("id", ilan.id)
+    .limit(8);
+
+  return {
+    props: {
+      ilan,
+      benzerler: benzerler || [],
+    },
+  };
+}
+
+export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: any[] }) {
+  const router = useRouter();
+  const { from } = router.query;
+
   const [mainImg, setMainImg] = useState<string | null>(null);
-  const [benzerler, setBenzerler] = useState<any[]>([]);
   const [favori, setFavori] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  // Dönüş adresleri
   const anasayfaPath = from === "index2" ? "/index2" : "/";
   const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
+
+  // Ana resmi ilk renderda ayarla
+  useEffect(() => {
+    setMainImg(
+      Array.isArray(ilan.resim_url)
+        ? ilan.resim_url[0] || "/placeholder.jpg"
+        : ilan.resim_url || "/placeholder.jpg"
+    );
+  }, [ilan.resim_url]);
 
   // Kullanıcıyı çek
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
-
-  // İlan ve benzerleri çek
-  useEffect(() => {
-    if (!id) return;
-    async function fetchIlan() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("ilan")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (!error && data) {
-        setIlan(data);
-        setMainImg(
-          Array.isArray(data.resim_url)
-            ? data.resim_url[0] || "/placeholder.jpg"
-            : data.resim_url || "/placeholder.jpg"
-        );
-        // Benzer ilanları çek
-        const { data: digerler } = await supabase
-          .from("ilan")
-          .select("*")
-          .eq("kategori_id", data.kategori_id)
-          .neq("id", data.id)
-          .limit(8);
-        setBenzerler(digerler || []);
-      } else {
-        setIlan(null);
-        setBenzerler([]);
-      }
-      setLoading(false);
-    }
-    fetchIlan();
-  }, [id]);
 
   // Favori kontrolü
   useEffect(() => {
@@ -76,7 +78,6 @@ export default function UrunDetay() {
     checkFavori();
   }, [user, ilan]);
 
-  // Sepete ekle
   const sepeteEkle = async (urun: any) => {
     if (!user) {
       alert("Lütfen giriş yapınız!");
@@ -102,7 +103,6 @@ export default function UrunDetay() {
     alert("Sepete eklendi!");
   };
 
-  // Favori toggle
   const favoriyeToggle = async () => {
     if (!user) {
       alert("Lütfen giriş yapınız!");
@@ -124,65 +124,19 @@ export default function UrunDetay() {
     }
   };
 
-  // Sepete git
   const sepeteGit = () => {
     router.push(sepetPath);
   };
 
-  // Logo tıkla anasayfa
   const logoClick = () => {
     router.push(anasayfaPath);
   };
-
-  // YÜKLENİYORSA
-  if (loading) {
-    return (
-      <div style={{ textAlign: "center", marginTop: 50 }}>Yükleniyor...</div>
-    );
-  }
-
-  // ÜRÜN YOKSA (SİLİNMİŞ, YANLIŞ ID, vb.)
-  if (!ilan) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "80vh",
-        }}
-      >
-        <Head>
-          <title>Ürün Bulunamadı - Aldın Aldın</title>
-        </Head>
-        <h2 style={{ color: "#fb8500", marginBottom: 10 }}>Ürün Bulunamadı</h2>
-        <p>Bu ürün yayında değil veya silinmiş olabilir.</p>
-        <button
-          onClick={() => router.push("/")}
-          style={{
-            marginTop: 20,
-            background: "#1bbd8a",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "10px 24px",
-            fontWeight: 600,
-            fontSize: 16,
-            cursor: "pointer",
-          }}
-        >
-          Anasayfa
-        </button>
-      </div>
-    );
-  }
 
   const badge = ilan.doped ? "Fırsat" : "Yeni";
   const url =
     typeof window !== "undefined"
       ? window.location.href
-      : `https://seninsiten.com/urun/${id}`;
+      : `https://seninsiten.com/urun/${ilan.id}`;
 
   return (
     <div
@@ -201,6 +155,7 @@ export default function UrunDetay() {
         <title>{ilan.title} - Aldın Aldın</title>
         <meta name="description" content={ilan.desc?.slice(0, 120)} />
       </Head>
+
       {/* HEADER - LOGO */}
       <div
         style={{
