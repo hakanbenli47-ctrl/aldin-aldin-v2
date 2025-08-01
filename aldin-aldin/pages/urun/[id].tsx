@@ -1,46 +1,51 @@
-import { useRouter } from 'next/router';
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+import { useRouter } from "next/router";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabaseClient";
+import Head from "next/head";
 
 export default function UrunDetay() {
   const router = useRouter();
   const { id, from } = router.query;
 
   const [ilan, setIlan] = useState<any>(null);
+  const [mainImg, setMainImg] = useState<string | null>(null);
   const [benzerler, setBenzerler] = useState<any[]>([]);
   const [favori, setFavori] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // from parametresine göre dönüş adresi
-  const anasayfaPath = from === 'index2' ? '/index2' : '/';
-  const sepetPath = from === 'index2' ? '/sepet2' : '/sepet';
+  // Dönüş adresleri
+  const anasayfaPath = from === "index2" ? "/index2" : "/";
+  const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
 
-  // Kullanıcıyı al
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-    });
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  // İlan ve benzerlerini yükle
+  // İlan ve benzerleri yükle
   useEffect(() => {
     if (!id) return;
     async function fetchIlan() {
       setLoading(true);
       const { data, error } = await supabase
-        .from('ilan')
-        .select('*')
-        .eq('id', id)
+        .from("ilan")
+        .select("*")
+        .eq("id", id)
         .single();
       if (!error && data) {
         setIlan(data);
+        setMainImg(
+          Array.isArray(data.resim_url)
+            ? data.resim_url[0] || "/placeholder.jpg"
+            : data.resim_url || "/placeholder.jpg"
+        );
+        // Benzer ilanları çek
         const { data: digerler } = await supabase
-          .from('ilan')
-          .select('*')
-          .eq('kategori_id', data.kategori_id)
-          .neq('id', data.id)
+          .from("ilan")
+          .select("*")
+          .eq("kategori_id", data.kategori_id)
+          .neq("id", data.id)
           .limit(8);
         setBenzerler(digerler || []);
       } else {
@@ -52,7 +57,7 @@ export default function UrunDetay() {
     fetchIlan();
   }, [id]);
 
-  // Favori durumunu kontrol et
+  // Favori kontrolü
   useEffect(() => {
     if (!user || !ilan) {
       setFavori(false);
@@ -60,59 +65,59 @@ export default function UrunDetay() {
     }
     async function checkFavori() {
       const { data } = await supabase
-        .from('favoriler')
-        .select('ilan_id')
-        .eq('user_id', user.id)
-        .eq('ilan_id', ilan.id)
+        .from("favoriler")
+        .select("ilan_id")
+        .eq("user_id", user.id)
+        .eq("ilan_id", ilan.id)
         .single();
       setFavori(!!data);
     }
     checkFavori();
   }, [user, ilan]);
 
-  // Sepete ekle
+  // Sepete ekle fonksiyonu
   const sepeteEkle = async (urun: any) => {
     if (!user) {
-      alert('Lütfen giriş yapınız!');
-      router.push('/giris');
+      alert("Lütfen giriş yapınız!");
+      router.push("/giris");
       return;
     }
     const { data: sepetteVar } = await supabase
-      .from('cart')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('product_id', urun.id)
+      .from("cart")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("product_id", urun.id)
       .single();
     if (sepetteVar) {
       await supabase
-        .from('cart')
+        .from("cart")
         .update({ adet: sepetteVar.adet + 1 })
-        .eq('id', sepetteVar.id);
+        .eq("id", sepetteVar.id);
     } else {
       await supabase
-        .from('cart')
+        .from("cart")
         .insert([{ user_id: user.id, product_id: urun.id, adet: 1 }]);
     }
-    alert('Sepete eklendi!');
+    alert("Sepete eklendi!");
   };
 
-  // Favoriye ekle/çıkar
+  // Favori toggle
   const favoriyeToggle = async () => {
     if (!user) {
-      alert('Lütfen giriş yapınız!');
-      router.push('/giris');
+      alert("Lütfen giriş yapınız!");
+      router.push("/giris");
       return;
     }
     if (favori) {
       await supabase
-        .from('favoriler')
+        .from("favoriler")
         .delete()
-        .eq('user_id', user.id)
-        .eq('ilan_id', ilan.id);
+        .eq("user_id", user.id)
+        .eq("ilan_id", ilan.id);
       setFavori(false);
     } else {
       await supabase
-        .from('favoriler')
+        .from("favoriler")
         .insert([{ user_id: user.id, ilan_id: ilan.id }]);
       setFavori(true);
     }
@@ -123,57 +128,73 @@ export default function UrunDetay() {
     router.push(sepetPath);
   };
 
-  // Logo tıklanma yönlendirme
+  // Logo tıkla anasayfa
   const logoClick = () => {
     router.push(anasayfaPath);
   };
 
   if (loading)
-    return <div style={{ textAlign: 'center', marginTop: 50 }}>Yükleniyor...</div>;
+    return (
+      <div style={{ textAlign: "center", marginTop: 50 }}>Yükleniyor...</div>
+    );
   if (!ilan)
     return (
-      <div style={{ textAlign: 'center', marginTop: 50, color: '#555' }}>
+      <div style={{ textAlign: "center", marginTop: 50, color: "#555" }}>
         Ürün bulunamadı.
       </div>
     );
 
-  const badge = ilan.doped ? 'Fırsat' : 'Yeni';
-  const url = typeof window !== 'undefined' ? window.location.href : '';
+  const badge = ilan.doped ? "Fırsat" : "Yeni";
+  const url =
+    typeof window !== "undefined"
+      ? window.location.href
+      : `https://seninsiten.com/urun/${id}`;
 
   return (
     <div
       style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f6f7f9 0%, #e4ecef 100%)',
-        width: '100vw',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #f6f7f9 0%, #e4ecef 100%)",
+        width: "100vw",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
         padding: 0,
-        margin: 0
+        margin: 0,
       }}
     >
+      <Head>
+        <title>{ilan.title} - Aldın Aldın</title>
+        <meta name="description" content={ilan.desc?.slice(0, 120)} />
+      </Head>
       {/* HEADER - LOGO */}
       <div
         style={{
-          width: '100%',
-          background: '#fff',
-          boxShadow: '0 2px 12px #1bbd8a09',
-          padding: '16px 0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          width: "100%",
+          background: "#fff",
+          boxShadow: "0 2px 12px #1bbd8a09",
+          padding: "16px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           gap: 24,
-          position: 'sticky',
+          position: "sticky",
           top: 0,
           zIndex: 50,
-          cursor: 'pointer'
+          cursor: "pointer",
         }}
         onClick={logoClick}
         title="Anasayfa"
       >
         <Image src="/logo.png" alt="Aldın Aldın Logo" width={40} height={40} />
-        <span style={{ fontSize: 24, fontWeight: 800, color: '#1a1a1a', letterSpacing: 1 }}>
+        <span
+          style={{
+            fontSize: 24,
+            fontWeight: 800,
+            color: "#1a1a1a",
+            letterSpacing: 1,
+          }}
+        >
           Aldın Aldın
         </span>
       </div>
@@ -181,46 +202,46 @@ export default function UrunDetay() {
       {/* DETAY + BENZERLER */}
       <div
         style={{
-          width: '100%',
-          maxWidth: '100vw',
-          minHeight: 'calc(100vh - 80px)',
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          justifyContent: 'center',
-          margin: '0 auto',
-          position: 'relative'
+          width: "100%",
+          maxWidth: "100vw",
+          minHeight: "calc(100vh - 80px)",
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "flex-start",
+          justifyContent: "center",
+          margin: "0 auto",
+          position: "relative",
         }}
       >
         {/* ÜRÜN DETAYI */}
         <div
           style={{
-            flex: '0 0 460px',
+            flex: "0 0 460px",
             width: 460,
-            margin: '40px 0',
+            margin: "40px 0",
             padding: 36,
-            background: '#fff',
+            background: "#fff",
             borderRadius: 18,
-            boxShadow: '0 4px 24px #e1e3e814',
-            textAlign: 'center',
+            boxShadow: "0 4px 24px #e1e3e814",
+            textAlign: "center",
             zIndex: 2,
-            border: '1px solid #f2f2f2',
-            position: 'relative'
+            border: "1px solid #f2f2f2",
+            position: "relative",
           }}
         >
           {/* BADGE */}
           <span
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: 26,
               left: 28,
-              background: badge === 'Fırsat' ? '#fb8500' : '#16a34a',
-              color: '#fff',
+              background: badge === "Fırsat" ? "#fb8500" : "#16a34a",
+              color: "#fff",
               fontWeight: 800,
               fontSize: 14,
               borderRadius: 8,
-              padding: '5px 14px',
-              boxShadow: '0 2px 8px #fb850026'
+              padding: "5px 14px",
+              boxShadow: "0 2px 8px #fb850026",
             }}
           >
             {badge}
@@ -228,53 +249,71 @@ export default function UrunDetay() {
 
           {/* FAVORİ KALP */}
           <span
-            title={favori ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+            title={favori ? "Favorilerden çıkar" : "Favorilere ekle"}
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: 20,
               right: 26,
-              cursor: 'pointer',
+              cursor: "pointer",
               fontSize: 26,
-              color: favori ? '#fb8500' : '#bdbdbd',
-              transition: 'color 0.2s'
+              color: favori ? "#fb8500" : "#bdbdbd",
+              transition: "color 0.2s",
             }}
             onClick={favoriyeToggle}
           >
-            {favori ? '❤️' : '🤍'}
+            {favori ? "❤️" : "🤍"}
           </span>
 
+          {/* ANA FOTOĞRAF */}
           <Image
-            src={
-              Array.isArray(ilan.resim_url)
-                ? ilan.resim_url[0] || '/placeholder.jpg'
-                : ilan.resim_url || '/placeholder.jpg'
-            }
+            src={mainImg ?? "/placeholder.jpg"}
             alt={ilan.title}
             width={240}
             height={240}
             style={{
               borderRadius: 14,
               marginBottom: 20,
-              background: '#f3f3f3',
-              boxShadow: '0 6px 22px #1bbd8a0a',
-              transition: 'transform 0.2s',
-              transform: 'scale(1)'
+              background: "#f3f3f3",
+              boxShadow: "0 6px 22px #1bbd8a0a",
+              transition: "transform 0.2s",
+              transform: "scale(1)",
             }}
-            onMouseOver={e => {
-              (e.currentTarget as HTMLImageElement).style.transform = 'scale(1.05)';
+            onMouseOver={(e) => {
+              (e.currentTarget as HTMLImageElement).style.transform = "scale(1.05)";
             }}
-            onMouseOut={e => {
-              (e.currentTarget as HTMLImageElement).style.transform = 'scale(1)';
+            onMouseOut={(e) => {
+              (e.currentTarget as HTMLImageElement).style.transform = "scale(1)";
             }}
           />
+          {/* Fotoğraf Sliderı */}
+          {Array.isArray(ilan.resim_url) && ilan.resim_url.length > 1 && (
+            <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 14 }}>
+              {ilan.resim_url.map((url: string, idx: number) => (
+                <Image
+                  key={idx}
+                  src={url}
+                  alt={`Ürün fotoğrafı ${idx + 1}`}
+                  width={55}
+                  height={55}
+                  style={{
+                    borderRadius: 7,
+                    border: mainImg === url ? "2px solid #1bbd8a" : "2px solid #f2f2f2",
+                    cursor: "pointer",
+                    objectFit: "cover",
+                  }}
+                  onClick={() => setMainImg(url)}
+                />
+              ))}
+            </div>
+          )}
           <h2
             style={{
               fontSize: 29,
               fontWeight: 800,
-              color: '#191c1f',
+              color: "#191c1f",
               marginBottom: 12,
               marginTop: 7,
-              letterSpacing: 0.4
+              letterSpacing: 0.4,
             }}
           >
             {ilan.title}
@@ -283,13 +322,14 @@ export default function UrunDetay() {
           {/* Paylaşım butonları */}
           <div
             style={{
-              display: 'flex',
+              display: "flex",
               gap: 13,
-              justifyContent: 'center',
-              margin: '12px 0',
-              alignItems: 'center'
+              justifyContent: "center",
+              margin: "12px 0",
+              alignItems: "center",
             }}
           >
+            {/* Whatsapp */}
             <a
               href={`https://wa.me/?text=${encodeURIComponent(url)}`}
               target="_blank"
@@ -300,6 +340,7 @@ export default function UrunDetay() {
                 <path d="M20.52 3.48a12 12 0 00-16.97 0c-4.16 4.16-4.16 10.93 0 15.09a12 12 0 0016.97 0c4.16-4.16 4.16-10.93 0-15.09zm-1.49 13.6c-.21.62-1.22 1.17-1.66 1.25-.43.08-.97.12-1.56-.11-1.83-.7-3.08-2.47-3.18-2.59-.09-.13-.76-1.02-.76-1.95 0-.92.48-1.36.65-1.53.17-.17.37-.21.5-.21.13 0 .26.01.37.01.12 0 .27-.04.41.31.15.35.52 1.22.56 1.3.04.09.07.2.01.33-.07.13-.11.21-.22.33-.11.12-.22.26-.31.34-.09.08-.18.17-.08.33.09.16.41.66.87 1.08.6.54 1.11.72 1.27.8.16.08.25.07.34-.04.09-.11.39-.46.5-.62.12-.16.21-.13.35-.08.13.04.83.4.97.47.13.07.22.09.25.14.04.05.04.27-.07.56z" />
               </svg>
             </a>
+            {/* Telegram */}
             <a
               href={`https://t.me/share/url?url=${encodeURIComponent(url)}`}
               target="_blank"
@@ -310,6 +351,7 @@ export default function UrunDetay() {
                 <path d="M9.844 15.316l-.398 3.743c.57 0 .814-.243 1.112-.535l2.668-2.523 5.535 4.04c1.013.555 1.74.264 2.017-.927L23.96 5.2c.334-1.353-.49-1.888-1.362-1.6L2.46 10.446c-1.321.512-1.308 1.252-.228 1.577l5.718 1.783L18.797 7.286c.412-.266.789-.12.48.17z" />
               </svg>
             </a>
+            {/* X */}
             <a
               href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}`}
               target="_blank"
@@ -322,32 +364,32 @@ export default function UrunDetay() {
             </a>
           </div>
 
+          {/* Açıklama */}
           <div
             style={{
-              color: '#444',
+              color: "#444",
               fontSize: 16,
               marginBottom: 28,
-              lineHeight: 1.5
+              lineHeight: 1.5,
             }}
           >
-            {ilan.desc || 'Açıklama yok.'}
+            {ilan.desc || "Açıklama yok."}
           </div>
-
           <button
             style={{
               marginTop: 2,
-              background: '#fb8500',
-              color: '#fff',
-              padding: '13px 0',
+              background: "#fb8500",
+              color: "#fff",
+              padding: "13px 0",
               borderRadius: 10,
-              border: 'none',
+              border: "none",
               fontWeight: 700,
               fontSize: 17,
-              cursor: 'pointer',
-              width: '100%',
-              boxShadow: '0 2px 10px #fb850011',
+              cursor: "pointer",
+              width: "100%",
+              boxShadow: "0 2px 10px #fb850011",
               letterSpacing: 0.5,
-              transition: 'background 0.18s'
+              transition: "background 0.18s",
             }}
             onClick={() => sepeteEkle(ilan)}
           >
@@ -356,17 +398,17 @@ export default function UrunDetay() {
           <button
             style={{
               marginTop: 18,
-              background: '#1bbd8a',
-              color: '#fff',
-              padding: '10px 0',
+              background: "#1bbd8a",
+              color: "#fff",
+              padding: "10px 0",
               borderRadius: 8,
-              border: 'none',
+              border: "none",
               fontWeight: 600,
               fontSize: 15,
-              cursor: 'pointer',
-              width: '100%',
-              boxShadow: '0 1px 5px #1bbd8a08',
-              transition: 'background 0.16s'
+              cursor: "pointer",
+              width: "100%",
+              boxShadow: "0 1px 5px #1bbd8a08",
+              transition: "background 0.16s",
             }}
             onClick={sepeteGit}
           >
@@ -378,22 +420,22 @@ export default function UrunDetay() {
         {benzerler.length > 0 && (
           <div
             style={{
-              position: 'fixed',
+              position: "fixed",
               top: 88,
               right: 0,
               width: 335,
               minHeight: 180,
-              maxHeight: '78vh',
-              overflowY: 'auto',
-              background: '#fff',
-              borderRadius: '0 0 0 22px',
-              boxShadow: '0 8px 30px #bbb2',
-              padding: '25px 12px 15px 15px',
-              borderLeft: '1.5px solid #f2f2f2',
+              maxHeight: "78vh",
+              overflowY: "auto",
+              background: "#fff",
+              borderRadius: "0 0 0 22px",
+              boxShadow: "0 8px 30px #bbb2",
+              padding: "25px 12px 15px 15px",
+              borderLeft: "1.5px solid #f2f2f2",
               zIndex: 30,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 11
+              display: "flex",
+              flexDirection: "column",
+              gap: 11,
             }}
             className="benzer-sabit"
           >
@@ -401,9 +443,9 @@ export default function UrunDetay() {
               style={{
                 fontSize: 18,
                 fontWeight: 800,
-                color: '#212c35',
+                color: "#212c35",
                 marginBottom: 12,
-                marginLeft: 2
+                marginLeft: 2,
               }}
             >
               Benzer Ürünler
@@ -412,68 +454,76 @@ export default function UrunDetay() {
               <div
                 key={item.id}
                 onClick={() => {
-                  // Benzer ürüne tıklayınca da ?from=... parametresiyle yönlendir!
                   router.push({
-                    pathname: '/urun/' + item.id,
+                    pathname: "/urun/" + item.id,
                     query: from ? { from } : {},
                   });
                 }}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
+                  display: "flex",
+                  alignItems: "center",
                   gap: 14,
                   borderRadius: 8,
-                  padding: '10px 2px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid #f0f0f0',
-                  transition: 'background 0.14s, box-shadow 0.14s',
-                  boxShadow: 'none'
+                  padding: "10px 2px",
+                  cursor: "pointer",
+                  borderBottom: "1px solid #f0f0f0",
+                  transition: "background 0.14s, box-shadow 0.14s",
+                  boxShadow: "none",
                 }}
                 onMouseOver={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = '#f7fdfa';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px #1bbd8a0b';
+                  (e.currentTarget as HTMLDivElement).style.background = "#f7fdfa";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow =
+                    "0 2px 8px #1bbd8a0b";
                 }}
                 onMouseOut={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = 'none';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                  (e.currentTarget as HTMLDivElement).style.background = "none";
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
                 }}
               >
                 <Image
                   src={
                     Array.isArray(item.resim_url)
-                      ? item.resim_url[0] || '/placeholder.jpg'
-                      : item.resim_url || '/placeholder.jpg'
+                      ? item.resim_url[0] || "/placeholder.jpg"
+                      : item.resim_url || "/placeholder.jpg"
                   }
                   alt={item.title}
                   width={46}
                   height={46}
-                  style={{ borderRadius: 7, background: '#f6f6f6' }}
+                  style={{ borderRadius: 7, background: "#f6f6f6" }}
                 />
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#223555' }}>
+                  <div
+                    style={{ fontSize: 15, fontWeight: 700, color: "#223555" }}
+                  >
                     {item.title}
                   </div>
-                  <div style={{ color: '#1bbd8a', fontWeight: 700, fontSize: 14 }}>
+                  <div
+                    style={{
+                      color: "#1bbd8a",
+                      fontWeight: 700,
+                      fontSize: 14,
+                    }}
+                  >
                     {item.price} ₺
                   </div>
                 </div>
                 <button
                   title="Sepete ekle"
                   style={{
-                    marginLeft: 'auto',
-                    background: '#f5f6f7',
-                    color: '#fb8500',
-                    border: 'none',
-                    borderRadius: '50%',
+                    marginLeft: "auto",
+                    background: "#f5f6f7",
+                    color: "#fb8500",
+                    border: "none",
+                    borderRadius: "50%",
                     width: 33,
                     height: 33,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 1px 4px #1bbd8a09',
-                    cursor: 'pointer',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    boxShadow: "0 1px 4px #1bbd8a09",
+                    cursor: "pointer",
                     fontSize: 20,
-                    transition: 'background 0.15s'
+                    transition: "background 0.15s",
                   }}
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -487,7 +537,6 @@ export default function UrunDetay() {
           </div>
         )}
       </div>
-
       {/* Responsive */}
       <style jsx global>{`
         @media (max-width: 1100px) {
@@ -503,7 +552,7 @@ export default function UrunDetay() {
           }
         }
         @media (max-width: 600px) {
-          div[style*='flex-direction: row'] {
+          div[style*="flex-direction: row"] {
             flex-direction: column !important;
             align-items: center !important;
             gap: 0 !important;
