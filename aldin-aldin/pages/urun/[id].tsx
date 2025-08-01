@@ -313,7 +313,16 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
           >
             {ilan.title}
           </h2>
-
+<div
+  style={{
+    fontSize: 22,
+    fontWeight: 700,
+    color: "#1bbd8a",
+    marginBottom: 20,
+  }}
+>
+  {ilan.price ? ilan.price + " ₺" : "Fiyat bilgisi yok"}
+</div>
           {/* Paylaşım butonları */}
           <div
             style={{
