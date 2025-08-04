@@ -89,7 +89,7 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
   const sepeteEkle = async (urun: any) => {
     if (!user) {
       alert("Lütfen giriş yapınız!");
-      router.push("/giris");
+      router.push("/rol-secim");
       return;
     }
     const { data: sepetteVar } = await supabase

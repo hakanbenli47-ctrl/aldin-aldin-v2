@@ -9,9 +9,61 @@ const TABS = [
   { key: "siparisler", label: "Gelen Siparişler" },
 ];
 
+// Yaz İndirimi Alanı
+function YazIndirimleri({ ilanlar }: { ilanlar: any[] }) {
+  const yazIndirimliUrunler = ilanlar.filter(
+    i => i.kampanyali && i.indirimli_fiyat && i.indirimli_fiyat !== i.price
+  );
+  if (!yazIndirimliUrunler.length) return null;
+
+  return (
+    <section style={{ margin: "34px 0 40px 0" }}>
+      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#22c55e", marginBottom: 14 }}>
+        🌞 Yaz İndirimleri Başladı!
+      </h2>
+      <div style={{ display: "flex", gap: 18, overflowX: "auto" }}>
+        {yazIndirimliUrunler.map(urun => (
+          <div
+            key={urun.id}
+            style={{
+              minWidth: 200,
+              maxWidth: 230,
+              background: "#fff",
+              borderRadius: 13,
+              boxShadow: "0 2px 13px #22c55e12",
+              border: "2px solid #dcfce7",
+              marginRight: 5,
+              cursor: "pointer",
+              padding: "13px 9px"
+            }}
+            onClick={() => window.location.href = `/urun/${urun.id}?from=yazkampanya`}
+          >
+            <img
+              src={Array.isArray(urun.resim_url) ? urun.resim_url[0] || "/placeholder.jpg" : urun.resim_url || "/placeholder.jpg"}
+              alt={urun.title}
+              style={{
+                width: "100%", height: 92, objectFit: "cover", borderRadius: 8, border: "1px solid #dcfce7"
+              }}
+            />
+            <div style={{
+              fontWeight: 700, fontSize: 15, color: "#14b8a6", marginTop: 7
+            }}>{urun.title}</div>
+            <div style={{
+              fontWeight: 700, fontSize: 15, color: "#22c55e"
+            }}>
+              <span style={{ textDecoration: "line-through", color: "#d1d5db", fontWeight: 600, marginRight: 5 }}>{urun.price}₺</span>
+              <span style={{ color: "#22c55e" }}>{urun.indirimli_fiyat}₺</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 type SiparisEdit = { kargoNo?: string; editing?: boolean };
 
-export default function ProfilPanel() {
+export default function SaticiPanel() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("ilanlar");
   const [user, setUser] = useState<any>(null);
@@ -20,13 +72,11 @@ export default function ProfilPanel() {
   const [loading, setLoading] = useState(true);
 
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editVals, setEditVals] = useState({ title: "", price: "", desc: "" });
+  const [editVals, setEditVals] = useState<{ title: string; price: string; desc: string; kampanyali?: boolean; indirimli_fiyat?: string }>({ title: "", price: "", desc: "" });
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedIlan, setSelectedIlan] = useState<any>(null);
-
   const [siparisEdits, setSiparisEdits] = useState<Record<number, SiparisEdit>>({});
 
-  // 1. Kullanıcı çek
   useEffect(() => {
     async function fetchUser() {
       const { data } = await supabase.auth.getUser();
@@ -35,7 +85,6 @@ export default function ProfilPanel() {
     fetchUser();
   }, []);
 
-  // 2. İlanlar ve Siparişler çek
   useEffect(() => {
     if (!user) return;
     setLoading(true);
@@ -55,18 +104,14 @@ export default function ProfilPanel() {
       setLoading(false);
     };
     fetchIlanlarVeSiparisler();
-    // eslint-disable-next-line
   }, [user]);
 
-  // 3. Sekme değişince siparişleri güncelle
   useEffect(() => {
     if (activeTab === "siparisler" && ilanlar.length > 0) {
       fetchSiparisler(ilanlar);
     }
-    // eslint-disable-next-line
   }, [activeTab, ilanlar]);
 
-  // 4. Siparişler state ve edit state'i güncelle
   async function fetchSiparisler(ilanlarInput = ilanlar) {
     if (!ilanlarInput.length) return;
     const ilanIds = ilanlarInput.map((i: any) => i.id);
@@ -76,7 +121,6 @@ export default function ProfilPanel() {
       .in("ilan_id", ilanIds)
       .order("created_at", { ascending: false });
     setSiparisler(ordersData || []);
-    // Kargo kodu varsa input kapalı, yoksa açık
     const editObj: Record<number, SiparisEdit> = {};
     (ordersData || []).forEach((sip: any) => {
       editObj[sip.id] = { kargoNo: "", editing: false };
@@ -84,27 +128,50 @@ export default function ProfilPanel() {
     setSiparisEdits(editObj);
   }
 
-  // İlan düzenleme (değişmedi)
+  // Çıkış yap fonksiyonu
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/index2"; // Çıkış sonrası rol seçim ekranına yönlendir
+  };
+
+  // ... (Diğer fonksiyonlar aynı: edit, sil, sipariş işlemleri, vs.)
+  // Fonksiyonlar: handleEditBaslat, handleEditKaydet, handleEditCancel, handleSil, handleYeniIlanEkle, vs.
   function handleEditBaslat(ilan: any) {
     setEditingId(ilan.id);
-    setEditVals({ title: ilan.title, price: ilan.price, desc: ilan.desc });
+    setEditVals({
+      title: ilan.title,
+      price: ilan.price,
+      desc: ilan.desc,
+      kampanyali: ilan.kampanyali ?? false,
+      indirimli_fiyat: ilan.indirimli_fiyat ?? "",
+    });
   }
   function handleEditKaydet(id: number) {
+    const guncelData = {
+      title: editVals.title,
+      price: editVals.price,
+      desc: editVals.desc,
+      kampanyali: editVals.kampanyali || false,
+      indirimli_fiyat: editVals.kampanyali ? editVals.indirimli_fiyat : null,
+      kampanya_link: editVals.kampanyali ? "/kampanya1" : null
+    };
     supabase
       .from("ilan")
-      .update({
-        title: editVals.title,
-        price: editVals.price,
-        desc: editVals.desc,
-      })
+      .update(guncelData)
       .eq("id", id)
       .then(({ error }) => {
         if (!error) {
           setIlanlar((prev: any[]) =>
-            prev.map((i) => (i.id === id ? { ...i, ...editVals } : i))
+            prev.map((i) =>
+              i.id === id
+                ? { ...i, ...guncelData }
+                : i
+            )
           );
           setEditingId(null);
           setEditVals({ title: "", price: "", desc: "" });
+        } else {
+          alert("HATA: " + error.message);
         }
       });
   }
@@ -124,32 +191,21 @@ export default function ProfilPanel() {
         }
       });
   }
-  function goToHome() {
-    router.push("/");
-  }
   function handleYeniIlanEkle() {
     router.push("/ilan-ver");
   }
-
-  // SİPARİŞ İŞLEMLERİ -----
-
-  // Onayla butonu: siparişi "Onaylandı" yap, kargo kodu için inputu aç
   async function handleSiparisOnayla(id: number) {
     await supabase.from("orders").update({ status: "Onaylandı" }).eq("id", id);
     setSiparisEdits((prev) => ({ ...prev, [id]: { kargoNo: "", editing: true } }));
     await fetchSiparisler();
     setSiparisEdits((prev) => ({ ...prev, [id]: { kargoNo: "", editing: true } }));
   }
-
-  // Kargo Takip No yazma (state güncelle)
   function handleSiparisEdit(id: number, value: string) {
     setSiparisEdits((prev) => ({
       ...prev,
       [id]: { ...prev[id], kargoNo: value, editing: true }
     }));
   }
-
-  // Kargo Takip No Kaydet: DB’ye yaz, inputu kapat, yazıyı göster!
   async function handleKargoNoKaydet(id: number) {
     const kod = siparisEdits[id]?.kargoNo || "";
     if (kod.length < 13) {
@@ -169,13 +225,11 @@ export default function ProfilPanel() {
       [id]: { ...prev[id], kargoNo: kod, editing: false }
     }));
   }
-
   async function handleSiparisIptal(id: number) {
     if (!window.confirm("Siparişi iptal etmek istediğine emin misin?")) return;
     await supabase.from("orders").delete().eq("id", id);
     fetchSiparisler();
   }
-
   function handleFaturaYazdir(siparis: any) {
     const urun = Array.isArray(siparis.cart_items)
       ? siparis.cart_items[0] || {}
@@ -207,28 +261,53 @@ export default function ProfilPanel() {
   if (!user)
     return <div style={{ textAlign: "center", marginTop: 60, fontSize: 18 }}>Yükleniyor...</div>;
 
+  // -------------- RENDER ---------------
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", paddingBottom: 40 }}>
       {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", padding: "16px 24px 6px 24px",
-        background: "#fff", boxShadow: "0 2px 10px #e5e7eb33"
+        background: "#fff", boxShadow: "0 2px 10px #e5e7eb33",
+        justifyContent: "space-between"
       }}>
-        <Image
-          src="/logo.png"
-          alt="Aldın Aldın"
-          width={36}
-          height={36}
-          style={{ cursor: "pointer" }}
-          onClick={goToHome}
-        />
-        <span style={{
-          fontWeight: 700, fontSize: 19, color: "#183869",
-          marginLeft: 10, letterSpacing: 1
-        }}>
-          Aldın Aldın • Profilim
-        </span>
+        {/* Logo ve Başlık */}
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <Image
+            src="/logo.png"
+            alt="Aldın Aldın"
+            width={36}
+            height={36}
+            style={{ cursor: "default" }} // Artık tıklanmaz
+          />
+          <span style={{
+            fontWeight: 700, fontSize: 19, color: "#183869",
+            marginLeft: 10, letterSpacing: 1
+          }}>
+            Aldın Aldın • Satıcı Paneli
+          </span>
+        </div>
+        {/* Çıkış Yap Butonu */}
+        <button
+          onClick={handleLogout}
+          style={{
+            background: "#ef4444",
+            color: "#fff",
+            borderRadius: 8,
+            border: "none",
+            fontWeight: 700,
+            fontSize: 15,
+            padding: "9px 23px",
+            cursor: "pointer",
+            marginLeft: 25,
+            boxShadow: "0 2px 6px #ef44440d"
+          }}
+        >
+          Çıkış Yap
+        </button>
       </div>
+
+      {/* Yaz İndirimi Alanı */}
+      {activeTab === "ilanlar" && <YazIndirimleri ilanlar={ilanlar} />}
 
       {/* Tabs */}
       <div style={{
@@ -293,13 +372,13 @@ export default function ProfilPanel() {
       </div>
 
       <div style={{ marginTop: 22, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
+        {/* İLANLARIM */}
         {activeTab === "ilanlar" && (
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
             gap: 18
           }}>
-            {/* ...ilan kartları kısmı (değişmedi) */}
             {ilanlar.map((ilan) => (
               <div key={ilan.id} style={{
                 background: "#fff",
@@ -340,32 +419,106 @@ export default function ProfilPanel() {
                       placeholder="Başlık"
                       value={editVals.title}
                       onChange={(e) => setEditVals((p) => ({ ...p, title: e.target.value }))}
-                      style={{ width: "100%", marginBottom: 5, padding: 6, borderRadius: 6, border: "1px solid #ccc" }}
+                      style={{
+                        width: "100%",
+                        marginBottom: 5,
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1.5px solid #bfc9d4",
+                        fontSize: 15,
+                        color: "#1e293b",
+                        background: "#f8fafc",
+                        fontWeight: 600,
+                        outline: "none"
+                      }}
                     />
                     <input
                       type="text"
                       placeholder="Fiyat"
                       value={editVals.price}
                       onChange={(e) => setEditVals((p) => ({ ...p, price: e.target.value }))}
-                      style={{ width: "100%", marginBottom: 5, padding: 6, borderRadius: 6, border: "1px solid #ccc" }}
+                      style={{
+                        width: "100%",
+                        marginBottom: 5,
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1.5px solid #bfc9d4",
+                        fontSize: 15,
+                        color: "#1e293b",
+                        background: "#f8fafc",
+                        fontWeight: 600,
+                        outline: "none"
+                      }}
                     />
                     <textarea
                       placeholder="Açıklama"
                       value={editVals.desc}
                       onChange={(e) => setEditVals((p) => ({ ...p, desc: e.target.value }))}
-                      style={{ width: "100%", marginBottom: 5, padding: 6, borderRadius: 6, border: "1px solid #ccc", minHeight: 36 }}
+                      style={{
+                        width: "100%",
+                        marginBottom: 5,
+                        padding: 8,
+                        borderRadius: 6,
+                        border: "1.5px solid #bfc9d4",
+                        minHeight: 36,
+                        fontSize: 15,
+                        color: "#1e293b",
+                        background: "#f8fafc",
+                        fontWeight: 600,
+                        outline: "none",
+                        resize: "vertical"
+                      }}
                     />
+                    <div style={{ marginBottom: 6 }}>
+                      <label
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          marginRight: 10,
+                          color: "#2563eb"
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editVals.kampanyali || false}
+                          onChange={e => setEditVals(p => ({ ...p, kampanyali: e.target.checked }))}
+                          style={{ marginRight: 6 }}
+                        />
+                        Yaz İndirimi Aktif
+                      </label>
+                      {editVals.kampanyali && (
+                        <input
+                          type="text"
+                          placeholder="İndirimli Fiyat"
+                          value={editVals.indirimli_fiyat || ""}
+                          onChange={e => setEditVals(p => ({ ...p, indirimli_fiyat: e.target.value }))}
+                          style={{
+                            marginLeft: 10,
+                            width: 90,
+                            padding: 7,
+                            borderRadius: 6,
+                            border: "1.5px solid #13c09a",
+                            fontSize: 15,
+                            color: "#166534",
+                            background: "#f0fdf4",
+                            fontWeight: 700,
+                            outline: "none",
+                            boxShadow: "0 1px 4px #13c09a10"
+                          }}
+                        />
+                      )}
+                    </div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => handleEditKaydet(ilan.id)} style={{ flex: 1, background: "#13c09a", color: "#fff", padding: 7, borderRadius: 6, border: "none", fontWeight: 700, fontSize: 13 }}>
                         Kaydet
                       </button>
-                      <button onClick={handleEditCancel} style={{ flex: 1, background: "#e5e7eb", color: "#333", padding: 7, borderRadius: 6, border: "none", fontWeight: 700, fontSize: 13 }}>
+                      <button onClick={handleEditCancel} style={{ flex: 1, background: "#cf0606ff", color: "#fff", padding: 7, borderRadius: 6, border: "none", fontWeight: 700, fontSize: 13 }}>
                         İptal
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ marginTop: 7, display: "flex", gap: 8 }}>
+                  <div style={{ marginTop: 7, display: "flex", gap: 8, alignItems: "center" }}>
                     <button
                       style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 7, padding: "7px 13px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                       onClick={() => handleEditBaslat(ilan)}
@@ -384,6 +537,9 @@ export default function ProfilPanel() {
                     >
                       🚀 Öne Çıkar
                     </button>
+                    {ilan.kampanyali && (
+                      <span style={{ marginLeft: 4, color: "#22c55e", fontWeight: 700, fontSize: 12 }}>Yaz İndirimi</span>
+                    )}
                   </div>
                 )}
                 {modalOpen && selectedIlan && selectedIlan.id === ilan.id && (
@@ -397,7 +553,7 @@ export default function ProfilPanel() {
                         )
                       );
                       setSelectedIlan(null);
-          }}
+                    }}
                   />
                 )}
               </div>
@@ -419,7 +575,7 @@ export default function ProfilPanel() {
           </div>
         )}
 
-        {/* ------ GELEN SİPARİŞLER -------- */}
+        {/* SİPARİŞLER */}
         {activeTab === "siparisler" && (
           <div style={{ background: "#fff", borderRadius: 9, boxShadow: "0 2px 9px #e5e7eb22", padding: 15 }}>
             <h2 style={{ fontWeight: 700, fontSize: 16, color: "#223555", marginBottom: 13 }}>Tüm Gelen Siparişler</h2>
@@ -471,7 +627,6 @@ export default function ProfilPanel() {
                           </span>
                         </td>
                         <td style={tdS}>
-                          {/* Kargo kodu input veya düz yazı */}
                           {sip.status === "Kargoya Verildi" && sip.kargo_takip_no ? (
                             <span style={{
                               background: "#f6f7fb",

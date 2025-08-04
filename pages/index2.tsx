@@ -16,6 +16,7 @@ import {
 } from 'react-icons/fi';
 import { FaCar, FaTshirt } from 'react-icons/fa';
 
+// Kategoriler
 const kategorilerUI = [
   { ad: 'Tümü', icon: null, color: '#1bbd8a' },
   { ad: 'Elektronik', icon: <FiSmartphone size={28} />, color: '#2563eb' },
@@ -41,6 +42,8 @@ type Ilan = {
   created_at?: string;
   doped?: boolean;
   doped_expiration?: string;
+  indirimli_fiyat?: string;
+  views?: number;
 };
 
 type Kategori = {
@@ -218,6 +221,10 @@ const Index2: NextPage = () => {
 
   const normalIlanlar = filteredIlanlar.filter((i) => !i.doped);
 
+  // İndirimli ürünleri belirle
+  const indirimliUrunler = ilanlar.filter(x => x.indirimli_fiyat && x.indirimli_fiyat !== x.price).slice(0, 5);
+
+  // Görselliği mobile uygunlaştır
   if (loading) return <p style={{ textAlign: "center", padding: 40 }}>⏳ Yükleniyor...</p>;
 
   return (
@@ -229,194 +236,268 @@ const Index2: NextPage = () => {
       <div
         style={{
           minHeight: '100vh',
-          background: 'linear-gradient(135deg, #f8fafc 0%, #e6f3f1 100%)',
+          background: 'linear-gradient(120deg, #f8fafc 0%, #eafcf6 100%)',
         }}
       >
         {/* HEADER */}
-        <header
-          style={{
-            background: '#fff',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            position: 'sticky',
-            top: 0,
-            zIndex: 999,
-          }}
-        >
-          <div
+      <header
+  style={{
+    background: '#fff',
+    boxShadow: '0 2px 14px #1648b005',
+    position: 'sticky',
+    top: 0,
+    zIndex: 1000,
+    borderBottom: '1.5px solid #e4e9ef',
+    padding: 0
+  }}
+>
+  <div
+    style={{
+      maxWidth: 1200,
+      margin: '0 auto',
+      padding: '0 18px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      minHeight: 70,
+    }}
+  >
+    <div
+      style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: "pointer" }}
+    >
+      <Image src="/logo.png" alt="Aldın Aldın Logo" width={38} height={38} />
+      <span style={{ fontWeight: 900, fontSize: 24, color: '#1648b0', letterSpacing: '.5px' }}>
+        Aldın Aldın
+      </span>
+    </div>
+    <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+      <input
+        type="text"
+        placeholder="🔍 Ürün ara..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{
+          border: '1.5px solid #e2e8f0',
+          borderRadius: 11,
+          padding: '10px 21px',
+          fontSize: 16,
+          background: '#f8fafc',
+          outline: 'none',
+          color: '#223555',
+          width: 340,
+          boxShadow: '0 1px 10px #1bbd8a07',
+          marginRight: 18,
+        }}
+      />
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div
+        onClick={sepeteGit}
+        style={{
+          position: "relative",
+          cursor: "pointer",
+          padding: 8,
+          background: "#f8fafc",
+          borderRadius: 9,
+          boxShadow: "0 1px 7px #1bbd8a09",
+          display: "flex",
+          alignItems: "center"
+        }}
+        title="Sepetim"
+      >
+        <FiShoppingCart size={28} color="#1bbd8a" />
+        {cartItems.length > 0 && (
+          <span style={{
+            position: "absolute",
+            top: -4,
+            right: -7,
+            fontSize: 13,
+            fontWeight: 800,
+            color: "#fff",
+            background: "#22c55e",
+            borderRadius: 16,
+            padding: "2px 7px",
+            minWidth: 20,
+            textAlign: "center",
+            boxShadow: "0 1px 8px #16a34a22"
+          }}>
+            {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
+          </span>
+        )}
+      </div>
+      {!isLoggedIn ? (
+        <>
+          <button
+            onClick={() => window.location.href = '/rol-secim'}
             style={{
-              maxWidth: 1100,
-              margin: '0 auto',
-              padding: '20px 16px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              background: '#2563eb',
+              color: '#fff',
+              padding: '9px 20px',
+              borderRadius: 11,
+              border: 'none',
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px #2563eb18'
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                cursor: 'default'
-              }}
-              title="Aldın Aldın"
-            >
-              <Image
-                src="/logo.png"
-                alt="Aldın Aldın Logo"
-                width={42}
-                height={42}
-              />
-              <span
+            Giriş Yap
+          </button>
+          <button
+            onClick={() => window.location.href = '/kayit'}
+            style={{
+              background: '#1bbd8a',
+              color: '#fff',
+              padding: '9px 20px',
+              borderRadius: 11,
+              border: 'none',
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px #1bbd8a18'
+            }}
+          >
+            Kaydol
+          </button>
+        </>
+      ) : (
+        <>
+          <button
+            onClick={() => window.location.href = '/profil2'}
+            style={{
+              background: '#f3f4f6',
+              color: '#2563eb',
+              border: '1px solid #2563eb22',
+              padding: '9px 20px',
+              borderRadius: 11,
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 1px 7px #2563eb0a'
+            }}
+          >
+            👤 Profilim
+          </button>
+          <button
+            onClick={handleLogout}
+            style={{
+              background: '#e11d48',
+              color: '#fff',
+              padding: '9px 22px',
+              borderRadius: 11,
+              border: 'none',
+              fontWeight: 600,
+              fontSize: 15,
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px #e11d4811'
+            }}
+          >
+            Çıkış Yap
+          </button>
+        </>
+      )}
+    </div>
+  </div>
+</header>
+
+        {/* Responsive kategori alanı */}
+        <div style={{
+          width: "100%",
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "30px 0 16px 0",
+          overflowX: "auto",
+        }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 18,
+              alignItems: "center",
+              padding: "0 18px",
+              overflowX: "auto",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+          >
+            {kategorilerUI.map((kat, idx) => (
+              <div
+                key={idx}
+                onClick={() => {
+                  const normalize = (str: string) =>
+                    str.replace(/\s+/g, '').toLowerCase();
+                  const dbKat = dbKategoriler.find(
+                    (k) => normalize(k.ad) === normalize(kat.ad)
+                  );
+                  setAktifKategori({
+                    ad: kat.ad,
+                    id: dbKat?.id ?? undefined
+                  });
+                }}
                 style={{
+                  background:
+                    aktifKategori.ad === kat.ad ? kat.color : '#f5f7fa',
+                  color:
+                    aktifKategori.ad === kat.ad ? '#fff' : '#223555',
+                  borderRadius: 16,
+                  padding: '15px 20px',
+                  minWidth: 112,
+                  textAlign: 'center',
+                  boxShadow:
+                    aktifKategori.ad === kat.ad
+                      ? '0 8px 24px #1bbd8a22'
+                      : '0 2px 9px #2563eb06',
+                  cursor: 'pointer',
                   fontWeight: 700,
-                  fontSize: 21,
-                  color: "#223555",
-                  letterSpacing: 1,
-                  marginLeft: 2,
+                  fontSize: 16,
+                  letterSpacing: 0.5,
+                  display: 'flex',
+                  alignItems: "center",
+                  gap: 10,
+                  border: aktifKategori.ad === kat.ad ? "2px solid #e2e8f0" : "1.5px solid #e7e9ef",
+                  transition: 'all 0.17s',
                   userSelect: "none"
                 }}
               >
-                Aldın Aldın
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <input
-                type="text"
-                placeholder="🔍 Ürün ara..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 10,
-                  padding: '8px 18px',
-                  fontSize: 15,
-                  background: '#f8fafc',
-                  outline: 'none',
-                  color: '#1a1a1a',
-                  width: 220,
-                  boxShadow: '0 2px 10px #1bbd8a07'
-                }}
-              />
-
-              {/* SEPET İKONU */}
-              <div
-                onClick={sepeteGit}
-                style={{
-                  position: "relative",
-                  cursor: "pointer",
-                  padding: 6,
-                  background: "#f8fafc",
-                  borderRadius: 8,
-                  boxShadow: "0 1px 6px #1bbd8a08",
-                  display: "flex",
-                  alignItems: "center"
-                }}
-                title="Sepetim"
-              >
-                <FiShoppingCart size={26} color="#1bbd8a" />
-                {cartItems.length > 0 && (
-                  <span style={{
-                    position: "absolute",
-                    top: -5,
-                    right: -5,
-                    fontSize: 13,
-                    fontWeight: 800,
-                    color: "#fff",
-                    background: "#22c55e",
-                    borderRadius: 16,
-                    padding: "2px 7px",
-                    minWidth: 20,
-                    textAlign: "center"
-                  }}>
-                    {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
-                  </span>
-                )}
+                {kat.icon}
+                {kat.ad}
               </div>
-
-              {isLoggedIn && (
-                <>
-                  <button
-                    onClick={() => window.location.href = '/profil2'}
-                    style={{
-                      background: '#f3f4f6',
-                      color: '#2563eb',
-                      border: '1px solid #2563eb22',
-                      padding: '9px 18px',
-                      borderRadius: 10,
-                      fontWeight: 600,
-                      fontSize: 15,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      boxShadow: '0 1px 6px #2563eb09'
-                    }}
-                  >
-                    👤 Profilim
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    style={{
-                      background: '#e11d48',
-                      color: '#fff',
-                      padding: '9px 20px',
-                      borderRadius: 10,
-                      border: 'none',
-                      fontWeight: 600,
-                      fontSize: 15,
-                      cursor: 'pointer',
-                      boxShadow: '0 2px 8px #e11d4811'
-                    }}
-                  >
-                    Çıkış Yap
-                  </button>
-                </>
-              )}
-            </div>
+            ))}
           </div>
-        </header>
+        </div>
 
-        {/* RESPONSIVE STYLE */}
-        <style jsx global>{`
-          @media (max-width: 900px) {
-            aside { display: none !important; }
-            main { padding: 0 3vw !important; }
-          }
-          @media (max-width: 600px) {
-            .kategoriGrid { grid-template-columns: 1fr 1fr !important; }
-            .ilanGrid { grid-template-columns: 1fr !important; }
-          }
-        `}</style>
-
-        {/* İçerik */}
+        {/* Layout: Sol reklam, ana, sağ reklam */}
         <div
           style={{
             display: 'flex',
             width: '100%',
-            maxWidth: 1440,
+            maxWidth: 1300,
             margin: '0 auto',
             position: 'relative',
-            gap: 16
+            gap: 20,
+            alignItems: "flex-start",
+            padding: "0 6px"
           }}
         >
           {/* SOL REKLAM */}
           <aside
             style={{
-              width: 160,
-              minWidth: 140,
+              width: 150,
+              minWidth: 100,
               maxWidth: 170,
-              height: 300,
+              height: 280,
               background: '#f8fafc',
-              padding: 12,
-              borderRadius: 12,
-              boxShadow: '0 4px 12px #2563eb07',
+              padding: 13,
+              borderRadius: 14,
+              boxShadow: '0 4px 12px #2563eb09',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               position: 'sticky',
-              top: 80,
+              top: 92,
               zIndex: 10
             }}
           >
@@ -439,90 +520,119 @@ const Index2: NextPage = () => {
                 height: '100%',
                 borderRadius: 10,
                 objectFit: 'cover',
-                boxShadow: '0 3px 8px #2563eb14'
+                boxShadow: '0 2px 9px #1648b018'
               }}
             />
           </aside>
 
           {/* ANA İÇERİK */}
-          <main style={{ maxWidth: 1100, padding: '0 20px', flexGrow: 1 }}>
-            {/* KATEGORİLER */}
-            <section style={{ marginBottom: 40 }}>
-              <h2
-                style={{
-                  fontSize: 24,
-                  fontWeight: 800,
-                  color: '#223555',
-                  marginBottom: 20
-                }}
-              >
-                Kategorileri Keşfet
+          <main style={{
+            maxWidth: 950,
+            width: "100%",
+            padding: '0 10px',
+            flexGrow: 1,
+          }}>
+            {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
+            <section style={{ marginBottom: 32 }}>
+              <h2 style={{
+                fontSize: 24,
+                fontWeight: 900,
+                color: '#e11d48',
+                marginBottom: 8,
+                letterSpacing: ".2px",
+                display: "flex",
+                alignItems: "center",
+                gap: 11
+              }}>
+                <span style={{fontSize: 28, marginTop: -4}}>🔥</span>
+                Ayın İndirimleri Başladı!
+                <span style={{
+                  background: "#22c55e",
+                  color: "#fff",
+                  borderRadius: 7,
+                  fontSize: 14,
+                  padding: "2px 12px",
+                  marginLeft: 8,
+                  fontWeight: 700
+                }}>
+                  Haftanın Fırsatları
+                </span>
               </h2>
-              <div
-                className="kategoriGrid"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                  gap: 20
-                }}
-              >
-                {kategorilerUI.map((kat, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      const normalize = (str: string) =>
-                        str.replace(/\s+/g, '').toLowerCase();
-                      const dbKat = dbKategoriler.find(
-                        (k) => normalize(k.ad) === normalize(kat.ad)
-                      );
-                      setAktifKategori({
-                        ad: kat.ad,
-                        id: dbKat?.id ?? undefined
-                      });
-                    }}
+              <p style={{
+                fontWeight: 600,
+                fontSize: 15.5,
+                color: '#444',
+                marginBottom: 12,
+                marginLeft: 3
+              }}>
+                Sezonun en popüler ve indirimli ürünleri burada! Acele et, stoklar sınırlı.
+              </p>
+              <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
+                {indirimliUrunler.slice(0, 6).map((p, idx) => (
+                  <div key={idx}
                     style={{
-                      background:
-                        aktifKategori.ad === kat.ad ? kat.color : '#fff',
-                      color:
-                        aktifKategori.ad === kat.ad ? '#fff' : '#223555',
-                      borderRadius: 20,
-                      padding: '20px 10px',
-                      textAlign: 'center',
-                      boxShadow:
-                        aktifKategori.ad === kat.ad
-                          ? '0 8px 22px #1bbd8a28'
-                          : '0 2px 8px #2563eb08',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      minWidth: 200,
+                      maxWidth: 220,
+                      background: "#fff6",
+                      borderRadius: 13,
+                      boxShadow: "0 2px 13px #f871710b",
+                      border: "1.5px solid #e4e9ef",
+                      marginRight: 5,
+                      cursor: "pointer",
+                      padding: "13px 9px",
+                      position: "relative"
                     }}
+                    onClick={() => window.location.href = `/urun/${p.id}?from=populer`}
                   >
-                    <div
+                    {/* İNDİRİMDE ROZETİ */}
+                    {p.indirimli_fiyat &&
+                      <span style={{
+                        position: "absolute", top: 11, left: 11,
+                        background: "#ef4444", color: "#fff",
+                        fontWeight: 800, fontSize: 12, borderRadius: 7, padding: "2px 10px", boxShadow: "0 1px 5px #ef444415"
+                      }}>İNDİRİMDE</span>}
+
+                    {/* ÇOK SATAN ROZETİ */}
+                    {idx < 3 &&
+                      <span style={{
+                        position: "absolute", top: 11, right: 11,
+                        background: "#f59e0b", color: "#fff", fontWeight: 800,
+                        fontSize: 12, borderRadius: 7, padding: "2px 10px"
+                      }}>Çok Satan</span>}
+
+                    <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                      alt={p.title}
                       style={{
-                        width: 60,
-                        height: 60,
-                        margin: '0 auto 12px',
-                        borderRadius: '50%',
-                        background:
-                          aktifKategori.ad === kat.ad
-                            ? '#ffffff33'
-                            : '#f1f5f9',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 28
-                      }}
-                    >
-                      {kat.icon}
+                        width: "100%",
+                        height: 92,
+                        objectFit: "cover",
+                        borderRadius: 8,
+                        border: "1px solid #fde68a"
+                      }} />
+                    <div style={{
+                      fontWeight: 700, fontSize: 15,
+                      color: "#e11d48", marginTop: 5
+                    }}>{p.title}</div>
+                    <div style={{
+                      fontWeight: 700, fontSize: 15, color: "#22c55e"
+                    }}>
+                      {p.indirimli_fiyat ?
+                        <>
+                          <span style={{ textDecoration: "line-through", color: "#d1d5db", fontWeight: 600, marginRight: 4 }}>
+                            {p.price}₺
+                          </span>
+                          <span style={{ color: "#ef4444" }}>{p.indirimli_fiyat}₺</span>
+                        </>
+                        : `${p.price}₺`}
                     </div>
-                    <span
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 15,
-                        letterSpacing: 0.4
-                      }}
-                    >
-                      {kat.ad}
-                    </span>
+                    {/* Stok azaldı badge örneği */}
+                    {p.stok && p.stok < 5 &&
+                      <div style={{
+                        color: "#e11d48", fontWeight: 700, fontSize: 13, marginTop: 2
+                      }}>
+                        Son {p.stok} ürün!
+                      </div>
+                    }
                   </div>
                 ))}
               </div>
@@ -533,18 +643,19 @@ const Index2: NextPage = () => {
               style={{
                 background: '#fff',
                 padding: '30px 24px',
-                borderRadius: 16,
-                marginBottom: 48,
-                boxShadow: '0 4px 14px #f59e0b11',
-                border: '1px solid #e2e8f0'
+                borderRadius: 18,
+                marginBottom: 42,
+                boxShadow: '0 4px 22px #f59e0b09',
+                border: '1.5px solid #e2e8f0'
               }}
             >
               <h2
                 style={{
-                  fontSize: 24,
+                  fontSize: 23,
                   fontWeight: 800,
                   color: '#b45309',
-                  marginBottom: 20
+                  marginBottom: 20,
+                  letterSpacing: ".2px"
                 }}
               >
                 🚀 Öne Çıkanlar
@@ -555,9 +666,10 @@ const Index2: NextPage = () => {
                     background: '#fef9c3',
                     padding: 40,
                     textAlign: 'center',
-                    borderRadius: 12,
+                    borderRadius: 13,
                     color: '#92400e',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    fontSize: 16
                   }}
                 >
                   Şu anda öne çıkarılan bir ilan yok.
@@ -567,8 +679,8 @@ const Index2: NextPage = () => {
                   style={{
                     display: 'grid',
                     gridTemplateColumns:
-                      'repeat(auto-fit, minmax(240px, 1fr))',
-                    gap: 20
+                      'repeat(auto-fit, minmax(235px, 1fr))',
+                    gap: 23
                   }}
                 >
                   {dopedIlanlar.map((product) => (
@@ -576,14 +688,16 @@ const Index2: NextPage = () => {
                       key={product.id}
                       style={{
                         background: '#fef08a',
-                        borderRadius: 16,
+                        borderRadius: 15,
                         padding: 15,
-                        boxShadow: '0 3px 14px #eab30818',
-                        transition: 'transform 0.2s',
-                        cursor: 'pointer'
+                        boxShadow: '0 4px 17px #eab30817',
+                        transition: 'transform 0.15s, box-shadow 0.18s',
+                        cursor: 'pointer',
+                        border: "1.5px solid #fbe192"
                       }}
-                      // GÜNCEL: ?from=index2 ile yönlendirme
                       onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                      onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
+                      onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                     >
                       <img
                         src={
@@ -597,7 +711,8 @@ const Index2: NextPage = () => {
                           height: 160,
                           objectFit: 'cover',
                           borderRadius: 10,
-                          marginBottom: 12
+                          marginBottom: 12,
+                          border: "1.5px solid #fae27a"
                         }}
                       />
                       <h3
@@ -634,11 +749,11 @@ const Index2: NextPage = () => {
               )}
             </section>
 
-            {/* İLAN KARTLARI */}
+            {/* Standart İlan Kartları */}
             <section>
               <h2
                 style={{
-                  fontSize: 24,
+                  fontSize: 23,
                   fontWeight: 800,
                   color: '#223555',
                   marginBottom: 20
@@ -654,9 +769,10 @@ const Index2: NextPage = () => {
                     background: '#f8fafc',
                     padding: 40,
                     textAlign: 'center',
-                    borderRadius: 12,
+                    borderRadius: 13,
                     color: '#64748b',
-                    fontWeight: 500
+                    fontWeight: 500,
+                    fontSize: 16
                   }}
                 >
                   {aktifKategori.ad === 'Tümü'
@@ -669,8 +785,8 @@ const Index2: NextPage = () => {
                   style={{
                     display: 'grid',
                     gridTemplateColumns:
-                      'repeat(auto-fit, minmax(240px, 1fr))',
-                    gap: 20
+                      'repeat(auto-fit, minmax(235px, 1fr))',
+                    gap: 23
                   }}
                 >
                   {normalIlanlar.map((product) => {
@@ -681,23 +797,23 @@ const Index2: NextPage = () => {
                         key={product.id}
                         style={{
                           background: '#fff',
-                          borderRadius: 16,
+                          borderRadius: 15,
                           padding: 15,
-                          boxShadow: '0 3px 13px #16a34a0f',
-                          transition: 'transform 0.2s',
+                          boxShadow: '0 3px 16px #16a34a14',
+                          transition: 'transform 0.16s',
                           cursor: 'pointer',
-                          position: 'relative'
+                          position: 'relative',
+                          border: "1.5px solid #e4e9ef"
                         }}
-                        // GÜNCEL: ?from=index2 ile yönlendirme
                         onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                        onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
+                        onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                       >
-                        {/* YENİ ETİKETİ */}
                         {isYeni(product.created_at) && (
                           <span
                             style={{
                               position: 'absolute',
-                              top: 13,
-                              left: 13,
+                              top: 13, left: 13,
                               background: '#16a34a',
                               color: '#fff',
                               fontWeight: 800,
@@ -711,29 +827,22 @@ const Index2: NextPage = () => {
                             Yeni
                           </span>
                         )}
-
-                        {/* FAVORİ KALP */}
                         <span
-                          onClick={e => {
-                            e.stopPropagation();
-                            toggleFavori(product.id);
-                          }}
+                          onClick={e => { e.stopPropagation(); toggleFavori(product.id); }}
                           title={favoriler.includes(product.id) ? "Favorilerden çıkar" : "Favorilere ekle"}
                           style={{
                             position: 'absolute',
-                            top: 12,
-                            right: 14,
-                            fontSize: 23,
+                            top: 12, right: 14,
+                            fontSize: 22,
                             color: favoriler.includes(product.id) ? "#fb8500" : "#bbb",
                             cursor: 'pointer',
                             userSelect: 'none',
                             zIndex: 2,
-                            transition: 'color 0.22s'
+                            transition: 'color 0.2s'
                           }}
                         >
                           {favoriler.includes(product.id) ? "❤️" : "🤍"}
                         </span>
-
                         <img
                           src={
                             Array.isArray(product.resim_url)
@@ -743,16 +852,17 @@ const Index2: NextPage = () => {
                           alt={product.title}
                           style={{
                             width: '100%',
-                            height: 160,
+                            height: 155,
                             objectFit: 'cover',
                             borderRadius: 10,
                             marginBottom: 12,
-                            background: '#f0fdf4'
+                            background: '#f0fdf4',
+                            border: "1px solid #e4e9ef"
                           }}
                         />
                         <h3
                           style={{
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: 700,
                             color: '#1e293b',
                             marginBottom: 6
@@ -778,15 +888,13 @@ const Index2: NextPage = () => {
                         >
                           {findKategoriAd(product.kategori_id)}
                         </span>
-
-                        {/* Sepete Ekle veya Sepete Git */}
                         {!sepette ? (
                           <button
                             style={{
-                              marginTop: 12,
-                              background: 'linear-gradient(90deg, #1bbd8a 0%, #16a34a 80%)',
+                              marginTop: 13,
+                              background: 'linear-gradient(90deg, #1bbd8a 0%, #16a34a 90%)',
                               color: '#fff',
-                              padding: '9px 0',
+                              padding: '10px 0',
                               borderRadius: 10,
                               border: 'none',
                               fontWeight: 700,
@@ -807,10 +915,10 @@ const Index2: NextPage = () => {
                         ) : (
                           <button
                             style={{
-                              marginTop: 12,
+                              marginTop: 13,
                               background: 'linear-gradient(90deg, #fb8500 0%, #ffbc38 80%)',
                               color: '#fff',
-                              padding: '9px 0',
+                              padding: '10px 0',
                               borderRadius: 10,
                               border: 'none',
                               fontWeight: 700,
@@ -819,6 +927,7 @@ const Index2: NextPage = () => {
                               width: '100%',
                               boxShadow: '0 2px 8px #fb850022',
                               letterSpacing: 0.5,
+                              transition: 'background 0.18s'
                             }}
                             onClick={e => {
                               e.stopPropagation();
@@ -839,20 +948,20 @@ const Index2: NextPage = () => {
           {/* SAĞ REKLAM */}
           <aside
             style={{
-              width: 160,
-              minWidth: 140,
+              width: 150,
+              minWidth: 100,
               maxWidth: 170,
-              height: 300,
+              height: 280,
               background: '#f8fafc',
-              padding: 12,
-              borderRadius: 12,
-              boxShadow: '0 4px 12px #2563eb07',
+              padding: 13,
+              borderRadius: 14,
+              boxShadow: '0 4px 12px #2563eb09',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               position: 'sticky',
-              top: 80,
+              top: 92,
               zIndex: 10
             }}
           >
@@ -875,12 +984,26 @@ const Index2: NextPage = () => {
                 height: '100%',
                 borderRadius: 10,
                 objectFit: 'cover',
-                boxShadow: '0 3px 8px #2563eb14'
+                boxShadow: '0 2px 9px #1648b018'
               }}
             />
           </aside>
         </div>
-
+        {/* Responsive düzen için */}
+        <style jsx global>{`
+          @media (max-width: 900px) {
+            aside { display: none !important; }
+            main { padding: 0 1vw !important; }
+          }
+          @media (max-width: 700px) {
+            .ilanGrid { grid-template-columns: 1fr !important; }
+            .kategoriGrid { grid-template-columns: 1fr 1fr !important; }
+            .kategori-scroll { flex-wrap: wrap !important; }
+          }
+          @media (max-width: 500px) {
+            header, .footer, aside, main, .ilanGrid { max-width: 99vw !important; }
+          }
+        `}</style>
         {/* FOOTER */}
         <footer
           style={{

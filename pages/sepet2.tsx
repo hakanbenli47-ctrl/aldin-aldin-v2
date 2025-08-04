@@ -3,9 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
 
-// ----- MAIL GÖNDERME (direkt dosyanın başında!)
-// Next.js'de api/send-mail.ts şeklinde bir endpoint yazmış olmalısın.
-// Aşağıdaki fonksiyon alıcıya ve satıcıya mail yollar.
+// ----- MAIL GÖNDERME
 async function sendOrderEmails({
   aliciMail,
   saticiMail,
@@ -44,13 +42,11 @@ async function sendOrderEmails({
   });
 }
 
-// ---- Ana Component
 export default function Sepet2() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Sipariş modalı için
   const [showSiparisModal, setShowSiparisModal] = useState(false);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [cards, setCards] = useState<any[]>([]);
@@ -140,7 +136,9 @@ export default function Sepet2() {
             id,
             title,
             price,
-            resim_url
+            indirimli_fiyat,
+            resim_url,
+            stok
           )
         `)
         .eq("user_id", currentUser.id);
@@ -179,21 +177,33 @@ export default function Sepet2() {
     fetchAddressesAndCards();
   }, [currentUser]);
 
+  // ADET GÜNCELLEME --->
+  const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
+    if (yeniAdet < 1 || yeniAdet > stok) return;
+    await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
+    setCartItems((prev) =>
+      prev.map((c) =>
+        c.id === cartId ? { ...c, adet: yeniAdet } : c
+      )
+    );
+  };
+
   const removeFromCart = async (cartId: number) => {
     await supabase.from("cart").delete().eq("id", cartId);
     setCartItems(cartItems.filter((c) => c.id !== cartId));
   };
 
+  // İNDİRİMLİ FİYATLI TOPLAM!
   const toplamFiyat = cartItems.reduce((acc, item) => {
-    const fiyat =
-      typeof item.product?.price === "string"
-        ? parseFloat(item.product.price)
-        : item.product?.price;
+    const indirimVar = item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
+    const fiyat = indirimVar
+      ? parseFloat(item.product.indirimli_fiyat)
+      : (typeof item.product?.price === 'string' ? parseFloat(item.product.price) : item.product?.price);
     const adet = item.adet || 1;
     return acc + (fiyat || 0) * adet;
   }, 0);
 
-  // SİPARİŞ VER (her ürüne ayrı order kaydı + mail gönderimi)
+  // SİPARİŞ VER
   async function handleSiparisVer(siparisBilgi: any) {
     if (cartItems.length === 0) {
       alert("Sepetiniz boş!");
@@ -201,22 +211,26 @@ export default function Sepet2() {
     }
 
     for (const item of cartItems) {
+      const indirimVar = item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
+      const seciliFiyat = indirimVar
+        ? item.product.indirimli_fiyat
+        : item.product.price;
+
       const orderInsertData: any = {
         user_id: currentUser.id,
-        ilan_id: item.product_id ?? item.product?.id, // ürünün id'si
+        ilan_id: item.product_id ?? item.product?.id,
         cart_items: {
           product_id: item.product_id ?? item.product?.id,
           title: item.product?.title,
-          price: item.product?.price,
+          price: seciliFiyat,
           adet: item.adet,
           resim_url: item.product?.resim_url,
         },
-        total_price: (item.product?.price || 0) * (item.adet || 1),
+        total_price: (parseFloat(seciliFiyat) || 0) * (item.adet || 1),
         status: "beklemede",
         created_at: new Date(),
       };
 
-      // Kayıtlı adres/kart
       if (siparisBilgi.isCustom) {
         orderInsertData.custom_addre = siparisBilgi.address;
         orderInsertData.custom_card = siparisBilgi.card;
@@ -225,7 +239,6 @@ export default function Sepet2() {
         orderInsertData.card_id = siparisBilgi.cardId;
       }
 
-      // 1- Siparişi kaydet
       const { data: insertedOrder, error } = await supabase
         .from("orders")
         .insert([orderInsertData])
@@ -237,7 +250,6 @@ export default function Sepet2() {
         return;
       }
 
-      // 2- Satıcı mailini ürün üzerinden bul
       let saticiMail = "";
       const { data: ilanData } = await supabase
         .from("ilan")
@@ -246,12 +258,11 @@ export default function Sepet2() {
         .single();
       saticiMail = ilanData?.user_email || "";
 
-      // 3- Mail gönder!
       await sendOrderEmails({
         aliciMail: currentUser.email,
         saticiMail,
         urunBaslik: item.product?.title,
-        urunFiyat: item.product?.price,
+        urunFiyat: seciliFiyat,
         siparisNo: insertedOrder?.id,
       });
     }
@@ -313,57 +324,113 @@ export default function Sepet2() {
           </p>
         ) : (
           <>
-            {cartItems.map((item) => (
-              <div
-                key={item.id}
-                style={{
-                  display: "flex",
-                  gap: 14,
-                  marginBottom: 16,
-                  alignItems: "center",
-                }}
-              >
-                <img
-                  src={item.product?.resim_url || "/placeholder.jpg"}
-                  alt={item.product?.title}
-                  width={70}
-                  height={70}
-                  style={{ borderRadius: 9, background: "#f3f4f6" }}
-                />
-                <div style={{ flex: 1 }}>
-                  <h3
-                    style={{
-                      margin: "0 0 4px",
-                      fontWeight: 700,
-                      color: "#333",
-                    }}
-                  >
-                    {item.product?.title}
-                  </h3>
-                  <div style={{ color: "#22c55e", fontWeight: 600 }}>
-                    {item.product?.price} ₺
-                  </div>
-                  <div style={{ color: "#999", fontSize: 14 }}>
-                    Adet: {item.adet || 1}
-                  </div>
-                </div>
-                <button
+            {cartItems.map((item) => {
+              const indirimVar = item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
+              const stok = item.product?.stok ?? 99;
+              return (
+                <div
+                  key={item.id}
                   style={{
-                    background: "#fff0f0",
-                    color: "#e11d48",
-                    border: "1px solid #fca5a5",
-                    borderRadius: 8,
-                    fontSize: 15,
-                    padding: 6,
-                    cursor: "pointer",
+                    display: "flex",
+                    gap: 14,
+                    marginBottom: 16,
+                    alignItems: "center",
                   }}
-                  onClick={() => removeFromCart(item.id)}
-                  title="Sepetten sil"
                 >
-                  ❌
-                </button>
-              </div>
-            ))}
+                  <img
+                    src={item.product?.resim_url || "/placeholder.jpg"}
+                    alt={item.product?.title}
+                    width={70}
+                    height={70}
+                    style={{ borderRadius: 9, background: "#f3f4f6" }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <h3
+                      style={{
+                        margin: "0 0 4px",
+                        fontWeight: 700,
+                        color: '#333',
+                      }}
+                    >
+                      {item.product?.title}
+                    </h3>
+                    <div>
+                      {indirimVar ? (
+                        <>
+                          <span style={{ textDecoration: "line-through", color: "#bbb", marginRight: 5, fontWeight: 600 }}>
+                            {item.product.price} ₺
+                          </span>
+                          <span style={{ color: "#22c55e", fontWeight: 700 }}>
+                            {item.product.indirimli_fiyat} ₺
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ color: "#22c55e", fontWeight: 700 }}>
+                          {item.product?.price} ₺
+                        </span>
+                      )}
+                    </div>
+                    {/* Adet Seçici */}
+                    <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+                      <button
+                        style={{
+                          border: "1px solid #ddd",
+                          background: "#f1f5f9",
+                          borderRadius: 7,
+                          width: 27,
+                          height: 27,
+                          fontWeight: 900,
+                          fontSize: 20,
+                          color: "#22c55e",
+                          cursor: "pointer"
+                        }}
+                        disabled={item.adet <= 1}
+                        onClick={() => updateAdet(item.id, item.adet - 1, stok)}
+                      >-</button>
+                      <span style={{
+                        fontWeight: 700,
+                        fontSize: 16,
+                        color: "#334155",
+                        minWidth: 18,
+                        display: "inline-block",
+                        textAlign: "center"
+                      }}>{item.adet}</span>
+                      <button
+                        style={{
+                          border: "1px solid #ddd",
+                          background: "#f1f5f9",
+                          borderRadius: 7,
+                          width: 27,
+                          height: 27,
+                          fontWeight: 900,
+                          fontSize: 20,
+                          color: "#22c55e",
+                          cursor: "pointer"
+                        }}
+                        disabled={item.adet >= stok}
+                        onClick={() => updateAdet(item.id, item.adet + 1, stok)}
+                      >+</button>
+                      <span style={{ color: "#999", fontSize: 13, marginLeft: 5 }}>Stok: {stok}</span>
+                    </div>
+                  </div>
+                  <button
+                    style={{
+                      background: "#fff0f0",
+                      color: "#e11d48",
+                      border: "1px solid #fca5a5",
+                      borderRadius: 8,
+                      fontSize: 15,
+                      padding: 6,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => removeFromCart(item.id)}
+                    title="Sepetten sil"
+                  >
+                    ❌
+                  </button>
+                </div>
+              )
+            })}
             <div
               style={{
                 textAlign: "right",
@@ -427,11 +494,10 @@ export default function Sepet2() {
   );
 }
 
-// ---- Sipariş Modalı ---
+// ---- Sipariş Modalı (Değişmedi)
 function SiparisModal({ addresses, cards, onSiparisVer }: any) {
   const [useSaved, setUseSaved] = useState(true);
 
-  // Yeni adres/kart state (form inputları)
   const [customAddress, setCustomAddress] = useState({
     title: "",
     address: "",
@@ -447,7 +513,6 @@ function SiparisModal({ addresses, cards, onSiparisVer }: any) {
     cvv: "",
   });
 
-  // Seçili kayıtlı adres/kart
   const [selectedAddressId, setSelectedAddressId] = useState(addresses[0]?.id || null);
   const [selectedCardId, setSelectedCardId] = useState(cards[0]?.id || null);
 
@@ -468,7 +533,6 @@ function SiparisModal({ addresses, cards, onSiparisVer }: any) {
         Sipariş Bilgileri
       </h2>
 
-      {/* Kayıtlı bilgileri mi yoksa yeni mi */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ marginRight: 18 }}>
           <input
