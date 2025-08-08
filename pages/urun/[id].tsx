@@ -1,25 +1,50 @@
+// pages/urun/[id].tsx
 import { useRouter } from "next/router";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import Head from "next/head";
 
+// Yardımcı fonksiyonlar (ör: renderStars)
+function renderStars(rating: number, max = 5) {
+  const full = Math.floor(rating);
+  const half = rating % 1 >= 0.5 ? 1 : 0;
+  const empty = max - full - half;
+  return (
+    <>
+      {Array(full).fill(0).map((_, i) => <span key={"f"+i}>★</span>)}
+      {half ? <span key="h">☆</span> : null}
+      {Array(empty).fill(0).map((_, i) => <span key={"e"+i}>☆</span>)}
+    </>
+  );
+}
+
+// getServerSideProps, props döner!
 export async function getServerSideProps(context: any) {
   const { id } = context.params;
 
+  // 1. İlanı çek
   const { data: ilan, error } = await supabase
     .from("ilan")
     .select("*")
     .eq("id", id)
     .single();
+  if (error || !ilan) return { notFound: true };
 
-  if (error || !ilan) {
-    return {
-      notFound: true,
-    };
+  // 2. Firma adını + puanı user_email ile çek
+  let firmaAdi = null;
+  let firmaPuan = 0;
+  if (ilan.user_email) {
+    const { data: firma } = await supabase
+      .from("satici_firmalar")
+      .select("firma_adi, puan")
+      .eq("email", ilan.user_email)
+      .single();
+    firmaAdi = firma?.firma_adi || null;
+    firmaPuan = firma?.puan ?? 0;
   }
 
-  // Benzer ilanları da önceden alabiliriz
+  // 3. Benzer ilanları çek
   const { data: benzerler } = await supabase
     .from("ilan")
     .select("*")
@@ -30,23 +55,100 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       ilan,
+      firmaAdi,
+      firmaPuan,
       benzerler: benzerler || [],
     },
   };
 }
 
-export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: any[] }) {
+// ---- SADECE BİR TANE! ----
+export default function UrunDetay({
+  ilan,
+  firmaAdi,
+  firmaPuan,
+  benzerler,
+}: {
+  ilan: any;
+  firmaAdi: string | null;
+  firmaPuan: number;
+  benzerler: any[];
+}) {
   const router = useRouter();
   const { from } = router.query;
 
+  // STATE'LER
   const [mainImg, setMainImg] = useState<string | null>(null);
   const [favori, setFavori] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [shareUrl, setShareUrl] = useState(`https://seninsiten.com/urun/${ilan.id}`); // Başlangıçta server URL
+  const [shareUrl, setShareUrl] = useState(`https://seninsiten.com/urun/${ilan.id}`);
+  const [yorumlar, setYorumlar] = useState<any[]>([]);
+  const [yorum, setYorum] = useState("");
+  const [puan, setPuan] = useState(5);
 
+  // ROUTE
   const anasayfaPath = from === "index2" ? "/index2" : "/";
   const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
 
+  // Yorumları getir fonksiyonu
+  async function fetchYorumlar() {
+  const { data, error } = await supabase
+    .from("yorumlar")
+    .select("*")
+    .eq("urun_id", ilan.id)
+    .order("created_at", { ascending: false });
+  console.log("Yorumlar:", data, "Hata:", error);
+  setYorumlar(data || []);
+}
+
+
+  // İlk açılışta ve yorum gönderildikten sonra yorumları getir
+  useEffect(() => {
+    fetchYorumlar();
+  }, [ilan.id]);
+
+  // Yorum gönder fonksiyonu
+  async function yorumGonder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return alert("Giriş yapmalısınız.");
+    if (!yorum) return alert("Yorum boş olamaz.");
+
+    const { error } = await supabase.from("yorumlar").insert([{
+      urun_id: ilan.id,
+      user_id: user.id,
+      yorum,
+      puan,
+    }]);
+    if (error) {
+      alert("Yorum eklenemedi: " + error.message);
+      return;
+    }
+
+    // Yorumlar tekrar çekilsin:
+    await fetchYorumlar();
+      // --- Firma puanını otomatik güncelle ---
+  // Bu ürüne yapılan tüm yorumları çek
+  const { data: tumYorumlar } = await supabase
+    .from("yorumlar")
+    .select("puan")
+    .eq("urun_id", ilan.id);
+
+  if (tumYorumlar && tumYorumlar.length > 0) {
+    const toplamPuan = tumYorumlar.reduce((sum, y) => sum + (y.puan || 0), 0);
+    const ortalama = toplamPuan / tumYorumlar.length;
+
+    // Firma puanını güncelle
+    if (ilan.user_email) {
+      await supabase
+        .from("satici_firmalar")
+        .update({ puan: ortalama })
+        .eq("email", ilan.user_email);
+    }
+  }
+
+    setYorum("");
+    setPuan(5);
+  }
   // Ana resmi ilk renderda ayarla
   useEffect(() => {
     setMainImg(
@@ -188,7 +290,7 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
             letterSpacing: 1,
           }}
         >
-          Aldın Aldın
+          
         </span>
       </div>
 
@@ -301,18 +403,172 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
               ))}
             </div>
           )}
+         
           <h2
-            style={{
-              fontSize: 29,
-              fontWeight: 800,
-              color: "#191c1f",
-              marginBottom: 12,
-              marginTop: 7,
-              letterSpacing: 0.4,
-            }}
-          >
-            {ilan.title}
-          </h2>
+  style={{
+    fontSize: 29,
+    fontWeight: 800,
+    color: "#191c1f",
+    marginBottom: 12,
+    marginTop: 7,
+    letterSpacing: 0.4,
+  }}
+>
+  {ilan.title}
+</h2>
+{firmaAdi && (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      fontWeight: 600,
+      fontSize: 16,
+      color: "#31806c",
+      marginBottom: 12,
+    }}
+  >
+    {/* Firma Adı */}
+    <span>Firma: {firmaAdi}</span>
+
+    {/* Yıldız Grafiği */}
+    <span style={{ color: "#f59e0b", fontSize: 18 }}>
+      {renderStars(firmaPuan)}
+    </span>
+
+    {/* Sayısal Puan */}
+    <span style={{ color: "#64748b", fontSize: 14 }}>
+      ({firmaPuan.toFixed(1)})
+    </span>
+  </div>
+  
+)}
+
+{/* YORUM FORMU + LİSTE */}
+<div style={{ marginTop: 28, width: "100%", textAlign: "left" }}>
+  {/* --- Yorum Formu --- */}
+  <form
+    onSubmit={yorumGonder}
+    style={{
+      background: "#f3faf7",
+      padding: 18,
+      borderRadius: 12,
+      marginBottom: 24,
+      boxShadow: "0 1px 8px #000000a1",
+      border: "1.5px solid #e0f7ee",
+    }}
+  >
+    <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 17, color: "#10b981" }}>
+      Ürüne Yorum Yap ve Puan Ver
+    </div>
+    <textarea
+      value={yorum}
+      onChange={e => setYorum(e.target.value)}
+      placeholder="Yorumunuzu yazın..."
+      style={{
+        width: "100%",
+        borderRadius: 8,
+        border: "1px solid #000000ff",
+        padding: 11,
+        fontSize: 16,
+        marginBottom: 15,
+        background: "#fff",
+        outline: "none",
+        resize: "vertical",
+        color: "#191c1f",
+        
+      }}
+      rows={3}
+      required
+    />
+    <div style={{ marginBottom: 14, fontWeight: 500, color: "#444" }}>
+      Puanınız:{" "}
+      {[1, 2, 3, 4, 5].map(num => (
+        <span
+          key={num}
+          style={{
+            color: num <= puan ? "#f59e0b" : "#d1d5db",
+            fontSize: 24,
+            cursor: "pointer",
+            marginRight: 3
+          }}
+          onClick={() => setPuan(num)}
+        >★</span>
+      ))}
+    </div>
+    <button
+      type="submit"
+      style={{
+        background: "#10b981",
+        color: "#fff",
+        border: "none",
+        borderRadius: 8,
+        padding: "10px 30px",
+        fontWeight: 700,
+        fontSize: 16,
+        cursor: "pointer",
+        boxShadow: "0 1px 4px #10b98122"
+      }}
+    >Yorumu Gönder</button>
+  </form>
+
+  {/* --- Yorumlar Listesi --- */}
+  <div>
+    <div style={{ fontWeight: 800, color: "#223555", marginBottom: 14, fontSize: 19 }}>
+      Ürün Yorumları
+    </div>
+    {yorumlar.length === 0 && <div style={{ color: "#64748b", fontStyle: "italic" }}>Henüz yorum yok.</div>}
+    <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
+  {yorumlar.map((y, i) => (
+    <div
+      key={i}
+      style={{
+        background: "linear-gradient(120deg, #efd8e1ff 75%, #efd8e1ff 100%)",
+        borderRadius: 13,
+        padding: "18px 20px 14px 20px",
+        boxShadow: "0 4px 24px #10b98115",
+        border: "1.5px solid #e0f7ee",
+        position: "relative",
+        minHeight: 60,
+        transition: "box-shadow 0.18s",
+        display: "flex",
+        flexDirection: "column",
+        gap: 7,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <span style={{ color: "#f59e0b", fontSize: 18, marginRight: 7 }}>
+          {renderStars(y.puan)}
+        </span>
+        <span style={{ color: "#0a7068", fontWeight: 600, fontSize: 15 }}>
+          {y.auth?.email?.split("@")[0] || "Kullanıcı"}
+        </span>
+        <span style={{ marginLeft: "auto", fontSize: 13, color: "#7e8ba3" }}>
+          {y.created_at && new Date(y.created_at).toLocaleString("tr-TR")}
+        </span>
+      </div>
+      <div
+        style={{
+          color: "#262c31",
+          fontSize: 16,
+          marginTop: 2,
+          paddingLeft: 2,
+          fontWeight: 500,
+          lineHeight: 1.55,
+          wordBreak: "break-word",
+        }}
+      >
+        {y.yorum}
+      </div>
+    </div>
+  ))}
+</div>
+
+  </div>
+</div>
+
+
+
 <div
   style={{
     fontSize: 22,
@@ -571,5 +827,6 @@ export default function UrunDetay({ ilan, benzerler }: { ilan: any; benzerler: a
         }
       `}</style>
     </div>
+    
   );
 }

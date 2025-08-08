@@ -3,6 +3,113 @@ import Head from 'next/head';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import React, { ReactNode } from 'react';
+import SloganBar from "../components/SloganBar";
+import { FiChevronDown } from 'react-icons/fi'
+import Link from 'next/link'
+import { useRouter } from 'next/router'
+
+// Ortalama puan hesaplama fonksiyonu
+async function ilanlaraOrtalamaPuanEkle(ilanlar: Ilan[]) {
+  const result: Ilan[] = [];
+  for (const ilan of ilanlar) {
+    const { data: yorumlar } = await supabase
+      .from("yorumlar")
+      .select("puan")
+      .eq("urun_id", ilan.id);
+const populerIlanlar = ilanlar
+  .filter(i => (i.ortalamaPuan ?? 0) > 0)
+  .sort((a, b) => (b.ortalamaPuan ?? 0) - (a.ortalamaPuan ?? 0))
+  .slice(0, 6);
+
+    const puanArr = (yorumlar || []).map(y => y.puan);
+    const ortalama = puanArr.length
+      ? puanArr.reduce((a, b) => a + b, 0) / puanArr.length
+      : 0;
+    result.push({ ...ilan, ortalamaPuan: ortalama });
+  }
+  return result;
+}
+
+
+
+// Firma adı + yıldız + yorum butonu
+type FirmaInfo = {
+  ad: string;
+  puan: number;
+};
+function renderStars(rating: number, max = 5) {
+  const full = Math.floor(rating);
+  const half = rating % 1 >= 0.5 ? 1 : 0;
+  const empty = max - full - half;
+  return (
+    <>
+      {Array(full).fill(0).map((_, i) => <span key={"f"+i} style={{ color: "#f59e0b", fontSize: 15 }}>★</span>)}
+      {half ? <span key="h" style={{ color: "#f59e0b", fontSize: 15 }}>☆</span> : null}
+      {Array(empty).fill(0).map((_, i) => <span key={"e"+i} style={{ color: "#d1d5db", fontSize: 15 }}>★</span>)}
+    </>
+  );
+}
+
+function FirmaBilgiSatiri({
+  email,
+  firmaAdMap,
+  onYorumClick,
+}: {
+  email: string;
+  firmaAdMap: Record<string, FirmaInfo>;
+  onYorumClick?: () => void;
+}) {
+  const info = firmaAdMap[email];
+  if (!info) return null;
+
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      marginTop: 2,
+      marginBottom: 8,
+      justifyContent: 'flex-start',
+    }}>
+      {/* Firma adı */}
+      <span style={{
+        fontWeight: 600,
+        fontSize: 15,
+        color: "#1d8cf8",
+        marginRight: 3
+      }}>
+        {info.ad}
+      </span>
+      {/* Yıldız */}
+      <span>
+  {renderStars(info.puan)}
+  <span style={{ color: "#64748b", fontSize: 13, marginLeft: 5 }}>
+    ({info.puan.toFixed(1)})
+  </span>
+</span>
+
+      {/* Yorumlar butonu */}
+      <button
+        onClick={onYorumClick}
+        style={{
+          background: "#f3f4f6",
+          border: "1.5px solid #e4e9ef",
+          color: "#223555",
+          borderRadius: 8,
+          fontSize: 13.5,
+          fontWeight: 600,
+          marginLeft: 6,
+          padding: "3px 11px",
+          cursor: "pointer"
+        }}
+      >
+        Yorumlar
+      </button>
+    </div>
+  );
+}
+
 import {
   FiShoppingCart,
   FiSmartphone,
@@ -13,24 +120,37 @@ import {
   FiHeart,
   FiTag,
   FiMoreHorizontal
-} from 'react-icons/fi';
+} 
+from 'react-icons/fi';
 import { FaCar, FaTshirt } from 'react-icons/fa';
+// ad’a göre icon ataması
+const iconMap: Record<string, ReactNode> = {
+  'Tümü': null,
+  'Elektronik': <FiSmartphone size={28} />,
+  'Araçlar':     <FaCar size={28} />,
+  'Giyim':       <FiMoreHorizontal size={20}/>,
+  'Ev Eşyaları':         <FiMoreHorizontal size={20}/>,
+  'Spor & Outdoor': <FiUsers size={28} />,
+  'Anne & Bebek':   <FiHeart size={28} />,
+  'Evcil Hayvan':   <FiBox size={28} />,
+  'Kozmetik':       <FiTag size={28} />,
+  'Diğer':          <FiMoreHorizontal size={28} />,
+};
 
-// Kategoriler
-const kategorilerUI = [
-  { ad: 'Tümü', icon: null, color: '#1bbd8a' },
-  { ad: 'Elektronik', icon: <FiSmartphone size={28} />, color: '#2563eb' },
-  { ad: 'Araçlar', icon: <FaCar size={28} />, color: '#16a34a' },
-  { ad: 'Moda', icon: <FaTshirt size={28} />, color: '#e11d48' },
-  { ad: 'Ev & Yaşam', icon: <FiHome size={28} />, color: '#f97316' },
-  { ad: 'Kitap & Hobi', icon: <FiBook size={28} />, color: '#7c3aed' },
-  { ad: 'Spor & Outdoor', icon: <FiUsers size={28} />, color: '#1d8cf8' },
-  { ad: 'Anne & Bebek', icon: <FiHeart size={28} />, color: '#22d3ee' },
-  { ad: 'Evcil Hayvan', icon: <FiBox size={28} />, color: '#0ea5e9' },
-  { ad: 'Kozmetik', icon: <FiTag size={28} />, color: '#f59e0b' },
-  { ad: 'Diğer', icon: <FiMoreHorizontal size={28} />, color: '#334155' }
-];
-
+// ad’a göre renk ataması
+const renkMap: Record<string, string> = {
+  'Tümü': '#1bbd8a',
+  'Elektronik': '#2563eb',
+  'Araçlar':     '#16a34a',
+  'Moda':        '#e11d48',
+  'Ev & Yaşam':  '#f97316',
+  'Kitap & Hobi':'#7c3aed',
+  'Spor & Outdoor':'#1d8cf8',
+  'Anne & Bebek':'#22d3ee',
+  'Evcil Hayvan':'#0ea5e9',
+  'Kozmetik':'#f59e0b',
+  'Diğer':'#334155',
+};
 type Ilan = {
   id: number;
   title: string;
@@ -44,7 +164,10 @@ type Ilan = {
   doped_expiration?: string;
   indirimli_fiyat?: string;
   views?: number;
+  user_email: string;  // <-- BURAYA EKLE!
+   ortalamaPuan?: number;
 };
+
 
 type Kategori = {
   id: number;
@@ -65,20 +188,53 @@ function isYeni(created_at?: string) {
 }
 
 const Index2: NextPage = () => {
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+ const [firmaAdMap, setFirmaAdMap] = useState<Record<string, FirmaInfo>>({});
   const [dbKategoriler, setDbKategoriler] = useState<Kategori[]>([]);
+  const [populerIlanlar, setPopulerIlanlar] = useState<Ilan[]>([]);
   const [ilanlar, setIlanlar] = useState<Ilan[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [dopedIlanlar, setDopedIlanlar] = useState<Ilan[]>([]);
+  const router = useRouter()
+const { kategori } = router.query
   const [aktifKategori, setAktifKategori] = useState<{ ad: string; id?: number | null }>({
     ad: 'Tümü',
     id: undefined
   });
   const [favoriler, setFavoriler] = useState<number[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  useEffect(() => {
+  async function fetchFirmaAdlari() {
+    // Email, firma_adi ve puan çekiyoruz
+    const { data: firmalar } = await supabase
+      .from("satici_firmalar")
+      .select("email, firma_adi, puan");
 
+    // FirmaInfo tipinde map oluştur
+    const map: Record<string, FirmaInfo> = {};
+
+    firmalar?.forEach((f: any) => {
+      if (f.email && f.firma_adi) {
+        map[f.email] = {
+          ad: f.firma_adi,
+          puan: f.puan ?? 0,
+        };
+      }
+    });
+
+    setFirmaAdMap(map);
+  }
+  fetchFirmaAdlari();
+}, []);
+useEffect(() => {
+  if (kategori) {
+    const kat = dbKategoriler.find(k => String(k.id) === kategori)
+    if (kat) setAktifKategori({ ad: kat.ad, id: kat.id })
+  }
+}, [kategori, dbKategoriler])
   useEffect(() => {
     async function fetchUserCartAndFavorites() {
       const { data: userData } = await supabase.auth.getUser();
@@ -119,18 +275,26 @@ const Index2: NextPage = () => {
         .order('doped_expiration', { ascending: false });
       setDopedIlanlar(data || []);
     }
-    async function fetchData() {
-      const { data: katData } = await supabase.from('kategori').select('*');
-      setDbKategoriler(katData || []);
+     async function fetchData() {
+    const { data: katData } = await supabase.from('kategori').select('*');
+    setDbKategoriler(katData || []);
 
-      const { data: ilanData } = await supabase.from('ilan').select('*');
-      setIlanlar(ilanData || []);
-      setLoading(false);
-    }
-    fetchData();
-    fetchDopedIlanlar();
-  }, []);
+    const { data: ilanData } = await supabase.from('ilan').select('*');
+    const ilanlarWithAvg = await ilanlaraOrtalamaPuanEkle(ilanData || []);
+    setIlanlar(ilanlarWithAvg);
 
+    // --- BURASI YENİ EKLENDİ ---
+    const populer = (ilanlarWithAvg || [])
+      .filter(i => (i.ortalamaPuan ?? 0) > 0)
+      .sort((a, b) => (b.ortalamaPuan ?? 0) - (a.ortalamaPuan ?? 0))
+      .slice(0, 6);
+    setPopulerIlanlar(populer);
+
+    setLoading(false);
+  }
+  fetchData();
+  fetchDopedIlanlar();
+}, []);
   const sepetteVarMi = (id: number) => cartItems.find((item) => item.product_id === id);
 
   const sepeteEkle = async (urun: Ilan) => {
@@ -194,9 +358,12 @@ const Index2: NextPage = () => {
     return `Kalan süre: ${days} gün ${hours} saat`;
   };
 
-  const findKategoriAd = (id: number | undefined) => {
-    return dbKategoriler.find((k) => k.id === id)?.ad || '';
-  };
+const findKategoriAd = (id: number | null | undefined): string => {
+  if (typeof id !== "number" || isNaN(id)) return "";
+  const kat = dbKategoriler.find((k) => k.id === id);
+  return kat?.ad || "";
+};
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -219,7 +386,8 @@ const Index2: NextPage = () => {
     );
   });
 
-  const normalIlanlar = filteredIlanlar.filter((i) => !i.doped);
+  const normalIlanlar = filteredIlanlar;
+
 
   // İndirimli ürünleri belirle
   const indirimliUrunler = ilanlar.filter(x => x.indirimli_fiyat && x.indirimli_fiyat !== x.price).slice(0, 5);
@@ -265,10 +433,143 @@ const Index2: NextPage = () => {
     <div
       style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: "pointer" }}
     >
-      <Image src="/logo.png" alt="Aldın Aldın Logo" width={38} height={38} />
+      <Image src="/logo.png" alt="Aldın Aldın Logo" width={100} height={50} />
       <span style={{ fontWeight: 900, fontSize: 24, color: '#1648b0', letterSpacing: '.5px' }}>
-        Aldın Aldın
+        
       </span>
+           {/* --- KATEGORİ DROPDOWN --- */}
+<div style={{ position: 'relative', marginLeft: 18 }}>
+  <button
+    onClick={() => setDropdownOpen(o => !o)}
+    style={{
+      background: dropdownOpen
+        ? 'linear-gradient(93deg,#223555 60%,#3479e3 100%)'
+        : 'linear-gradient(90deg,#f8fafc 0%,#e9effc 100%)',
+      color: dropdownOpen ? '#fff' : '#ec751bff',
+      border: '1.5px solid #dde7fa',
+      fontWeight: 700,
+      fontSize: 15,
+      padding: '8px 22px 8px 15px',
+      borderRadius: 12,
+      boxShadow: dropdownOpen ? '0 6px 18px #3479e327' : '0 2px 8px #22355511',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 11,
+      cursor: 'pointer',
+      letterSpacing: '.5px',
+      outline: 'none',
+      transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
+      position: 'relative'
+    }}
+    onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(93deg,#223555 60%,#3479e3 100%)')}
+    onMouseLeave={e => (e.currentTarget.style.background = dropdownOpen
+      ? 'linear-gradient(93deg,#223555 60%,#3479e3 100%)'
+      : 'linear-gradient(90deg,#f8fafc 0%,#e9effc 100%)')}
+  >
+    <FiTag size={20} style={{ marginRight: 5 }} />
+    <span style={{
+      textTransform: 'uppercase',
+      fontSize: 15.2,
+      fontWeight: 800,
+      letterSpacing: '.8px',
+      fontFamily: 'Inter, sans-serif'
+    }}>
+      KATEGORİLER
+    </span>
+    <FiChevronDown
+      size={18}
+      style={{
+        marginLeft: 4,
+        transition: 'transform 0.19s',
+        transform: dropdownOpen ? 'rotate(-180deg)' : 'none',
+        color: dropdownOpen ? "#fff" : "#223555"
+      }}
+    />
+  </button>
+
+  {dropdownOpen && (
+    <ul
+      style={{
+        position: 'absolute',
+        top: '110%',
+        left: 0,
+        marginTop: 6,
+        padding: '9px 0',
+        background: '#fff',
+        boxShadow: '0 10px 32px 0 #3479e311,0 2px 8px #22355518',
+        borderRadius: 11,
+        listStyle: 'none',
+        minWidth: 210,
+        zIndex: 2000,
+        border: '1.5px solid #e3e8f2',
+        animation: 'dropdownShow .18s cubic-bezier(.6,.2,.17,1.08)'
+      }}
+      onMouseLeave={() => setDropdownOpen(false)}
+    >
+      <li>
+        <button
+          style={{
+            width: "100%",
+            background: 'none',
+            border: 'none',
+            padding: '10px 19px',
+            color: aktifKategori.ad === 'Tümü' ? '#2563eb' : '#223555',
+            fontWeight: 700,
+            textAlign: 'left',
+            cursor: 'pointer',
+            fontSize: 15.5,
+            backgroundColor: aktifKategori.ad === 'Tümü' ? '#eef6fd' : 'transparent',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            borderRadius: 7,
+            transition: 'background .14s'
+          }}
+          onClick={() => {
+            setAktifKategori({ ad: 'Tümü', id: undefined });
+            setDropdownOpen(false);
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#f0f6ff')}
+          onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? '#eef6fd' : 'transparent')}
+        >
+          {iconMap['Tümü'] || <FiMoreHorizontal size={20} />} Tümü
+        </button>
+      </li>
+      {dbKategoriler.map((kat) => (
+        <li key={kat.id}>
+          <button
+            style={{
+              width: "100%",
+              background: 'none',
+              border: 'none',
+              padding: '10px 19px',
+              color: aktifKategori.id === kat.id ? '#2563eb' : '#223555',
+              fontWeight: 700,
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontSize: 15.5,
+              backgroundColor: aktifKategori.id === kat.id ? '#eef6fd' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              borderRadius: 7,
+              transition: 'background .14s'
+            }}
+            onClick={() => {
+              setAktifKategori({ ad: kat.ad, id: kat.id });
+              setDropdownOpen(false);
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#f0f6ff')}
+            onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? '#eef6fd' : 'transparent')}
+          >
+            {iconMap[kat.ad] || <FiMoreHorizontal size={20} />} {kat.ad}
+          </button>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+
     </div>
     <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
       <input
@@ -402,72 +703,7 @@ const Index2: NextPage = () => {
     </div>
   </div>
 </header>
-
-        {/* Responsive kategori alanı */}
-        <div style={{
-          width: "100%",
-          maxWidth: 1200,
-          margin: "0 auto",
-          padding: "30px 0 16px 0",
-          overflowX: "auto",
-        }}>
-          <div
-            style={{
-              display: "flex",
-              gap: 18,
-              alignItems: "center",
-              padding: "0 18px",
-              overflowX: "auto",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-            }}
-          >
-            {kategorilerUI.map((kat, idx) => (
-              <div
-                key={idx}
-                onClick={() => {
-                  const normalize = (str: string) =>
-                    str.replace(/\s+/g, '').toLowerCase();
-                  const dbKat = dbKategoriler.find(
-                    (k) => normalize(k.ad) === normalize(kat.ad)
-                  );
-                  setAktifKategori({
-                    ad: kat.ad,
-                    id: dbKat?.id ?? undefined
-                  });
-                }}
-                style={{
-                  background:
-                    aktifKategori.ad === kat.ad ? kat.color : '#f5f7fa',
-                  color:
-                    aktifKategori.ad === kat.ad ? '#fff' : '#223555',
-                  borderRadius: 16,
-                  padding: '15px 20px',
-                  minWidth: 112,
-                  textAlign: 'center',
-                  boxShadow:
-                    aktifKategori.ad === kat.ad
-                      ? '0 8px 24px #1bbd8a22'
-                      : '0 2px 9px #2563eb06',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: 16,
-                  letterSpacing: 0.5,
-                  display: 'flex',
-                  alignItems: "center",
-                  gap: 10,
-                  border: aktifKategori.ad === kat.ad ? "2px solid #e2e8f0" : "1.5px solid #e7e9ef",
-                  transition: 'all 0.17s',
-                  userSelect: "none"
-                }}
-              >
-                {kat.icon}
-                {kat.ad}
-              </div>
-            ))}
-          </div>
-        </div>
-
+<SloganBar />
         {/* Layout: Sol reklam, ana, sağ reklam */}
         <div
           style={{
@@ -532,6 +768,229 @@ const Index2: NextPage = () => {
             padding: '0 10px',
             flexGrow: 1,
           }}>
+              {/* ÖNE ÇIKANLAR */}
+            <section
+              style={{
+                background: '#fff',
+                padding: '30px 24px',
+                borderRadius: 18,
+                marginBottom: 42,
+                boxShadow: '0 4px 22px #f59e0b09',
+                border: '1.5px solid #e2e8f0'
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: 23,
+                  fontWeight: 800,
+                  color: '#b45309',
+                  marginBottom: 20,
+                  letterSpacing: ".2px"
+                }}
+              >
+                🚀 Öne Çıkanlar
+              </h2>
+              {dopedIlanlar.length === 0 ? (
+                <div
+                  style={{
+                    background: '#fef9c3',
+                    padding: 40,
+                    textAlign: 'center',
+                    borderRadius: 13,
+                    color: '#92400e',
+                    fontWeight: 500,
+                    fontSize: 16
+                  }}
+                >
+                  Şu anda öne çıkarılan bir ilan yok.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      'repeat(auto-fit, minmax(235px, 1fr))',
+                    gap: 23
+                  }}
+                >
+                  {dopedIlanlar.map((product) => (
+                    <div
+                      key={product.id}
+                      style={{
+                        background: '#fef08a',
+                        borderRadius: 15,
+                        padding: 15,
+                        boxShadow: '0 4px 17px #eab30817',
+                        transition: 'transform 0.15s, box-shadow 0.18s',
+                        cursor: 'pointer',
+                        border: "1.5px solid #fbe192"
+                      }}
+                      onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                      onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
+                      onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
+                    >
+                      <img
+                        src={
+                          Array.isArray(product.resim_url)
+                            ? product.resim_url[0] || '/placeholder.jpg'
+                            : product.resim_url || '/placeholder.jpg'
+                        }
+                        alt={product.title}
+                        style={{
+                          width: '100%',
+                          height: 160,
+                          objectFit: 'cover',
+                          borderRadius: 10,
+                          marginBottom: 12,
+                          border: "1.5px solid #fae27a"
+                        }}
+                      />
+                      <h3
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 700,
+                          color: '#78350f',
+                          marginBottom: 6
+                        }}
+                      >
+                        {product.title}
+                      </h3>
+                      <FirmaBilgiSatiri
+  email={product.user_email}
+  firmaAdMap={firmaAdMap}
+  onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+/>{product.ortalamaPuan !== undefined && (
+  <span style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+    {renderStars(product.ortalamaPuan ?? 0)}
+    <span style={{ color: "#64748b", fontSize: 13, marginLeft: 5 }}>
+      ({(product.ortalamaPuan ?? 0).toFixed(1)})
+    </span>
+  </span>
+)}
+
+
+                 <div
+  style={{
+    fontSize: 16,
+    fontWeight: 600,
+    color: product.indirimli_fiyat ? "#ef4444" : "#16a34a",
+    marginBottom: 4
+  }}
+>
+  {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+    <>
+      <span style={{
+        textDecoration: "line-through",
+        color: "#d1d5db",
+        fontWeight: 500,
+        marginRight: 7
+      }}>
+        {product.price} ₺
+      </span>
+      <span style={{ color: "#ef4444", fontWeight: 700 }}>
+        {product.indirimli_fiyat} ₺
+      </span>
+    </>
+  ) : (
+    `${product.price} ₺`
+  )}
+</div>
+
+                      <div
+                        style={{ fontSize: 13, color: '#555', marginTop: 4 }}
+                      >
+                        {getRemainingTime(product.doped_expiration)}
+                      </div>
+                      <span style={{ fontSize: 14, color: '#a16207' }}>
+                        {findKategoriAd(product.kategori_id)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {populerIlanlar.length > 0 && (
+  <section style={{ marginBottom: 32 }}>
+    <h2 style={{
+      fontSize: 24,
+      fontWeight: 900,
+      color: '#1d8cf8',
+      marginBottom: 12,
+      letterSpacing: ".2px"
+    }}>
+      ⭐ EN POPÜLER ÜRÜNLER
+    </h2>
+    <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
+      {populerIlanlar.map((product, idx) => (
+        <div key={idx}
+          style={{
+            minWidth: 200,
+            maxWidth: 220,
+            background: "#f1f5f9",
+            borderRadius: 13,
+            boxShadow: "0 2px 13px #1d8cf80b",
+            border: "1.5px solid #e4e9ef",
+            marginRight: 5,
+            cursor: "pointer",
+            padding: "13px 9px",
+            position: "relative"
+          }}
+          onClick={() => window.location.href = `/urun/${product.id}?from=populer`}
+        >
+          <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
+            alt={product.title}
+            style={{
+              width: "100%",
+              height: 92,
+              objectFit: "cover",
+              borderRadius: 8,
+              border: "1px solid #e0e7ef"
+            }} />
+          <div style={{
+            fontWeight: 700, fontSize: 15,
+            color: "#223555", marginTop: 5
+          }}>{product.title}</div>
+          {/* Ortalama yıldız */}
+          <div style={{
+            color: "#f59e0b", fontWeight: 600, fontSize: 18
+          }}>
+            {renderStars(product.ortalamaPuan ?? 0)}
+            <span style={{ fontWeight: 500, fontSize: 14, color: "#64748b", marginLeft: 5 }}>
+              ({(product.ortalamaPuan ?? 0).toFixed(1)})
+            </span>
+          </div>
+          {/* Fiyat (indirimli ise aynı mantıkla göster) */}
+          <div style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "#ef4444" : "#16a34a",
+            marginBottom: 4
+          }}>
+            {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+              <>
+                <span style={{
+                  textDecoration: "line-through",
+                  color: "#d1d5db",
+                  fontWeight: 500,
+                  marginRight: 7
+                }}>
+                  {product.price} ₺
+                </span>
+                <span style={{ color: "#ef4444", fontWeight: 700 }}>
+                  {product.indirimli_fiyat} ₺
+                </span>
+              </>
+            ) : (
+              `${product.price} ₺`
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
+
             {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
             <section style={{ marginBottom: 32 }}>
               <h2 style={{
@@ -544,6 +1003,7 @@ const Index2: NextPage = () => {
                 alignItems: "center",
                 gap: 11
               }}>
+                
                 <span style={{fontSize: 28, marginTop: -4}}>🔥</span>
                 Ayın İndirimleri Başladı!
                 <span style={{
@@ -638,117 +1098,7 @@ const Index2: NextPage = () => {
               </div>
             </section>
 
-            {/* ÖNE ÇIKANLAR */}
-            <section
-              style={{
-                background: '#fff',
-                padding: '30px 24px',
-                borderRadius: 18,
-                marginBottom: 42,
-                boxShadow: '0 4px 22px #f59e0b09',
-                border: '1.5px solid #e2e8f0'
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: 23,
-                  fontWeight: 800,
-                  color: '#b45309',
-                  marginBottom: 20,
-                  letterSpacing: ".2px"
-                }}
-              >
-                🚀 Öne Çıkanlar
-              </h2>
-              {dopedIlanlar.length === 0 ? (
-                <div
-                  style={{
-                    background: '#fef9c3',
-                    padding: 40,
-                    textAlign: 'center',
-                    borderRadius: 13,
-                    color: '#92400e',
-                    fontWeight: 500,
-                    fontSize: 16
-                  }}
-                >
-                  Şu anda öne çıkarılan bir ilan yok.
-                </div>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns:
-                      'repeat(auto-fit, minmax(235px, 1fr))',
-                    gap: 23
-                  }}
-                >
-                  {dopedIlanlar.map((product) => (
-                    <div
-                      key={product.id}
-                      style={{
-                        background: '#fef08a',
-                        borderRadius: 15,
-                        padding: 15,
-                        boxShadow: '0 4px 17px #eab30817',
-                        transition: 'transform 0.15s, box-shadow 0.18s',
-                        cursor: 'pointer',
-                        border: "1.5px solid #fbe192"
-                      }}
-                      onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
-                      onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
-                      onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
-                    >
-                      <img
-                        src={
-                          Array.isArray(product.resim_url)
-                            ? product.resim_url[0] || '/placeholder.jpg'
-                            : product.resim_url || '/placeholder.jpg'
-                        }
-                        alt={product.title}
-                        style={{
-                          width: '100%',
-                          height: 160,
-                          objectFit: 'cover',
-                          borderRadius: 10,
-                          marginBottom: 12,
-                          border: "1.5px solid #fae27a"
-                        }}
-                      />
-                      <h3
-                        style={{
-                          fontSize: 18,
-                          fontWeight: 700,
-                          color: '#78350f',
-                          marginBottom: 6
-                        }}
-                      >
-                        {product.title}
-                      </h3>
-                      <div
-                        style={{
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: '#b45309',
-                          marginBottom: 4
-                        }}
-                      >
-                        {product.price} ₺
-                      </div>
-                      <div
-                        style={{ fontSize: 13, color: '#555', marginTop: 4 }}
-                      >
-                        {getRemainingTime(product.doped_expiration)}
-                      </div>
-                      <span style={{ fontSize: 14, color: '#a16207' }}>
-                        {findKategoriAd(product.kategori_id)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
+          
             {/* Standart İlan Kartları */}
             <section>
               <h2
@@ -870,16 +1220,38 @@ const Index2: NextPage = () => {
                         >
                           {product.title}
                         </h3>
-                        <div
-                          style={{
-                            fontSize: 16,
-                            fontWeight: 600,
-                            color: '#16a34a',
-                            marginBottom: 4
-                          }}
-                        >
-                          {product.price} ₺
-                        </div>
+                        <FirmaBilgiSatiri
+  email={product.user_email}
+  firmaAdMap={firmaAdMap}
+  onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+/>
+<div
+  style={{
+    fontSize: 16,
+    fontWeight: 600,
+    color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "#ef4444" : "#16a34a",
+    marginBottom: 4
+  }}
+>
+  {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+    <>
+      <span style={{
+        textDecoration: "line-through",
+        color: "#d1d5db",
+        fontWeight: 500,
+        marginRight: 7
+      }}>
+        {product.price} ₺
+      </span>
+      <span style={{ color: "#ef4444", fontWeight: 700 }}>
+        {product.indirimli_fiyat} ₺
+      </span>
+    </>
+  ) : (
+    `${product.price} ₺`
+  )}
+</div>
+
                         <span
                           style={{
                             fontSize: 14,
@@ -990,34 +1362,8 @@ const Index2: NextPage = () => {
           </aside>
         </div>
         {/* Responsive düzen için */}
-        <style jsx global>{`
-          @media (max-width: 900px) {
-            aside { display: none !important; }
-            main { padding: 0 1vw !important; }
-          }
-          @media (max-width: 700px) {
-            .ilanGrid { grid-template-columns: 1fr !important; }
-            .kategoriGrid { grid-template-columns: 1fr 1fr !important; }
-            .kategori-scroll { flex-wrap: wrap !important; }
-          }
-          @media (max-width: 500px) {
-            header, .footer, aside, main, .ilanGrid { max-width: 99vw !important; }
-          }
-        `}</style>
-        {/* FOOTER */}
-        <footer
-          style={{
-            background: '#f3f4f6',
-            padding: 24,
-            marginTop: 64,
-            textAlign: 'center',
-            color: '#64748b',
-            fontWeight: 500,
-            letterSpacing: 0.2
-          }}
-        >
-          © 2025 Aldın Aldın. Tüm hakları saklıdır.
-        </footer>
+ 
+
       </div>
     </>
   );

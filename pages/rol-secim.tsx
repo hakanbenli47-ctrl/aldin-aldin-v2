@@ -5,9 +5,12 @@ export default function RolSecim() {
 
   const handleSelect = (rol: "alici" | "satici") => {
     localStorage.setItem("selectedRole", rol);
-    router.push("/giris");
+    if (rol === "alici") {
+      router.push("/giris");
+    } else {
+      router.push("/giris-satici");
+    }
   };
-
   return (
     <div style={{
       minHeight: "100vh",

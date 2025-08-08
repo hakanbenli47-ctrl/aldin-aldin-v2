@@ -204,7 +204,7 @@ Ayakkabı,Şık ayakkabı,399,20,2,https://site.com/ayakkabi.jpg
         <span style={{
           fontWeight: 900, color: "#1648b0", fontSize: 22, letterSpacing: ".8px", cursor: "pointer"
         }}>
-          Aldın Aldın
+        
         </span>
         <span style={{
           color: "#199957", fontSize: 14, fontWeight: 600, marginLeft: 16
