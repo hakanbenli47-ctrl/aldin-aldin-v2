@@ -14,10 +14,10 @@ export default function AuthCallback() {
       try {
         const url = new URL(window.location.href);
 
-        // 1) OAuth / PKCE dönüşleri (code ile gelir)
+        // 1) OAuth/PKCE dönüşleri (code ile gelir)
         const code = url.searchParams.get("code");
 
-        // 2) E-posta linkleri bazı durumlarda hash ile gelebilir
+        // 2) Bazı magic link/OTP akışları #hash ile gelir
         const accessToken = url.hash.match(/access_token=([^&]+)/)?.[1];
         const refreshToken = url.hash.match(/refresh_token=([^&]+)/)?.[1];
 
@@ -26,8 +26,15 @@ export default function AuthCallback() {
         const type = url.searchParams.get("type"); // signup | recovery | magiclink | email_change
         const email = url.searchParams.get("email") || "";
 
+        // 4) Supabase hata parametreleri (bazı OAuth hataları için)
+        const errorDescription = url.searchParams.get("error_description");
+
+        if (errorDescription) {
+          setMsg(decodeURIComponent(errorDescription));
+          return;
+        }
+
         if (code) {
-          // Supabase v2: code takası
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
           setMsg("Giriş başarılı, yönlendiriliyorsunuz...");
@@ -36,7 +43,6 @@ export default function AuthCallback() {
         }
 
         if (accessToken && refreshToken) {
-          // Bazı magic link akışlarında #hash ile gelir
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -48,11 +54,10 @@ export default function AuthCallback() {
         }
 
         if (tokenHash && type) {
-          // E-posta doğrulama/sıfırlama (email parametresi yoksa çoğu durumda gerekmez)
           const { error } = await supabase.auth.verifyOtp({
             token_hash: tokenHash,
             type: type as any,
-            email, // varsa kullan, yoksa Supabase genelde gerektirmez
+            email,
           });
           if (error) throw error;
           setMsg("E-posta doğrulandı! Lütfen giriş yapın.");
@@ -60,7 +65,6 @@ export default function AuthCallback() {
           return;
         }
 
-        // Hiçbiri yoksa giriş sayfasına at
         setMsg("Yönlendiriliyor...");
         router.replace("/giris");
       } catch (e: any) {
@@ -70,7 +74,11 @@ export default function AuthCallback() {
     };
 
     run();
-  }, [router.isReady]);
+  }, [router.isReady, router]);
 
-  return <p style={{ padding: 40, textAlign: "center" }}>{msg}</p>;
+  return (
+    <p style={{ padding: 40, textAlign: "center", fontFamily: "system-ui" }}>
+      {msg}
+    </p>
+  );
 }
