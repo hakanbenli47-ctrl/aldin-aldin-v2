@@ -26,10 +26,17 @@ export default function Kayit() {
     setLoading(true);
     setMessage("");
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+  const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+
+const { data, error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    emailRedirectTo: `${baseUrl}/auth/callback`,
+    data: { userType }, // istersen kullanıcı tipini metadata'ya da yaz
+  },
+});
 
     if (error) {
       setLoading(false);
