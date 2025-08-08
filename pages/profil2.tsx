@@ -766,15 +766,18 @@ function handleEditCard(id: number) {
           <div style={{ marginTop: 4, fontSize: 15 }}>
             <b style={{ color: "#0ea5e9" }}>Kart:</b>
             <span style={{ marginLeft: 7, color: "#223555" }}>
-              {order.custom_card
-                ? `${order.custom_card.title} - **** **** **** ${order.custom_card.card_number?.slice(-4)}`
-                : (() => {
-                  const card = cards.find(c => c.id === order.card_id);
-                  return card
-                    ? `${card.title} - **** **** **** ${card.card_number.slice(-4)}`
-                    : "Kart bilgisi bulunamadı.";
-                })()
-              }
+  
+   {order.custom_card
+      ? `${order.custom_card.title || order.custom_card.name_on_card || "Kart"} - **** **** **** ${order.custom_card.last4 ?? ""}${order.custom_card.expiry ? " (" + order.custom_card.expiry + ")" : ""}`
+       : (() => {
+         const card = cards.find(c => c.id === order.card_id);
+         return card
+
+          ? `${card.title} - **** **** **** ${String(card.card_number).slice(-4)}`
+           : "Kart bilgisi bulunamadı.";
+       })()
+     }
+
             </span>
           </div>
           {/* Kargo */}

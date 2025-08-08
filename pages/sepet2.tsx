@@ -224,94 +224,75 @@ useEffect(() => {
 
   // SİPARİŞ VER — aynı satıcıya tek order
   async function handleSiparisVer(siparisBilgi: any) {
-    if (cartItems.length === 0) {
-      alert("Sepetiniz boş!");
-      return;
-    }
-// --- sipariş(ler) oluşturulduktan SONRA temizlik ---
-await supabase.from("cart").delete().eq("user_id", currentUser.id);
-setCartItems([]);
-setShowSiparisModal(false);
-alert("Sipariş(ler) başarıyla oluşturuldu!");
+  if (cartItems.length === 0) {
+    alert("Sepetiniz boş!");
+    return;
+  }
 
-    type Grup = {
-      sellerId: string;
-      sellerEmail: string;
-      firmaAdi?: string;
-      items: any[];
-    };
+  try {
+    type Grup = { sellerId: string; sellerEmail: string; firmaAdi?: string; items: any[] };
     const gruplar = new Map<string, Grup>();
 
     for (const it of cartItems) {
       const sellerId = it?.product?.user_id;
       const sellerEmail = it?.product?.user_email || "";
       const firmaAdi = it?.product?.firma_adi;
-
       if (!sellerId) continue;
-      if (!gruplar.has(sellerId)) {
-        gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
-      }
+      if (!gruplar.has(sellerId)) gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
       gruplar.get(sellerId)!.items.push(it);
     }
 
     for (const [, grup] of gruplar) {
       const items = grup.items.map((item: any) => {
         const indirimVar =
-          item.product?.indirimli_fiyat &&
-          item.product?.indirimli_fiyat !== item.product?.price;
-        const seciliFiyat = indirimVar
-          ? item.product.indirimli_fiyat
-          : item.product.price;
-
-       return {
-  product_id: item.product?.id ?? item.product_id, // ← burada product_id fallback
-  title: item.product?.title,
-  price: seciliFiyat,
-  adet: item.adet,
-  resim_url: item.product?.resim_url,
-};
-
+          item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
+        const seciliFiyat = indirimVar ? item.product.indirimli_fiyat : item.product.price;
+        return {
+          product_id: item.product?.id ?? item.product_id,
+          title: item.product?.title,
+          price: seciliFiyat,
+          adet: item.adet,
+          resim_url: item.product?.resim_url,
+        };
       });
 
       const total = items.reduce(
-        (acc: number, it: any) =>
-          acc + (parseFloat(it.price) || 0) * (it.adet || 1),
+        (acc: number, it: any) => acc + (parseFloat(it.price) || 0) * (it.adet || 1),
         0
       );
 
       const payload: any = {
-        user_id: currentUser.id, // alıcı
+        user_id: currentUser.id,
         seller_id: grup.sellerId,
         cart_items: items,
         total_price: total,
         status: "beklemede",
         created_at: new Date(),
       };
+if (siparisBilgi.isCustom) {
+  payload.custom_address = siparisBilgi.address;
 
-      if (siparisBilgi.isCustom) {
-        payload.custom_address = siparisBilgi.address;
-        payload.custom_card = siparisBilgi.card;
-      } else {
-        payload.address_id = siparisBilgi.addressId;
-        payload.card_id = siparisBilgi.cardId;
+  // ✅ Sadece maske bilgisi gönder (full numara/cvv YOK)
+  const maskedCard = siparisBilgi.card
+    ? {
+        title: (siparisBilgi.card.card_holder_name || "Yeni Kart"),
+        name_on_card: (siparisBilgi.card.card_holder_name || ""),
+        expiry: (siparisBilgi.card.expiration_date || ""),
+        last4: (siparisBilgi.card.card_number || "").slice(-4),
       }
+    : null;
 
-      const { data: inserted, error } = await supabase
-        .from("orders")
-        .insert([payload])
-        .select()
-        .single();
+  payload.custom_card = maskedCard;
+} else {
+  payload.address_id = siparisBilgi.addressId;
+  payload.card_id = siparisBilgi.cardId;
+}
 
-      if (error) {
-        console.error(error);
-        alert("Sipariş kaydedilemedi: " + error.message);
-        return;
-      }
 
-      const urunBaslik =
-        items.length > 1
-          ? `${items[0].title} +${items.length - 1} ürün`
-          : items[0].title;
+      const { data: inserted, error } = await supabase.from("orders").insert([payload]).select().single();
+      if (error) throw error;
+
+      const urunBaslik = items.length > 1 ? `${items[0].title} +${items.length - 1} ürün` : items[0].title;
 
       await sendOrderEmails({
         aliciMail: currentUser.email,
@@ -322,8 +303,18 @@ alert("Sipariş(ler) başarıyla oluşturuldu!");
       });
     }
 
- 
+    // Başarı → şimdi sepeti temizle + modalı kapa + mesaj ver
+    await supabase.from("cart").delete().eq("user_id", currentUser.id);
+    setCartItems([]);
+    setShowSiparisModal(false);
+    alert("Sipariş(ler) başarıyla oluşturuldu!");
+
+  } catch (err: any) {
+    console.error("orders insert error:", err);
+    alert("Sipariş kaydedilemedi: " + (err?.message || JSON.stringify(err)));
   }
+}
+
 
   if (loading) {
     return (
