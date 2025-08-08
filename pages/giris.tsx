@@ -6,15 +6,33 @@ export default function Giris() {
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); // İstersen kaldır
+  const [password, setPassword] = useState("");
 
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
-  // NEW: cooldown + loading + autosend kontrolü
+  // NEW: akış kontrolü
+  const [requireOtp, setRequireOtp] = useState(false);       // kayıttan gelenler için
+  const [otpGatePassed, setOtpGatePassed] = useState(false); // kod doğrulandı mı?
+
+  // cooldown + loading + autosend
   const [cooldown, setCooldown] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [autoTriggered, setAutoTriggered] = useState(false); // invalid creds sonrası sadece 1 kez otomatik kod gönder
+  const [autoTriggered, setAutoTriggered] = useState(false);
+
+  // Kaynaktan geldiyse yakala: ?src=kayit | register | role
+  useEffect(() => {
+    if (!router.isReady) return;
+    const src = (router.query.src as string)?.toLowerCase() || "";
+    // localStorage fallback (kayit.tsx'te localStorage.setItem('fromRegister','1') yapabilirsin)
+    const fromRegisterLS = typeof window !== "undefined" ? localStorage.getItem("fromRegister") === "1" : false;
+
+    if (src === "kayit" || src === "register" || fromRegisterLS) {
+      setRequireOtp(true);
+    } else {
+      setRequireOtp(false); // role seçimden ya da direkt giriş
+    }
+  }, [router.isReady, router.query.src]);
 
   // cooldown sayacı
   useEffect(() => {
@@ -26,12 +44,8 @@ export default function Giris() {
   const canSend = useMemo(() => cooldown === 0 && !loading, [cooldown, loading]);
 
   function getRedirectUrl() {
-    if (typeof window !== "undefined") {
-      return `${window.location.origin}/auth/callback`;
-    }
-    if (process.env.NEXT_PUBLIC_SITE_URL) {
-      return `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
-    }
+    if (typeof window !== "undefined") return `${window.location.origin}/auth/callback`;
+    if (process.env.NEXT_PUBLIC_SITE_URL) return `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
     return undefined;
   }
 
@@ -52,9 +66,8 @@ export default function Giris() {
     });
 
     if (error) {
-      // 24sn/too many gibi hız limiti
       if (/security|request this after|rate|too many/i.test(error.message || "")) {
-        setMessage("⏳ Çok hızlı denendi. Yaklaşık 24–30 saniye bekleyip yeniden deneyin.");
+        setMessage("⏳ Çok hızlı denendi. 24–30 sn bekleyip yeniden deneyin.");
         setCooldown(30);
       } else {
         setMessage("❌ Kod gönderilemedi: " + error.message);
@@ -67,8 +80,6 @@ export default function Giris() {
     setMessage("✅ 6 haneli kod e-postana gönderildi.");
     setCooldown(30);
     setLoading(false);
-
-    // Otomatik tetiklendiyse tekrar tekrar tetiklenmesin
     if (fromAuto) setAutoTriggered(true);
   }
 
@@ -80,7 +91,7 @@ export default function Giris() {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
       token: otpCode,
-      type: "email", // 6 haneli e-posta kodu
+      type: "email",
     });
 
     if (error) {
@@ -88,6 +99,15 @@ export default function Giris() {
       return setMessage("❌ Kod hatalı/expired: " + error.message);
     }
 
+    // Kayıttan gelindiyse: otomatik yönlendirme yok, önce butonu göster
+    if (requireOtp) {
+      setOtpGatePassed(true); // giriş butonu aktif olacak
+      setMessage("✅ E-posta doğrulandı. Şimdi giriş yapabilirsiniz.");
+      setLoading(false);
+      return;
+    }
+
+    // Normal akış: doğrulandıysa direkt yönlendir
     setMessage("✅ Giriş başarılı! Yönlendiriliyor…");
     const rol = typeof window !== "undefined" ? localStorage.getItem("selectedRole") : null;
     setTimeout(() => {
@@ -97,25 +117,31 @@ export default function Giris() {
     }, 800);
   }
 
-  // Parola ile giriş
   async function handlePasswordLogin(e: React.FormEvent) {
     e.preventDefault();
+
+    // Kayıttan gelenlerde, kod doğrulanmadan giriş butonu kullanılamaz
+    if (requireOtp && !otpGatePassed) {
+      setMessage("ℹ️ Önce e-postana gelen kodu doğrulaman gerekiyor.");
+      return;
+    }
+
     setLoading(true);
     setMessage("Giriş yapılıyor…");
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
-      // NEW: yeni kullanıcı/yanlış şifre gibi durumlarda OTP'ye düş
       if (/invalid|not found|no user/i.test(error.message || "")) {
-        setOtpSent(true); // input alanını göster
-        setMessage("ℹ️ Şifre hatalı ya da kullanıcı bulunamadı. E-posta kodu ile devam edin.");
-
-        // NEW: e-posta doluysa ve daha önce otomatik tetiklenmediyse bir kez otomatik kod gönder
-        if (email && !autoTriggered) {
-          await handleSendOtp(undefined, { fromAuto: true });
+        // rol seçim akışı için OTP'yi önermeyelim; ama kullanıcı isterse manuel açar
+        if (!requireOtp) {
+          setMessage("ℹ️ Şifre hatalı ya da kullanıcı bulunamadı. İstersen e-posta kodu ile giriş yapabilirsin.");
+          // OTP kısmını kullanıcı isterse görebilsin:
+          setOtpSent(false);
+        } else {
+          // requireOtp modunda zaten OTP isteniyor
+          setMessage("ℹ️ Lütfen önce e-postana gelen kodu doğrula.");
         }
-
         setLoading(false);
         return;
       }
@@ -135,7 +161,7 @@ export default function Giris() {
     }
   }
 
-  // Basit, temiz UI
+  // ---------- UI ----------
   const card: React.CSSProperties = {
     background: "#fff",
     borderRadius: 16,
@@ -162,7 +188,7 @@ export default function Giris() {
       <div style={card}>
         <h2 style={{ textAlign: "center", marginBottom: 8, color: "#223555", fontSize: 22, fontWeight: 800 }}>Giriş Yap</h2>
         <p style={{ textAlign: "center", marginTop: 0, color: "#60709a", fontSize: 14 }}>
-          Şifreyle veya e-posta koduyla giriş yapabilirsin.
+          {requireOtp ? "Kaydı tamamlamak için e-postana gelen kodu doğrula." : "Şifreyle ya da istersen e-posta koduyla giriş yap."}
         </p>
 
         {/* E-posta */}
@@ -180,63 +206,129 @@ export default function Giris() {
           />
         </div>
 
-        {/* Parola ile giriş */}
-        <form onSubmit={handlePasswordLogin} style={{ marginTop: 14 }}>
-          <label style={label}>Şifre</label>
-          <input
-            name="password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={input}
-            autoComplete="current-password"
-          />
-          <button type="submit" style={{ ...btn("#2563eb", loading), marginTop: 12 }} disabled={loading}>
-            {loading ? "Giriş yapılıyor…" : "Şifre ile Giriş"}
-          </button>
-        </form>
+        {/* Kayıttan gelinmişse: önce OTP zorunlu */}
+        {requireOtp ? (
+          <>
+            {/* Kod gönderme + doğrulama */}
+            {!otpSent ? (
+              <form onSubmit={(e) => handleSendOtp(e)} style={{ marginTop: 12 }}>
+                <button
+                  type="submit"
+                  style={{ ...btn("#16a34a", !canSend), display: "grid", placeItems: "center" }}
+                  disabled={!canSend}
+                  title={canSend ? "Kodu e-postana gönder" : "Biraz bekleyip tekrar dene"}
+                >
+                  {cooldown > 0 ? `Tekrar: ${cooldown}s` : "Kodu Gönder"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} style={{ marginTop: 14 }}>
+                <label style={label}>6 Haneli Kod</label>
+                <input
+                  placeholder="______"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  style={{ ...input, letterSpacing: 2, textAlign: "center" }}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  required
+                />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, marginTop: 10 }}>
+                  <button type="submit" style={btn("#0ea5e9", loading)} disabled={loading}>
+                    {loading ? "Doğrulanıyor…" : "Kodu Doğrula"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendOtp(undefined)}
+                    style={btn("#6b7280", !canSend)}
+                    disabled={!canSend}
+                    title={canSend ? "Kodu tekrar gönder" : "Biraz bekleyip tekrar dene"}
+                  >
+                    {cooldown > 0 ? `${cooldown}s` : "Tekrar"}
+                  </button>
+                </div>
+              </form>
+            )}
 
-        {/* Kodla giriş */}
-        {!otpSent ? (
-          <form onSubmit={(e) => handleSendOtp(e)} style={{ marginTop: 12 }}>
-            <button
-              type="submit"
-              style={{ ...btn("#16a34a", !canSend), display: "grid", placeItems: "center" }}
-              disabled={!canSend}
-              title={canSend ? "Kodu e-postana gönder" : "Biraz bekleyip tekrar dene"}
-            >
-              {cooldown > 0 ? `Tekrar: ${cooldown}s` : "Kodu Gönder"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} style={{ marginTop: 14 }}>
-            <label style={label}>6 Haneli Kod</label>
-            <input
-              placeholder="______"
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              style={{ ...input, letterSpacing: 2, textAlign: "center" }}
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              required
-            />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, marginTop: 10 }}>
-              <button type="submit" style={btn("#0ea5e9", loading)} disabled={loading}>
-                {loading ? "Doğrulanıyor…" : "Kodu Doğrula"}
-              </button>
+            {/* Giriş butonu: kod doğrulanana kadar GİZLİ */}
+            {otpGatePassed && (
               <button
-                type="button"
-                onClick={() => handleSendOtp(undefined)}
-                style={btn("#6b7280", !canSend)}
-                disabled={!canSend}
-                title={canSend ? "Kodu tekrar gönder" : "Biraz bekleyip tekrar dene"}
+                onClick={() => {
+                  const rol = typeof window !== "undefined" ? localStorage.getItem("selectedRole") : null;
+                  if (rol === "satici") router.push("/satici");
+                  else if (rol === "alici") router.push("/index2");
+                  else router.push("/");
+                }}
+                style={{ ...btn("#2563eb"), marginTop: 14 }}
               >
-                {cooldown > 0 ? `${cooldown}s` : "Tekrar"}
+                Giriş Yap
               </button>
-            </div>
-          </form>
+            )}
+
+            {/* Şifre formu kayıttan gelince gizli (kod doğrulanana kadar hiç göstermiyoruz) */}
+          </>
+        ) : (
+          <>
+            {/* Rol seçimden gelindiyse: şifreyle normal giriş */}
+            <form onSubmit={handlePasswordLogin} style={{ marginTop: 14 }}>
+              <label style={label}>Şifre</label>
+              <input
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={input}
+                autoComplete="current-password"
+              />
+              <button type="submit" style={{ ...btn("#2563eb", loading), marginTop: 12 }} disabled={loading}>
+                {loading ? "Giriş yapılıyor…" : "Şifre ile Giriş"}
+              </button>
+            </form>
+
+            {/* İstersen kullanıcıya opsiyonel OTP de sunabilirsin — istersen bu bloğu tamamen silebilirsin */}
+            {!otpSent ? (
+              <form onSubmit={(e) => handleSendOtp(e)} style={{ marginTop: 12 }}>
+                <button
+                  type="submit"
+                  style={{ ...btn("#16a34a", !canSend), display: "grid", placeItems: "center" }}
+                  disabled={!canSend}
+                  title={canSend ? "Kodu e-postana gönder" : "Biraz bekleyip tekrar dene"}
+                >
+                  {cooldown > 0 ? `Tekrar: ${cooldown}s` : "Kodu Gönder"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOtp} style={{ marginTop: 14 }}>
+                <label style={label}>6 Haneli Kod</label>
+                <input
+                  placeholder="______"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  style={{ ...input, letterSpacing: 2, textAlign: "center" }}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  required
+                />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, marginTop: 10 }}>
+                  <button type="submit" style={btn("#0ea5e9", loading)} disabled={loading}>
+                    {loading ? "Doğrulanıyor…" : "Kodu Doğrula"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSendOtp(undefined)}
+                    style={btn("#6b7280", !canSend)}
+                    disabled={!canSend}
+                    title={canSend ? "Kodu tekrar gönder" : "Biraz bekleyip tekrar dene"}
+                  >
+                    {cooldown > 0 ? `${cooldown}s` : "Tekrar"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
         )}
 
         {message && (
@@ -256,11 +348,13 @@ export default function Giris() {
           </p>
         )}
 
-        <div style={{ textAlign: "center", marginTop: 12 }}>
-          <a href="/kayit" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "underline" }}>
-            Kaydol
-          </a>
-        </div>
+        {!requireOtp && (
+          <div style={{ textAlign: "center", marginTop: 12 }}>
+            <a href="/kayit" style={{ color: "#2563eb", fontWeight: 700, textDecoration: "underline" }}>
+              Kaydol
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
