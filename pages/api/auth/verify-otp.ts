@@ -14,16 +14,17 @@ function hashCode(email: string, code: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // CORS / preflight
+    // CORS / preflight / health-check
     res.setHeader("Access-Control-Allow-Origin", "*");
-    if (req.method === "OPTIONS") {
-      res.setHeader("Allow", "POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    if (req.method === "OPTIONS" || req.method === "HEAD") {
+      res.setHeader("Allow", "POST, OPTIONS, HEAD");
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, HEAD");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       return res.status(204).end();
     }
+
     if (req.method !== "POST") {
-      res.setHeader("Allow", "POST, OPTIONS");
+      res.setHeader("Allow", "POST, OPTIONS, HEAD");
       return res.status(405).send("Method Not Allowed");
     }
 
