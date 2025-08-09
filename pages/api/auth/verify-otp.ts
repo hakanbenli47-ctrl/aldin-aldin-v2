@@ -16,19 +16,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // CORS / preflight / health-check
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Allow", "POST, GET, OPTIONS, HEAD");
     if (req.method === "OPTIONS" || req.method === "HEAD") {
-      res.setHeader("Allow", "POST, OPTIONS, HEAD");
-      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, HEAD");
+      res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, HEAD");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       return res.status(204).end();
     }
 
-    if (req.method !== "POST") {
-      res.setHeader("Allow", "POST, OPTIONS, HEAD");
+    // POST + (gerekirse) GET destekle
+    const method = req.method;
+    if (method !== "POST" && method !== "GET") {
       return res.status(405).send("Method Not Allowed");
     }
 
-    const { email, code } = req.body as { email?: string; code?: string };
+    const email =
+      method === "POST"
+        ? (req.body as any)?.email
+        : (req.query?.email as string | undefined);
+
+    const code =
+      method === "POST"
+        ? (req.body as any)?.code
+        : (req.query?.code as string | undefined);
+
     if (!email || !code) return res.status(400).send("email ve code gerekli");
 
     const code_hash = hashCode(email, code);

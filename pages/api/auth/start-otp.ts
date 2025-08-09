@@ -8,10 +8,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY! // sadece server
 );
 
-if (!process.env.SENDGRID_API_KEY) {
-  console.warn("[start-otp] SENDGRID_API_KEY yok");
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 } else {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+  console.warn("[start-otp] SENDGRID_API_KEY yok");
 }
 
 function hashCode(email: string, code: string) {
@@ -23,19 +23,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // CORS / preflight / health-check
     res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Allow", "POST, GET, OPTIONS, HEAD");
     if (req.method === "OPTIONS" || req.method === "HEAD") {
-      res.setHeader("Allow", "POST, OPTIONS, HEAD");
-      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS, HEAD");
+      res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, HEAD");
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       return res.status(204).end();
     }
 
-    if (req.method !== "POST") {
-      res.setHeader("Allow", "POST, OPTIONS, HEAD");
+    // POST + (gerekirse) GET destekle
+    const method = req.method;
+    if (method !== "POST" && method !== "GET") {
       return res.status(405).send("Method Not Allowed");
     }
 
-    const { email } = req.body as { email?: string };
+    const email =
+      method === "POST"
+        ? (req.body as any)?.email
+        : (req.query?.email as string | undefined);
+
     if (!email) return res.status(400).send("email gerekli");
 
     // 30 sn rate limit
@@ -66,13 +71,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       consumed: false,
     });
     if (insErr) {
-      console.error(insErr);
+      console.error("[start-otp] insert error:", insErr);
       return res.status(500).send("OTP yazılamadı");
+    }
+
+    if (!process.env.SENDGRID_FROM) {
+      console.warn("[start-otp] SENDGRID_FROM eksik");
+      return res.status(500).send("Mail gönderim yapılandırması eksik");
     }
 
     await sgMail.send({
       to: email,
-      from: process.env.SENDGRID_FROM!,
+      from: process.env.SENDGRID_FROM,
       subject: "Giriş Doğrulama Kodu",
       text: `Giriş doğrulama kodunuz: ${code}\nBu kod 5 dakika geçerlidir.`,
     });
