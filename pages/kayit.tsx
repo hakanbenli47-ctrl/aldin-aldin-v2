@@ -30,6 +30,7 @@ async function generateUniqueFirmaKodu() {
 export default function Kayit() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [firmaAdi, setFirmaAdi] = useState("");
   const [message, setMessage] = useState("");
   const [selectedRole, setSelectedRole] = useState<"alici" | "satici" | null>(null);
@@ -46,8 +47,12 @@ export default function Kayit() {
     e.preventDefault();
     setMessage("");
 
-    if (!email || !password) {
+    if (!email || !password || !confirmPassword) {
       setMessage("❌ Lütfen tüm alanları doldurun!");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setMessage("❌ Şifreler eşleşmiyor!");
       return;
     }
     if (!validatePassword(password)) {
@@ -233,6 +238,22 @@ export default function Kayit() {
             placeholder="Şifre"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            style={{
+              width: "100%",
+              padding: 12,
+              marginBottom: 18,
+              border: "1px solid #bbb",
+              borderRadius: 8,
+              fontSize: 15,
+              background: "#f8fafc",
+              color: "#222",
+            }}
+          />
+          <input
+            type="password"
+            placeholder="Şifre Tekrar"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             style={{
               width: "100%",
               padding: 12,
