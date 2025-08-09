@@ -103,7 +103,7 @@ export default function Kayit() {
         console.error("Firma ekleme hatası:", insertError.message);
       }
 
-      // 3. Admin'e bilgilendirme maili gönder
+      // Admin'e bilgilendirme maili gönder
       await fetch("/api/send-mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,11 +115,13 @@ export default function Kayit() {
       });
     }
 
+    // 3. Mesaj belirleme
     setMessage(
       selectedRole === "satici"
         ? "✅ Kayıt başarılı! Satıcı hesabınız onay bekliyor."
         : "✅ Kayıt başarılı! Lütfen e-posta adresinizi doğrulayın."
     );
+
     setLoading(false);
 
     // 4. Rolüne göre yönlendir
