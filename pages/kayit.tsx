@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+// Deploy test - {bugünün tarihi}
 
 const validatePassword = (s: string) => {
   return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(s);
