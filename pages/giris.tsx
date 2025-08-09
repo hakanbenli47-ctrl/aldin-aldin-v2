@@ -10,30 +10,38 @@ export default function Giris() {
   const [otpCode, setOtpCode] = useState("");
   const router = useRouter();
 
-  // İlk adım: Şifre kontrolü
-  async function handlePasswordLogin(e: React.FormEvent) {
+  // İlk adım: Şifreyi kontrol et ama oturum açma!
+  async function handlePasswordCheck(e: React.FormEvent) {
     e.preventDefault();
     setMessage("");
 
+    // Sadece şifreyi doğrulamak için giriş denemesi
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
+    // Eğer hata varsa
     if (error) {
       setMessage("❌ Giriş başarısız: " + error.message);
       return;
     }
 
+    // Kullanıcı doğrulanmamışsa
     const user = data.user;
     const confirmed = (user as any)?.confirmed_at ?? null;
     if (!confirmed) {
-      setMessage("❗ Lütfen e-posta adresinizi doğrulayın (mailinizi kontrol edin).");
+      setMessage("❗ Lütfen e-posta adresinizi doğrulayın.");
       return;
     }
 
-    // Şifre doğru → OTP üret ve sakla
+    // Hemen çıkış yap (giriş oturumu açık kalmasın)
+    await supabase.auth.signOut();
+
+    // OTP üret
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    localStorage.setItem("login_email", email);
+    localStorage.setItem("login_password", password);
     localStorage.setItem("login_otp", otp);
 
-    // OTP'yi e-posta ile gönder
+    // OTP gönder
     try {
       const resp = await fetch("/api/send-mail", {
         method: "POST",
@@ -45,33 +53,48 @@ export default function Giris() {
         }),
       });
 
-      if (!resp.ok) {
-        throw new Error(`Mail API hatası: ${resp.status}`);
-      }
+      if (!resp.ok) throw new Error(`Mail API hatası: ${resp.status}`);
 
       setMessage("📩 Doğrulama kodu e-posta adresinize gönderildi.");
       setOtpStep(true);
-    } catch (err: any) {
+    } catch (err) {
       console.error("OTP mail gönderme hatası:", err);
       setMessage("❌ Kod gönderilemedi, lütfen tekrar deneyin.");
     }
   }
 
-  // İkinci adım: OTP doğrulama
-  function handleOtpCheck(e: React.FormEvent) {
+  // İkinci adım: OTP doğruysa asıl giriş yap
+  async function handleOtpCheck(e: React.FormEvent) {
     e.preventDefault();
     const savedOtp = localStorage.getItem("login_otp");
-    if (otpCode === savedOtp) {
-      localStorage.removeItem("login_otp");
-      setMessage("✅ Giriş başarılı! Yönlendiriliyorsunuz...");
+    const savedEmail = localStorage.getItem("login_email");
+    const savedPassword = localStorage.getItem("login_password");
 
-      supabase.auth.getUser().then(({ data }) => {
-        const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
-        setTimeout(() => {
-          if (role === "satici") router.push("/");
-          else router.push("/index2");
-        }, 900);
+    if (otpCode === savedOtp && savedEmail && savedPassword) {
+      setMessage("✅ Kod doğru, giriş yapılıyor...");
+
+      // Asıl giriş burada yapılır
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: savedEmail,
+        password: savedPassword,
       });
+
+      if (error) {
+        setMessage("❌ Giriş başarısız: " + error.message);
+        return;
+      }
+
+      // Temizlik
+      localStorage.removeItem("login_email");
+      localStorage.removeItem("login_password");
+      localStorage.removeItem("login_otp");
+
+      // Rol kontrolü
+      const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
+      setTimeout(() => {
+        if (role === "satici") router.push("/");
+        else router.push("/index2");
+      }, 900);
     } else {
       setMessage("❌ Kod yanlış!");
     }
@@ -101,9 +124,8 @@ export default function Giris() {
         }}>Giriş Yap</h2>
 
         {!otpStep ? (
-          <form onSubmit={handlePasswordLogin}>
+          <form onSubmit={handlePasswordCheck}>
             <input
-              name="email"
               type="email"
               placeholder="E-posta"
               value={email}
@@ -120,7 +142,6 @@ export default function Giris() {
               }}
             />
             <input
-              name="password"
               type="password"
               placeholder="Şifre"
               value={password}
