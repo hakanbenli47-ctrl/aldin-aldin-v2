@@ -165,6 +165,46 @@ export default function Kayit() {
           Kayıt Ol
         </h2>
 
+        {/* Rol Seçim Butonları */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 16 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole("alici");
+              localStorage.setItem("selectedRole", "alici");
+            }}
+            style={{
+              background: selectedRole === "alici" ? "#0d9488" : "#e2e8f0",
+              color: selectedRole === "alici" ? "#fff" : "#333",
+              padding: "8px 16px",
+              borderRadius: 6,
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Alıcı
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedRole("satici");
+              localStorage.setItem("selectedRole", "satici");
+            }}
+            style={{
+              background: selectedRole === "satici" ? "#0d9488" : "#e2e8f0",
+              color: selectedRole === "satici" ? "#fff" : "#333",
+              padding: "8px 16px",
+              borderRadius: 6,
+              border: "none",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Satıcı
+          </button>
+        </div>
+
         {!!selectedRole && (
           <div style={{ textAlign: "center", marginBottom: 12 }}>
             Seçili Rol: <b>{selectedRole.toUpperCase()}</b>
