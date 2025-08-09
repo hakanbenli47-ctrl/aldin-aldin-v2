@@ -36,7 +36,7 @@ export default function Kayit() {
         },
       });
 
-      // “Zaten kayıtlı” ise —> OTP girişe
+      // ⬇️ DEĞİŞİKLİK: "User already registered" ise direkt girişe
       if (error) {
         if (String(error.message).toLowerCase().includes("user already registered")) {
           window.location.href = `/giris?email=${encodeURIComponent(email)}`;
@@ -46,20 +46,13 @@ export default function Kayit() {
       }
 
       if (userType === "satici") {
-        // 🔒 Satıcı akışı: korunuyor
-        const firmaKodu =
-          "FIRMA-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+        // Satıcı akışı (dokunmadım, sadece yönlendirme)
+        const firmaKodu = "FIRMA-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
         await supabase.from("satici_firmalar").insert([
-          {
-            user_id: data.user?.id,
-            firma_kodu: firmaKodu,
-            email,
-            firma_adi: firmaAdi,
-          },
+          { user_id: data.user?.id, firma_kodu: firmaKodu, email, firma_adi: firmaAdi },
         ]);
 
-        // Basit e‑posta bildirimi (opsiyonel)
         fetch("/api/send-mail", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -70,12 +63,12 @@ export default function Kayit() {
           }),
         }).catch(() => {});
 
-        // Satıcıyı OTP girişine al
+        // ⬇️ DEĞİŞİKLİK: email parametresiyle girişe
         window.location.href = `/giris?email=${encodeURIComponent(email)}`;
         return;
       }
 
-      // ✅ Alıcı: başarılı kayıt → OTP giriş ekranına (email parametreli)
+      // ⬇️ DEĞİŞİKLİK: Alıcı da email parametresiyle girişe
       window.location.href = `/giris?email=${encodeURIComponent(email)}`;
     } catch (err: any) {
       setMessage("Kayıt başarısız: " + (err?.message ?? "Bilinmeyen hata"));
@@ -92,8 +85,7 @@ export default function Kayit() {
         placeItems: "center",
         background: "#fff",
         color: "#111",
-        fontFamily:
-          "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial",
+        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial",
       }}
     >
       <div
@@ -106,9 +98,7 @@ export default function Kayit() {
           background: "#fff",
         }}
       >
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px" }}>
-          Kayıt Ol
-        </h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px" }}>Kayıt Ol</h2>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <button
@@ -116,104 +106,59 @@ export default function Kayit() {
             onClick={() => setUserType("alici")}
             disabled={loading}
             style={{
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 8,
+              flex: 1, padding: "8px 10px", borderRadius: 8,
               border: userType === "alici" ? "1px solid #111" : "1px solid #d1d5db",
               background: userType === "alici" ? "#111" : "#fff",
-              color: userType === "alici" ? "#fff" : "#111",
-              fontWeight: 700,
+              color: userType === "alici" ? "#fff" : "#111", fontWeight: 700,
               cursor: loading ? "not-allowed" : "pointer",
             }}
-          >
-            Alıcı
-          </button>
+          >Alıcı</button>
           <button
             type="button"
             onClick={() => setUserType("satici")}
             disabled={loading}
             style={{
-              flex: 1,
-              padding: "8px 10px",
-              borderRadius: 8,
+              flex: 1, padding: "8px 10px", borderRadius: 8,
               border: userType === "satici" ? "1px solid #111" : "1px solid #d1d5db",
               background: userType === "satici" ? "#111" : "#fff",
-              color: userType === "satici" ? "#fff" : "#111",
-              fontWeight: 700,
+              color: userType === "satici" ? "#fff" : "#111", fontWeight: 700,
               cursor: loading ? "not-allowed" : "pointer",
             }}
-          >
-            Satıcı
-          </button>
+          >Satıcı</button>
         </div>
 
         <form onSubmit={handleSignup} style={{ display: "grid", gap: 10 }}>
           <label style={{ fontSize: 13 }}>E‑posta</label>
           <input
-            type="email"
-            placeholder="ornek@mail.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            disabled={loading}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid #d1d5db",
-              background: "#fff",
-              color: "#111",
-            }}
+            type="email" placeholder="ornek@mail.com" value={email}
+            onChange={(e) => setEmail(e.target.value)} autoComplete="email" disabled={loading}
+            style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#111" }}
           />
 
           <label style={{ fontSize: 13 }}>Şifre (min 6)</label>
           <input
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            disabled={loading}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid #d1d5db",
-              background: "#fff",
-              color: "#111",
-            }}
+            type="password" placeholder="••••••••" value={password}
+            onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" disabled={loading}
+            style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#111" }}
           />
 
           {userType === "satici" && (
             <>
               <label style={{ fontSize: 13 }}>Firma Adı</label>
               <input
-                type="text"
-                placeholder="Firma Adı"
-                value={firmaAdi}
-                onChange={(e) => setFirmaAdi(e.target.value)}
-                disabled={loading}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                  background: "#fff",
-                  color: "#111",
-                }}
+                type="text" placeholder="Firma Adı" value={firmaAdi}
+                onChange={(e) => setFirmaAdi(e.target.value)} disabled={loading}
+                style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid #d1d5db", background: "#fff", color: "#111" }}
               />
             </>
           )}
 
           <button
-            type="submit"
-            disabled={loading}
+            type="submit" disabled={loading}
             style={{
-              marginTop: 4,
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid #111",
-              background: loading ? "#f3f4f6" : "#111",
-              color: "#fff",
-              fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
+              marginTop: 4, padding: "10px 12px", borderRadius: 8,
+              border: "1px solid #111", background: loading ? "#f3f4f6" : "#111",
+              color: "#fff", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
             }}
           >
             {loading ? "İşleniyor…" : "Kayıt Ol"}
@@ -221,17 +166,7 @@ export default function Kayit() {
         </form>
 
         {message && (
-          <p
-            style={{
-              marginTop: 12,
-              padding: 10,
-              borderRadius: 8,
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
-              color: "#111",
-              fontSize: 13,
-            }}
-          >
+          <p style={{ marginTop: 12, padding: 10, borderRadius: 8, background: "#f9fafb", border: "1px solid #e5e7eb", color: "#111", fontSize: 13 }}>
             {message}
           </p>
         )}
