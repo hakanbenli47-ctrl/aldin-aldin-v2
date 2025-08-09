@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import sgMail, { MailDataRequired } from "@sendgrid/mail";
-import type { MailContent } from "@sendgrid/helpers/classes/mail"; // <-- doğru import
+import type { MailContent } from "@sendgrid/helpers/classes/mail"; // doğru import
 
 const SENDGRID_KEY = process.env.SENDGRID_API_KEY;
 const SENDGRID_FROM = process.env.SENDGRID_FROM || "no-reply@yourdomain.com";
@@ -12,12 +12,13 @@ if (!SENDGRID_KEY) {
 }
 
 type Body = {
-  to: string;
+  to: string | string[];           // <- çoklu alıcı desteği
   subject: string;
   text?: string;
   html?: string;
   cc?: string | string[];
   bcc?: string | string[];
+  replyTo?: string;                // <- opsiyonel reply-to
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -27,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { to, subject, text, html, cc, bcc } = (req.body || {}) as Body;
+    const { to, subject, text, html, cc, bcc, replyTo } = (req.body || {}) as Body;
 
     if (!to || !subject || (!text && !html)) {
       return res.status(400).json({ error: "to, subject ve text|html zorunludur" });
@@ -36,20 +37,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "SendGrid yapılandırması eksik" });
     }
 
-    // 🔒 'content' en az 1 elemanlı tuple olmalı
-    const firstPart: MailContent = html
-      ? { type: "text/html", value: html }
-      : { type: "text/plain", value: text! };
+    // 'content' en az 1 elemanlı tuple olmalı; hem html hem text varsa ikisini de ekle
+    const parts: MailContent[] = [];
+    if (html) parts.push({ type: "text/html", value: html });
+    if (text) parts.push({ type: "text/plain", value: text });
 
-    const content = [firstPart] as [MailContent, ...MailContent[]];
+    const content = parts as [MailContent, ...MailContent[]];
 
     const msg: MailDataRequired = {
       to,
       from: SENDGRID_FROM,
       subject,
-      content,       // <-- doğru tip: tuple + MailContent
+      content,
       ...(cc ? { cc } : {}),
       ...(bcc ? { bcc } : {}),
+      ...(replyTo ? { replyTo } : {}),
     };
 
     const [response] = await sgMail.send(msg);

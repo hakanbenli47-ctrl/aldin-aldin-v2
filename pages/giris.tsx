@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
-//deli
+import { createClient } from "@supabase/supabase-js";
+
 export default function Giris() {
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -10,94 +11,115 @@ export default function Giris() {
   const [otpCode, setOtpCode] = useState("");
   const router = useRouter();
 
-  // İlk adım: Şifreyi kontrol et ama oturum açma!
+  // Session yazmayan geçici client: sadece parola kontrolü için
+  const tempClient = useMemo(
+    () =>
+      createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { auth: { persistSession: false, autoRefreshToken: false } }
+      ),
+    []
+  );
+
+  const isTrusted =
+    typeof window !== "undefined" && localStorage.getItem("trustedDevice") === "true";
+
+  // İlk adım: Şifre kontrolü
   async function handlePasswordCheck(e: React.FormEvent) {
     e.preventDefault();
     setMessage("");
 
-    // Sadece şifreyi doğrulamak için giriş denemesi
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Eğer cihaz güvenilir ise direkt giriş yap
+    if (isTrusted) {
+      return finalLogin(email, password);
+    }
 
-    // Eğer hata varsa
+    // Session oluşturmadan sadece parolayı doğrula
+    const { data, error } = await tempClient.auth.signInWithPassword({ email, password });
     if (error) {
       setMessage("❌ Giriş başarısız: " + error.message);
       return;
     }
 
-    // Kullanıcı doğrulanmamışsa
-    const user = data.user;
-    const confirmed = (user as any)?.confirmed_at ?? null;
+    const confirmed = (data.user as any)?.email_confirmed_at ?? null;
     if (!confirmed) {
       setMessage("❗ Lütfen e-posta adresinizi doğrulayın.");
       return;
     }
 
-    // Hemen çıkış yap (giriş oturumu açık kalmasın)
-    await supabase.auth.signOut();
-
-    // OTP üret
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    localStorage.setItem("login_email", email);
-    localStorage.setItem("login_password", password);
-    localStorage.setItem("login_otp", otp);
-
-    // OTP gönder
+    // Güvenli OTP sürecini sunucudan başlat
     try {
-      const resp = await fetch("/api/send-mail", {
+      const resp = await fetch("/api/auth/start-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: email,
-          subject: "Giriş Doğrulama Kodu",
-          text: `Giriş doğrulama kodunuz: ${otp}`,
-        }),
+        body: JSON.stringify({ email }),
       });
 
-      if (!resp.ok) throw new Error(`Mail API hatası: ${resp.status}`);
+      if (!resp.ok) {
+        const msg = await resp.text();
+        throw new Error(msg || `Mail API hatası: ${resp.status}`);
+      }
 
       setMessage("📩 Doğrulama kodu e-posta adresinize gönderildi.");
       setOtpStep(true);
     } catch (err) {
-      console.error("OTP mail gönderme hatası:", err);
+      console.error("OTP gönderim hatası:", err);
       setMessage("❌ Kod gönderilemedi, lütfen tekrar deneyin.");
     }
   }
 
-  // İkinci adım: OTP doğruysa asıl giriş yap
+  // OTP kontrolü (sunucuda doğrulat)
   async function handleOtpCheck(e: React.FormEvent) {
     e.preventDefault();
-    const savedOtp = localStorage.getItem("login_otp");
-    const savedEmail = localStorage.getItem("login_email");
-    const savedPassword = localStorage.getItem("login_password");
 
-    if (otpCode === savedOtp && savedEmail && savedPassword) {
-      setMessage("✅ Kod doğru, giriş yapılıyor...");
-
-      // Asıl giriş burada yapılır
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: savedEmail,
-        password: savedPassword,
-      });
-
-      if (error) {
-        setMessage("❌ Giriş başarısız: " + error.message);
+    try {
+      if (!otpCode) {
+        setMessage("❌ Lütfen doğrulama kodunu girin.");
         return;
       }
 
-      // Temizlik
-      localStorage.removeItem("login_email");
-      localStorage.removeItem("login_password");
-      localStorage.removeItem("login_otp");
+      const v = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code: otpCode }),
+      });
 
-      // Rol kontrolü
-      const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
-      setTimeout(() => {
-        if (role === "satici") router.push("/");
-        else router.push("/index2");
-      }, 900);
-    } else {
-      setMessage("❌ Kod yanlış!");
+      if (!v.ok) {
+        const t = await v.text();
+        setMessage("❌ Kod doğrulanamadı: " + t);
+        return;
+      }
+
+      // Kullanıcıya cihazı güvenilir olarak işaretleme seçeneği
+      const trust = confirm(
+        "Bu cihazı güvenilir olarak işaretlemek ister misiniz? Bundan sonraki girişlerde kod istenmez."
+      );
+      if (trust) {
+        localStorage.setItem("trustedDevice", "true");
+      }
+
+      setMessage("✅ Kod doğru, giriş yapılıyor...");
+      await finalLogin(email, password);
+    } catch (err) {
+      console.error("OTP doğrulama hatası:", err);
+      setMessage("❌ Doğrulama sırasında hata oluştu.");
     }
+  }
+
+  async function finalLogin(email: string, password: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setMessage("❌ Giriş başarısız: " + error.message);
+      return;
+    }
+
+    const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
+    setTimeout(() => {
+      if (role === "satici") router.push("/");
+      else router.push("/index2");
+    }, 900);
   }
 
   return (
@@ -179,6 +201,7 @@ export default function Giris() {
           <form onSubmit={handleOtpCheck}>
             <input
               type="text"
+              inputMode="numeric"
               placeholder="Doğrulama Kodu"
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value)}
