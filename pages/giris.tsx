@@ -18,19 +18,30 @@ export default function Giris() {
     e.preventDefault();
     setMessage("");
 
-    // Eğer cihaz güvenilir ise direkt giriş yap
+    const em = email.trim();
+    const pw = password;
+
+    // Güvenilir cihaz: boş değerleri engelle
     if (isTrusted) {
-      return finalLogin(email, password);
+      if (!em || !pw) {
+        setMessage("❌ E-posta ve şifre gerekli.");
+        return;
+      }
+      return finalLogin(em, pw);
     }
 
     // Parolayı doğrula (session açılır, sonra hemen kapatacağız)
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: em, password: pw });
     if (error) {
       setMessage("❌ Giriş başarısız: " + error.message);
       return;
     }
 
-    const confirmed = (data.user as any)?.email_confirmed_at ?? null;
+    // farklı supabase versiyonlarında alan adı değişebiliyor → ikisini de kontrol et
+    const confirmed =
+      (data.user as any)?.email_confirmed_at ??
+      (data.user as any)?.confirmed_at ?? null;
+
     if (!confirmed) {
       setMessage("❗ Lütfen e-posta adresinizi doğrulayın.");
       await supabase.auth.signOut();
@@ -40,12 +51,12 @@ export default function Giris() {
     // Oturumu hemen kapat (OTP doğrulanmadan açık kalmasın)
     await supabase.auth.signOut();
 
-    // Güvenli OTP sürecini sunucudan başlat
+    // Güvenli OTP sürecini sunucudan başlat (mutlak origin kullan)
     try {
-      const resp = await fetch("/api/auth/start-otp", {
+      const resp = await fetch(`${window.location.origin}/api/auth/start-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: em }),
       });
 
       if (!resp.ok) {
@@ -64,6 +75,7 @@ export default function Giris() {
   // OTP kontrolü (sunucuda doğrulat)
   async function handleOtpCheck(e: React.FormEvent) {
     e.preventDefault();
+    const em = email.trim();
 
     try {
       if (!otpCode) {
@@ -71,10 +83,10 @@ export default function Giris() {
         return;
       }
 
-      const v = await fetch("/api/auth/verify-otp", {
+      const v = await fetch(`${window.location.origin}/api/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: otpCode }),
+        body: JSON.stringify({ email: em, code: otpCode }),
       });
 
       if (!v.ok) {
@@ -92,7 +104,7 @@ export default function Giris() {
       }
 
       setMessage("✅ Kod doğru, giriş yapılıyor...");
-      await finalLogin(email, password);
+      await finalLogin(em, password);
     } catch (err) {
       console.error("OTP doğrulama hatası:", err);
       setMessage("❌ Doğrulama sırasında hata oluştu.");
