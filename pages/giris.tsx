@@ -14,13 +14,17 @@ export default function Giris() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [rememberDevice, setRememberDevice] = useState(false);
-  const [isTrusted, setIsTrusted] = useState(false);
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const autoOtpTriggered = useRef(false);
 
-  // Oturum varsa anasayfaya yönlendir
+  // bu e-posta için cihaz güvenilir mi?
+  const isTrusted = typeof window !== "undefined"
+    ? localStorage.getItem(`trustedDevice:${email}`) === "true"
+    : false;
+
+  // oturum varsa anasayfaya
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
@@ -28,14 +32,7 @@ export default function Giris() {
     })();
   }, [router]);
 
-  // localStorage "trustedDevice"
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const t = localStorage.getItem("trustedDevice") === "true";
-    setIsTrusted(t);
-  }, []);
-
-  // Kayıttan geldiyse method=otp&email=... parametreleri ile otomatik kod gönder
+  // Kayıttan geldiyse method=otp&email=... ise otomatik kod gönder (satıcı akışı)
   useEffect(() => {
     if (!router.isReady) return;
     if (method !== "otp" || !email || otpSent || autoOtpTriggered.current) return;
@@ -62,28 +59,60 @@ export default function Giris() {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady, method, email, otpSent]);
 
-  function persistTrusted(flag: boolean) {
+  function setTrustedForEmail(flag: boolean) {
     if (typeof window === "undefined") return;
-    if (flag) localStorage.setItem("trustedDevice", "true");
-    else localStorage.removeItem("trustedDevice");
+    if (flag) localStorage.setItem(`trustedDevice:${email}`, "true");
+    else localStorage.removeItem(`trustedDevice:${email}`);
   }
 
+  // ŞİFREYLE GİRİŞ — 2 AŞAMA (ilk cihazda OTP zorunlu)
   async function loginWithPassword(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) return setMessage("❌ E-posta ve şifre gerekli.");
     setLoading(true);
     setMessage("");
+
+    // 1) Şifreyi doğrula
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) return setMessage("❌ " + error.message);
-    if (rememberDevice) persistTrusted(true);
-    setMessage("✅ Giriş başarılı, yönlendiriliyorsun…");
-    router.replace("/");
+    if (error) {
+      setLoading(false);
+      return setMessage("❌ " + error.message);
+    }
+
+    // 2) Bu e-posta bu cihazda güvenilir ise OTP sormadan bitir
+    if (isTrusted) {
+      setLoading(false);
+      setMessage("✅ Giriş başarılı, yönlendiriliyorsun…");
+      router.replace("/index2");
+      return;
+    }
+
+    // 3) Güvenilir değilse: OTP gönder, güvenlik için session'ı kapat, OTP ekranına geç
+    try {
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback`,
+        },
+      });
+      if (otpErr) throw otpErr;
+
+      await supabase.auth.signOut(); // OTP doğrulanana kadar erişim olmasın
+      setMethod("otp");
+      setOtpSent(true);
+      setMessage("✅ Kod gönderildi. E-postana gelen 6 haneli kodu gir.");
+    } catch (err: any) {
+      setMessage("❌ OTP gönderilemedi: " + (err?.message ?? ""));
+    } finally {
+      setLoading(false);
+    }
   }
 
-  async function sendOtp() {
+  async function sendOtpManual() {
     if (!email) return setMessage("❌ E-posta gerekli.");
     setLoading(true);
     setMessage("");
@@ -108,8 +137,12 @@ export default function Giris() {
     const { error } = await supabase.auth.verifyOtp({ email, token: otpCode, type: "email" });
     setLoading(false);
     if (error) return setMessage("❌ " + error.message);
-    setMessage("✅ Giriş başarılı, yönlendiriliyorsun…");
-    router.replace("/");
+
+    // OTP başarıyla doğrulandı → İsteğe bağlı cihazı hatırla
+    if (rememberDevice) setTrustedForEmail(true);
+
+    setMessage("✅ Giriş tamamlandı, yönlendiriliyorsun…");
+    router.replace("/index2");
   }
 
   // UI
@@ -149,7 +182,7 @@ export default function Giris() {
             />
             <label style={{ display: "flex", alignItems: "center", gap: 8, color: "#94a3b8", fontSize: 13 }}>
               <input type="checkbox" checked={rememberDevice} onChange={e=>setRememberDevice(e.target.checked)} />
-              Bu cihazı hatırla (bir sonraki girişte şifre formu öncelikli)
+              Bu cihazı hatırla (bu e-posta için bu cihazda OTP bir daha istenmesin)
             </label>
             <button
               disabled={loading}
@@ -165,7 +198,7 @@ export default function Giris() {
           <form onSubmit={verifyOtp} style={{ display: "grid", gap: 10 }}>
             {!otpSent ? (
               <button
-                type="button" onClick={sendOtp} disabled={loading}
+                type="button" onClick={sendOtpManual} disabled={loading}
                 style={{ width: "100%", padding: 12, borderRadius: 12, border: "none", background: "#1d4ed8", color: "#fff", fontWeight: 800, cursor: "pointer" }}
               >
                 {loading ? "İşleniyor…" : "Kodu Gönder"}
@@ -185,8 +218,8 @@ export default function Giris() {
                     padding: 12,
                     borderRadius: 12,
                     border: "1px solid #263145",
-                    background: "#fff", // beyaz zemin
-                    color: "#000", // siyah yazı
+                    background: "#fff",
+                    color: "#000",
                     textAlign: "center",
                     letterSpacing: 6,
                     fontSize: 18,

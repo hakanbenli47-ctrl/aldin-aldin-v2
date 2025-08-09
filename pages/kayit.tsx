@@ -48,7 +48,7 @@ export default function Kayit() {
           },
         ]);
 
-        // basit e-posta bildirimi (server route)
+        // basit e-posta bildirimi
         fetch("/api/send-mail", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -58,10 +58,14 @@ export default function Kayit() {
             text: `Tebrikler! Satıcı kaydınız oluşturuldu.\n\nFirma: ${firmaAdi}\nFirma Kodu: ${firmaKodu}\n\n80bir`,
           }),
         }).catch(() => {});
+
+        // Satıcıyı OTP akışına al
+        window.location.href = `/giris?method=otp&email=${encodeURIComponent(email)}`;
+        return;
       }
 
-      // ✅ Kaydolduktan sonra doğrudan OTP girişine yönlendir
-      window.location.href = `/giris?method=otp&email=${encodeURIComponent(email)}`;
+      // Alıcı: önce şifreyle giriş ekranı (ilk girişte OTP soracağız)
+      window.location.href = `/giris`;
     } catch (err: any) {
       setMessage("❌ Kayıt başarısız: " + (err?.message ?? "Bilinmeyen hata"));
     } finally {
