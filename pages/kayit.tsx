@@ -14,7 +14,7 @@ async function generateUniqueFirmaKodu() {
     kod = "FIRMA-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
     const { data, error } = await supabase
-      .from("firmalar")
+      .from("satici_firmalar")
       .select("id")
       .eq("firma_kodu", kod)
       .maybeSingle();
@@ -84,11 +84,11 @@ export default function Kayit() {
       return;
     }
 
-    // 2. Eğer satıcı ise firmalar tablosuna aktif: false ile ekle
+    // 2. Eğer satıcı ise satici_firmalar tablosuna aktif: false ile ekle
     if (selectedRole === "satici" && data.user) {
       const firmaKodu = await generateUniqueFirmaKodu();
 
-      const { error: insertError } = await supabase.from("firmalar").insert([
+      const { error: insertError } = await supabase.from("satici_firmalar").insert([
         {
           user_id: data.user.id,
           firma_kodu: firmaKodu,
