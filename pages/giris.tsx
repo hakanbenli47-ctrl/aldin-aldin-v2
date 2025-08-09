@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
-import { createClient } from "@supabase/supabase-js";
 
 export default function Giris() {
   const [message, setMessage] = useState("");
@@ -10,17 +9,6 @@ export default function Giris() {
   const [otpStep, setOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const router = useRouter();
-
-  // Session yazmayan geçici client: sadece parola kontrolü için
-  const tempClient = useMemo(
-    () =>
-      createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } }
-      ),
-    []
-  );
 
   const isTrusted =
     typeof window !== "undefined" && localStorage.getItem("trustedDevice") === "true";
@@ -35,8 +23,8 @@ export default function Giris() {
       return finalLogin(email, password);
     }
 
-    // Session oluşturmadan sadece parolayı doğrula
-    const { data, error } = await tempClient.auth.signInWithPassword({ email, password });
+    // Parolayı doğrula (session açılır, sonra hemen kapatacağız)
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setMessage("❌ Giriş başarısız: " + error.message);
       return;
@@ -45,8 +33,12 @@ export default function Giris() {
     const confirmed = (data.user as any)?.email_confirmed_at ?? null;
     if (!confirmed) {
       setMessage("❗ Lütfen e-posta adresinizi doğrulayın.");
+      await supabase.auth.signOut();
       return;
     }
+
+    // Oturumu hemen kapat (OTP doğrulanmadan açık kalmasın)
+    await supabase.auth.signOut();
 
     // Güvenli OTP sürecini sunucudan başlat
     try {
@@ -252,4 +244,8 @@ export default function Giris() {
       </div>
     </div>
   );
+}
+
+export async function getServerSideProps() {
+  return { props: {} };
 }
