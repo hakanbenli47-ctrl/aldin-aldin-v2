@@ -20,7 +20,7 @@ export default function Giris() {
   const [loading, setLoading] = useState(false);
   const autoOtpTriggered = useRef(false);
 
-  // oturum varsa anasayfaya
+  // Oturum varsa anasayfaya yönlendir
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
@@ -35,7 +35,7 @@ export default function Giris() {
     setIsTrusted(t);
   }, []);
 
-  // Kayıttan geldiğinde method=otp&email=... ise otomatik kod gönder
+  // Kayıttan geldiyse method=otp&email=... parametreleri ile otomatik kod gönder
   useEffect(() => {
     if (!router.isReady) return;
     if (method !== "otp" || !email || otpSent || autoOtpTriggered.current) return;
@@ -174,9 +174,24 @@ export default function Giris() {
               <>
                 <label style={{ color: "#94a3b8", fontSize: 13 }}>E-postaya gelen 6 haneli kod</label>
                 <input
-                  inputMode="numeric" pattern="\d*" maxLength={6}
-                  value={otpCode} onChange={e=>setOtpCode(e.target.value)} placeholder="123456"
-                  style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid #263145", background: "#0b1220", color: "#e2e8f0", textAlign: "center", letterSpacing: 6, fontSize: 18, fontWeight: 800 }}
+                  inputMode="numeric"
+                  pattern="\d*"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={e=>setOtpCode(e.target.value)}
+                  placeholder="123456"
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    borderRadius: 12,
+                    border: "1px solid #263145",
+                    background: "#fff", // beyaz zemin
+                    color: "#000", // siyah yazı
+                    textAlign: "center",
+                    letterSpacing: 6,
+                    fontSize: 18,
+                    fontWeight: 800
+                  }}
                 />
                 <button
                   disabled={loading}
