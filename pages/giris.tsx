@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
-
+//deli
 export default function Giris() {
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
