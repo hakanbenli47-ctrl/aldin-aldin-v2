@@ -37,7 +37,7 @@ export default function Giris() {
       return;
     }
 
-    // farklı supabase versiyonlarında alan adı değişebiliyor → ikisini de kontrol et
+    // confirmed alanı sürüme göre değişebiliyor
     const confirmed =
       (data.user as any)?.email_confirmed_at ??
       (data.user as any)?.confirmed_at ?? null;
@@ -51,14 +51,17 @@ export default function Giris() {
     // Oturumu hemen kapat (OTP doğrulanmadan açık kalmasın)
     await supabase.auth.signOut();
 
-    // Güvenli OTP sürecini sunucudan başlat (mutlak origin kullan)
+    // OTP başlat (POST; 405/404 olursa GET'e düş)
     try {
-      const resp = await fetch(`${window.location.origin}/api/auth/start-otp`, {
+      const base = `${window.location.origin}/api/auth/start-otp`;
+      let resp = await fetch(base, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: em }),
       });
-
+      if (resp.status === 405 || resp.status === 404) {
+        resp = await fetch(`${base}?email=${encodeURIComponent(em)}`, { method: "GET" });
+      }
       if (!resp.ok) {
         const msg = await resp.text();
         throw new Error(msg || `Mail API hatası: ${resp.status}`);
@@ -83,12 +86,18 @@ export default function Giris() {
         return;
       }
 
-      const v = await fetch(`${window.location.origin}/api/auth/verify-otp`, {
+      const base = `${window.location.origin}/api/auth/verify-otp`;
+      let v = await fetch(base, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: em, code: otpCode }),
       });
-
+      if (v.status === 405 || v.status === 404) {
+        v = await fetch(
+          `${base}?email=${encodeURIComponent(em)}&code=${encodeURIComponent(otpCode)}`,
+          { method: "GET" }
+        );
+      }
       if (!v.ok) {
         const t = await v.text();
         setMessage("❌ Kod doğrulanamadı: " + t);
