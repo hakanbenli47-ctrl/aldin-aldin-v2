@@ -35,10 +35,18 @@ export default function Kayit() {
           data: { userType, firmaAdi },
         },
       });
-      if (error) throw error;
+
+      // “Zaten kayıtlı” ise —> OTP girişe
+      if (error) {
+        if (String(error.message).toLowerCase().includes("user already registered")) {
+          window.location.href = `/giris?email=${encodeURIComponent(email)}`;
+          return;
+        }
+        throw error;
+      }
 
       if (userType === "satici") {
-        // 🔒 Satıcı akışı: DOKUNULMADI (yalnızca stil sade)
+        // 🔒 Satıcı akışı: korunuyor
         const firmaKodu =
           "FIRMA-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
@@ -51,7 +59,7 @@ export default function Kayit() {
           },
         ]);
 
-        // basit e‑posta bildirimi
+        // Basit e‑posta bildirimi (opsiyonel)
         fetch("/api/send-mail", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -62,13 +70,13 @@ export default function Kayit() {
           }),
         }).catch(() => {});
 
-        // Satıcıyı OTP akışına al
+        // Satıcıyı OTP girişine al
         window.location.href = `/giris?email=${encodeURIComponent(email)}`;
         return;
       }
 
-      // Alıcı: şimdilik direkt giriş sayfasına (OTP ile giriş yapacak)
-      window.location.href = `/giris`;
+      // ✅ Alıcı: başarılı kayıt → OTP giriş ekranına (email parametreli)
+      window.location.href = `/giris?email=${encodeURIComponent(email)}`;
     } catch (err: any) {
       setMessage("Kayıt başarısız: " + (err?.message ?? "Bilinmeyen hata"));
     } finally {
@@ -84,7 +92,8 @@ export default function Kayit() {
         placeItems: "center",
         background: "#fff",
         color: "#111",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial",
+        fontFamily:
+          "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial",
       }}
     >
       <div

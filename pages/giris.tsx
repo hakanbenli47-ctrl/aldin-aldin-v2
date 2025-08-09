@@ -14,7 +14,7 @@ export default function Giris() {
   const [loading, setLoading] = useState(false);
   const autoOtpTriggered = useRef(false);
 
-  // Varsa mevcut oturumda ana sayfaya yönlendir
+  // Oturum varsa ana sayfaya
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
@@ -22,7 +22,7 @@ export default function Giris() {
     })();
   }, [router]);
 
-  // URL'de email varsa ve daha önce tetiklenmediyse otomatik kod gönder (satıcı/akış uyumu)
+  // URL'de email varsa ve daha önce tetiklenmediyse otomatik kod gönder
   useEffect(() => {
     if (!router.isReady) return;
     if (!email || otpSent || autoOtpTriggered.current) return;
@@ -77,12 +77,12 @@ export default function Giris() {
     const { error } = await supabase.auth.verifyOtp({
       email,
       token: otpCode,
-      type: "email",
+      type: "email", // Email OTP
     });
     setLoading(false);
     if (error) return setMessage("Doğrulama başarısız: " + error.message);
 
-    setMessage("Giriş tamamlandı, yönlendiriliyorsun…");
+    setMessage("Giriş tamamlandı (oturum korunuyor), yönlendiriliyorsun…");
     router.replace("/index2");
   }
 
@@ -94,7 +94,8 @@ export default function Giris() {
         placeItems: "center",
         background: "#fff",
         color: "#111",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial",
+        fontFamily:
+          "system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial",
       }}
     >
       <div
@@ -107,9 +108,13 @@ export default function Giris() {
           background: "#fff",
         }}
       >
-        <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px" }}>Giriş (E‑posta Kodu)</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 12px" }}>
+          Giriş (E‑posta Kodu)
+        </h1>
 
-        <label style={{ fontSize: 13, display: "block", marginBottom: 4 }}>E‑posta</label>
+        <label style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
+          E‑posta
+        </label>
         <input
           type="email"
           value={email}
@@ -147,7 +152,9 @@ export default function Giris() {
           </button>
         ) : (
           <form onSubmit={verifyOtp} style={{ marginTop: 8 }}>
-            <label style={{ fontSize: 13, display: "block", marginBottom: 4 }}>E‑postaya gelen 6 haneli kod</label>
+            <label style={{ fontSize: 13, display: "block", marginBottom: 4 }}>
+              E‑postaya gelen 6 haneli kod
+            </label>
             <input
               inputMode="numeric"
               pattern="\d*"
