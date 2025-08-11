@@ -3,17 +3,6 @@ import { createClient } from "@supabase/supabase-js";
 import sgMail from "@sendgrid/mail";
 import crypto from "crypto";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // server role key
-);
-
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-} else {
-  console.warn("[start-otp] SENDGRID_API_KEY yok");
-}
-
 function hashCode(email: string, code: string) {
   const pepper = process.env.OTP_PEPPER || "pepper";
   return crypto.createHash("sha256").update(`${email}:${code}:${pepper}`).digest("hex");
@@ -21,6 +10,7 @@ function hashCode(email: string, code: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    // CORS / preflight
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Allow", "POST, GET, OPTIONS, HEAD");
     if (req.method === "OPTIONS" || req.method === "HEAD") {
@@ -28,12 +18,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       return res.status(204).end();
     }
-
-    const method = req.method;
-    if (method !== "POST" && method !== "GET") {
+    // Method guard
+    if (req.method !== "POST" && req.method !== "GET") {
       return res.status(405).send("Method Not Allowed");
     }
 
+    // --- ENV KONTROLLERİ (kritik) ---
+    const SUPABASE_URL =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || (process.env as any).SUPABASE_URL;
+    const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const SG_KEY = process.env.SENDGRID_API_KEY;
+    const SG_FROM = process.env.SENDGRID_FROM;
+
+    if (!SUPABASE_URL || !SERVICE_KEY) {
+      console.error("[start-otp] Supabase env eksik", { SUPABASE_URL: !!SUPABASE_URL, SERVICE_KEY: !!SERVICE_KEY });
+      return res.status(500).send("Supabase yapılandırması eksik");
+    }
+    if (!SG_KEY || !SG_FROM) {
+      console.error("[start-otp] SendGrid env eksik", { SG_KEY: !!SG_KEY, SG_FROM: !!SG_FROM });
+      return res.status(500).send("Mail gönderim yapılandırması eksik");
+    }
+
+    // Client'ları handler içinde kur
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+    sgMail.setApiKey(SG_KEY);
+
+    const method = req.method;
     const email =
       method === "POST"
         ? (req.body as any)?.email
@@ -57,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 6 haneli OTP
+    // 6 haneli OTP üret
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const code_hash = hashCode(email, code);
     const expires_at = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 dk
@@ -66,24 +76,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email,
       code_hash,
       expires_at,
-      consumed: false
-      // created_at DB default now()
+      consumed: false, // created_at DB default now()
     });
     if (insErr) {
       console.error("[start-otp] insert error:", insErr);
       return res.status(500).send("OTP yazılamadı");
     }
 
-    if (!process.env.SENDGRID_FROM) {
-      console.warn("[start-otp] SENDGRID_FROM eksik");
-      return res.status(500).send("Mail gönderim yapılandırması eksik");
-    }
-
     await sgMail.send({
       to: email,
-      from: process.env.SENDGRID_FROM,
+      from: SG_FROM, // ör: no-reply@80bir.com.tr
       subject: "Giriş Doğrulama Kodu",
-      text: `Giriş doğrulama kodunuz: ${code}\nBu kod 5 dakika geçerlidir.`
+      text: `Giriş doğrulama kodunuz: ${code}\nBu kod 5 dakika geçerlidir.`,
     });
 
     return res.status(200).json({ ok: true });

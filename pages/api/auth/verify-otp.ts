@@ -2,11 +2,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 function hashCode(email: string, code: string) {
   const pepper = process.env.OTP_PEPPER || "pepper";
   return crypto.createHash("sha256").update(`${email}:${code}:${pepper}`).digest("hex");
@@ -14,6 +9,7 @@ function hashCode(email: string, code: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    // CORS / preflight
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Allow", "POST, GET, OPTIONS, HEAD");
     if (req.method === "OPTIONS" || req.method === "HEAD") {
@@ -21,17 +17,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       return res.status(204).end();
     }
-
-    const method = req.method;
-    if (method !== "POST" && method !== "GET") {
+    // Method guard
+    if (req.method !== "POST" && req.method !== "GET") {
       return res.status(405).send("Method Not Allowed");
     }
 
+    // --- ENV KONTROLLERİ ---
+    const SUPABASE_URL =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || (process.env as any).SUPABASE_URL;
+    const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!SUPABASE_URL || !SERVICE_KEY) {
+      console.error("[verify-otp] Supabase env eksik", { SUPABASE_URL: !!SUPABASE_URL, SERVICE_KEY: !!SERVICE_KEY });
+      return res.status(500).send("Supabase yapılandırması eksik");
+    }
+    const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    const method = req.method;
     const email =
       method === "POST"
         ? (req.body as any)?.email
         : (req.query?.email as string | undefined);
-
     const code =
       method === "POST"
         ? (req.body as any)?.code
