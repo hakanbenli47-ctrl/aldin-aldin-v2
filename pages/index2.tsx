@@ -8,7 +8,6 @@ import { supabase } from '../lib/supabaseClient';
 import React, { ReactNode } from 'react';
 import SloganBar from "../components/SloganBar";
 import { FiChevronDown } from 'react-icons/fi'
-import Link from 'next/link'
 import { useRouter } from 'next/router'
 
 // Ortalama puan hesaplama fonksiyonu
@@ -19,12 +18,7 @@ async function ilanlaraOrtalamaPuanEkle(ilanlar: Ilan[]) {
       .from("yorumlar")
       .select("puan")
       .eq("urun_id", ilan.id);
-const populerIlanlar = ilanlar
-  .filter(i => (i.ortalamaPuan ?? 0) > 0)
-  .sort((a, b) => (b.ortalamaPuan ?? 0) - (a.ortalamaPuan ?? 0))
-  .slice(0, 6);
-
-    const puanArr = (yorumlar || []).map(y => y.puan);
+const puanArr = (yorumlar || []).map(y => y.puan);
     const ortalama = puanArr.length
       ? puanArr.reduce((a, b) => a + b, 0) / puanArr.length
       : 0;
@@ -115,16 +109,14 @@ function FirmaBilgiSatiri({
 import {
   FiShoppingCart,
   FiSmartphone,
-  FiHome,
-  FiBook,
-  FiUsers,
+    FiUsers,
   FiBox,
   FiHeart,
   FiTag,
   FiMoreHorizontal
 } 
 from 'react-icons/fi';
-import { FaCar, FaTshirt } from 'react-icons/fa';
+import { FaCar } from 'react-icons/fa';
 // ad’a göre icon ataması
 const iconMap: Record<string, ReactNode> = {
   'Tümü': null,
@@ -139,27 +131,13 @@ const iconMap: Record<string, ReactNode> = {
   'Diğer':          <FiMoreHorizontal size={28} />,
 };
 
-// ad’a göre renk ataması
-const renkMap: Record<string, string> = {
-  'Tümü': 'var(--accent, #1bbd8a)',
-  'Elektronik': 'var(--primary, #2563eb)',
-  'Araçlar':     'var(--success, #16a34a)',
-  'Moda':        'var(--danger, #e11d48)',
-  'Ev & Yaşam':  'var(--orange-500, #f97316)',
-  'Kitap & Hobi':'var(--violet-700, #7c3aed)',
-  'Spor & Outdoor':'#1d8cf8',
-  'Anne & Bebek':'var(--cyan-400, #22d3ee)',
-  'Evcil Hayvan':'var(--sky-500, #0ea5e9)',
-  'Kozmetik':'var(--warning, #f59e0b)',
-  'Diğer':'var(--slate-700, #334155)',
-};
 type Ilan = {
   id: number;
   title: string;
   desc: string;
   price: string;
   kategori_id: number;
-  resim_url: string[] | null;
+  resim_url: string[] | string | null;
   stok?: number;
   created_at?: string;
   doped?: boolean;
@@ -604,7 +582,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
             minWidth: 18,
             textAlign: "center"
           }}>
-            {cartItems.reduce((top, c) => top + (c.adet or 1), 0)}
+            {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
           </span>
         )}
       </div>
