@@ -147,4 +147,6 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 @keyframes dropdownShow {
   from { transform: translateY(-6px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
-}
+}/* Sağ reklamı kapat ve içerik genişlesin */
+.ads-right { display: none !important; }
+.main-col { max-width: 100% !important; }
