@@ -408,7 +408,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
         }}
       >
         {/* HEADER */}
-      <header
+      <header className="pwa-header"
   style={{
     background: '#fff',
     boxShadow: '0 2px 14px #1648b005',

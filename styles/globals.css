@@ -40,3 +40,75 @@ a {
     color-scheme: dark;
   }
 }
+
+/* ========================= */
+/* PWA / SAFE-AREA EKLEMELER */
+/* ========================= */
+
+/* Alt çentik için güvenli alan */
+body { padding-bottom: env(safe-area-inset-bottom); }
+
+/* Üst durum çubuğu/çentik alanı için header padding */
+.pwa-header {
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+  min-height: calc(70px + env(safe-area-inset-top));
+}
+
+/* ============ */
+/* RESPONSIVE   */
+/* ============ */
+
+/* Tablet ve aşağısı: reklamları gizle, layout tek kolona düşsün */
+@media (max-width: 1024px) {
+  .layout-3col {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .ads-left,
+  .ads-right {
+    display: none !important;
+  }
+
+  /* Kart gridleri: 2 sütun */
+  .ilanGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  /* Arama kutusu genişlesin */
+  header input[type="text"] {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* Telefon: tam genişlik görünüm + 1 sütun grid */
+@media (max-width: 640px) {
+  /* Header iç divini kenardan kenara yap */
+  .header-inner {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 12px !important;
+  }
+
+  /* Ana kolon: kenar boşluklarını kaldır, full-bleed */
+  .main-col {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .main-col > section {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Grid: 1 sütun */
+  .ilanGrid { grid-template-columns: 1fr !important; }
+}

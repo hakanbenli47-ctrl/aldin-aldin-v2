@@ -3,7 +3,7 @@
   "name": "80bir",
   "short_name": "80bir",
   "description": "80bir – akıllı alışveriş ve fırsatlar.",
-  "start_url": "/",
+  "start_url": "/index2?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
