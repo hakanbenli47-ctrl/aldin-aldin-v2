@@ -1,3 +1,13 @@
+
+/* Add to globals.css for compact featured grid on phones:
+@media (max-width: 640px){
+  .featuredGrid{ grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
+  .featuredGrid .product-card{ padding: 10px !important; }
+  .featuredGrid img{ height: 90px !important; }
+  .featuredGrid h3{ font-size: 14px !important; }
+}
+*/
+
 // NOTE: Colors now use CSS variables with fallbacks to your current palette.
 // Define these in your global CSS (e.g., :root { --primary: #yourColor; ... }) to match your site theme.
 import type { NextPage } from 'next';
@@ -380,8 +390,9 @@ const findKategoriAd = (id: number | null | undefined): string => {
       <Head>
         <title>Aldın Aldın - Alıcı</title>
         <meta name="description" content="Aldın Aldın Alıcı Sayfası" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </Head>
-      <div className="force-desktop"
+      <div className="force-desktop"><div
         style={{
           minHeight: '100vh',
           background: 'linear-gradient(120deg, var(--surface, #f8fafc) 0%, var(--bg-grad-end, #eafcf6) 100%)',
@@ -759,11 +770,10 @@ const findKategoriAd = (id: number | null | undefined): string => {
                   Şu anda öne çıkarılan bir ilan yok.
                 </div>
               ) : (
-                <div
+                <div className="featuredGrid"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns:
-                      'repeat(auto-fit, minmax(235px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
                     gap: 23
                   }}
                 >
@@ -1088,8 +1098,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                   className="ilanGrid"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns:
-                      'repeat(auto-fit, minmax(235px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
                     gap: 23
                   }}
                 >
@@ -1375,7 +1384,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
     .ilanGrid { grid-template-columns: 1fr !important; }
   }
 `}</style>
-      </div>
+      </div></div>
     </>
   );
 };
