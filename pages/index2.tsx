@@ -381,7 +381,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
         <title>Aldın Aldın - Alıcı</title>
         <meta name="description" content="Aldın Aldın Alıcı Sayfası" />
       </Head>
-      <div
+      <div className="force-desktop"
         style={{
           minHeight: '100vh',
           background: 'linear-gradient(120deg, var(--surface, #f8fafc) 0%, var(--bg-grad-end, #eafcf6) 100%)',
