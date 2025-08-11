@@ -5,7 +5,7 @@ import crypto from "crypto";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY! // sadece server
+  process.env.SUPABASE_SERVICE_ROLE_KEY! // server role key
 );
 
 if (process.env.SENDGRID_API_KEY) {
@@ -21,7 +21,6 @@ function hashCode(email: string, code: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // CORS / preflight / health-check
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Allow", "POST, GET, OPTIONS, HEAD");
     if (req.method === "OPTIONS" || req.method === "HEAD") {
@@ -30,7 +29,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(204).end();
     }
 
-    // POST + (gerekirse) GET destekle
     const method = req.method;
     if (method !== "POST" && method !== "GET") {
       return res.status(405).send("Method Not Allowed");
@@ -53,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .maybeSingle();
 
     if (last) {
-      const lastTime = new Date(last.created_at).getTime();
+      const lastTime = new Date(last.created_at as any).getTime();
       if (Date.now() - lastTime < 30_000) {
         return res.status(429).send("Çok sık deneme. Lütfen 30 sn bekleyin.");
       }
@@ -68,7 +66,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email,
       code_hash,
       expires_at,
-      consumed: false,
+      consumed: false
+      // created_at DB default now()
     });
     if (insErr) {
       console.error("[start-otp] insert error:", insErr);
@@ -84,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       to: email,
       from: process.env.SENDGRID_FROM,
       subject: "Giriş Doğrulama Kodu",
-      text: `Giriş doğrulama kodunuz: ${code}\nBu kod 5 dakika geçerlidir.`,
+      text: `Giriş doğrulama kodunuz: ${code}\nBu kod 5 dakika geçerlidir.`
     });
 
     return res.status(200).json({ ok: true });

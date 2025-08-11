@@ -8,51 +8,51 @@ export default function Giris() {
   const [password, setPassword] = useState("");
   const [otpStep, setOtpStep] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const isTrusted =
     typeof window !== "undefined" && localStorage.getItem("trustedDevice") === "true";
 
-  // İlk adım: Şifre kontrolü
   async function handlePasswordCheck(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
+    setLoading(true);
     setMessage("");
 
     const em = email.trim();
     const pw = password;
 
-    // Güvenilir cihaz: boş değerleri engelle
-    if (isTrusted) {
-      if (!em || !pw) {
-        setMessage("❌ E-posta ve şifre gerekli.");
+    try {
+      if (isTrusted) {
+        if (!em || !pw) {
+          setMessage("❌ E-posta ve şifre gerekli.");
+          return;
+        }
+        return await finalLogin(em, pw);
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email: em, password: pw });
+      if (error) {
+        setMessage("❌ Giriş başarısız: " + error.message);
         return;
       }
-      return finalLogin(em, pw);
-    }
 
-    // Parolayı doğrula (session açılır, sonra hemen kapatacağız)
-    const { data, error } = await supabase.auth.signInWithPassword({ email: em, password: pw });
-    if (error) {
-      setMessage("❌ Giriş başarısız: " + error.message);
-      return;
-    }
+      const confirmed =
+        (data.user as any)?.email_confirmed_at ??
+        (data.user as any)?.confirmed_at ??
+        null;
 
-    // confirmed alanı sürüme göre değişebiliyor
-    const confirmed =
-      (data.user as any)?.email_confirmed_at ??
-      (data.user as any)?.confirmed_at ?? null;
+      if (!confirmed) {
+        setMessage("❗ Lütfen e-posta adresinizi doğrulayın.");
+        await supabase.auth.signOut();
+        return;
+      }
 
-    if (!confirmed) {
-      setMessage("❗ Lütfen e-posta adresinizi doğrulayın.");
+      // Oturumu kapat (OTP doğrulanmadan session açık kalmasın)
       await supabase.auth.signOut();
-      return;
-    }
 
-    // Oturumu hemen kapat (OTP doğrulanmadan açık kalmasın)
-    await supabase.auth.signOut();
-
-    // OTP başlat (POST; 405/404 olursa GET'e düş)
-    try {
+      // OTP başlat
       const base = `${window.location.origin}/api/auth/start-otp`;
       let resp = await fetch(base, {
         method: "POST",
@@ -72,14 +72,17 @@ export default function Giris() {
     } catch (err) {
       console.error("OTP gönderim hatası:", err);
       setMessage("❌ Kod gönderilemedi, lütfen tekrar deneyin.");
+    } finally {
+      setLoading(false);
     }
   }
 
-  // OTP kontrolü (sunucuda doğrulat)
   async function handleOtpCheck(e: React.FormEvent) {
     e.preventDefault();
-    const em = email.trim();
+    if (loading) return;
+    setLoading(true);
 
+    const em = email.trim();
     try {
       if (!otpCode) {
         setMessage("❌ Lütfen doğrulama kodunu girin.");
@@ -104,7 +107,6 @@ export default function Giris() {
         return;
       }
 
-      // Kullanıcıya cihazı güvenilir olarak işaretleme seçeneği
       const trust = confirm(
         "Bu cihazı güvenilir olarak işaretlemek ister misiniz? Bundan sonraki girişlerde kod istenmez."
       );
@@ -117,17 +119,17 @@ export default function Giris() {
     } catch (err) {
       console.error("OTP doğrulama hatası:", err);
       setMessage("❌ Doğrulama sırasında hata oluştu.");
+    } finally {
+      setLoading(false);
     }
   }
 
   async function finalLogin(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
     if (error) {
       setMessage("❌ Giriş başarısız: " + error.message);
       return;
     }
-
     const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
     setTimeout(() => {
       if (role === "satici") router.push("/");
@@ -175,6 +177,8 @@ export default function Giris() {
                 background: "#f8fafc",
                 color: "#222"
               }}
+              autoComplete="email"
+              required
             />
             <input
               type="password"
@@ -191,12 +195,15 @@ export default function Giris() {
                 background: "#f8fafc",
                 color: "#222"
               }}
+              autoComplete="current-password"
+              required
             />
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: "100%",
-                background: "#2563eb",
+                background: loading ? "#93c5fd" : "#2563eb",
                 color: "#fff",
                 padding: 12,
                 border: "none",
@@ -204,10 +211,10 @@ export default function Giris() {
                 fontWeight: 700,
                 fontSize: 16,
                 marginBottom: 12,
-                cursor: "pointer"
+                cursor: loading ? "not-allowed" : "pointer"
               }}
             >
-              Giriş Yap
+              {loading ? "Lütfen bekleyin..." : "Giriş Yap"}
             </button>
           </form>
         ) : (
@@ -228,37 +235,36 @@ export default function Giris() {
                 background: "#f8fafc",
                 color: "#222"
               }}
+              required
             />
             <button
               type="submit"
+              disabled={loading}
               style={{
                 width: "100%",
-                background: "#16a34a",
+                background: loading ? "#86efac" : "#16a34a",
                 color: "#fff",
                 padding: 12,
                 border: "none",
                 borderRadius: 8,
                 fontWeight: 700,
                 fontSize: 16,
-                cursor: "pointer"
+                cursor: loading ? "not-allowed" : "pointer"
               }}
             >
-              Kodu Doğrula
+              {loading ? "Doğrulanıyor..." : "Kodu Doğrula"}
             </button>
           </form>
         )}
 
         {message && (
-          <p style={{
-            color: message.startsWith("✅") ? "#16a34a" : "#000"
-          }}>{message}</p>
+          <p style={{ marginTop: 10, color: message.startsWith("✅") ? "#16a34a" : "#111" }}>
+            {message}
+          </p>
         )}
 
         <div style={{ textAlign: "center", marginTop: 8 }}>
-          <a href="/kayit" style={{
-            color: "#2563eb",
-            textDecoration: "underline"
-          }}>
+          <a href="/kayit" style={{ color: "#2563eb", textDecoration: "underline" }}>
             Hesabın yok mu? Kayıt ol
           </a>
         </div>

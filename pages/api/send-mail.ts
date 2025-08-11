@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import sgMail, { MailDataRequired } from "@sendgrid/mail";
-import type { MailContent } from "@sendgrid/helpers/classes/mail"; // doğru import
 
 const SENDGRID_KEY = process.env.SENDGRID_API_KEY;
 const SENDGRID_FROM = process.env.SENDGRID_FROM || "no-reply@yourdomain.com";
@@ -12,13 +11,13 @@ if (!SENDGRID_KEY) {
 }
 
 type Body = {
-  to: string | string[];           // <- çoklu alıcı desteği
+  to: string | string[];
   subject: string;
   text?: string;
   html?: string;
   cc?: string | string[];
   bcc?: string | string[];
-  replyTo?: string;                // <- opsiyonel reply-to
+  replyTo?: string;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -37,22 +36,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "SendGrid yapılandırması eksik" });
     }
 
-    // 'content' en az 1 elemanlı tuple olmalı; hem html hem text varsa ikisini de ekle
-    const parts: MailContent[] = [];
-    if (html) parts.push({ type: "text/html", value: html });
-    if (text) parts.push({ type: "text/plain", value: text });
-
-    const content = parts as [MailContent, ...MailContent[]];
-
+    // Çoğu sürümle uyumlu basit tip: text/html'i üst alanlardan veriyoruz.
     const msg: MailDataRequired = {
       to,
       from: SENDGRID_FROM,
       subject,
-      content,
+      ...(text ? { text } : {}),
+      ...(html ? { html } : {}),
       ...(cc ? { cc } : {}),
       ...(bcc ? { bcc } : {}),
       ...(replyTo ? { replyTo } : {}),
-    };
+    } as MailDataRequired;
 
     const [response] = await sgMail.send(msg);
     return res.status(200).json({ ok: true, status: response.statusCode });

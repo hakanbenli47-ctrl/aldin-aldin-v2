@@ -14,7 +14,6 @@ function hashCode(email: string, code: string) {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    // CORS / preflight / health-check
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Allow", "POST, GET, OPTIONS, HEAD");
     if (req.method === "OPTIONS" || req.method === "HEAD") {
@@ -23,7 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(204).end();
     }
 
-    // POST + (gerekirse) GET destekle
     const method = req.method;
     if (method !== "POST" && method !== "GET") {
       return res.status(405).send("Method Not Allowed");
@@ -58,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (!data) return res.status(400).send("Geçersiz kod");
     if (data.consumed) return res.status(400).send("Kod zaten kullanılmış");
-    if (new Date(data.expires_at).getTime() < Date.now()) {
+    if (new Date(data.expires_at as any).getTime() < Date.now()) {
       return res.status(400).send("Kodun süresi dolmuş");
     }
 

@@ -19,10 +19,7 @@ export default function AuthCallback() {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
-
-          // İlk girişte cihazı güvenilir olarak kaydet
           localStorage.setItem("trustedDevice", "true");
-
           setMsg("Giriş başarılı, yönlendiriliyorsunuz...");
           router.replace("/index2");
           return;
@@ -34,10 +31,7 @@ export default function AuthCallback() {
             refresh_token: refreshToken,
           });
           if (error) throw error;
-
-          // İlk girişte cihazı güvenilir olarak kaydet
           localStorage.setItem("trustedDevice", "true");
-
           setMsg("Giriş başarılı, yönlendiriliyorsunuz...");
           router.replace("/index2");
           return;
