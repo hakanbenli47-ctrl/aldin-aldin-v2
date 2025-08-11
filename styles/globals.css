@@ -1,143 +1,85 @@
+/* =========================
+   TEMA DEĞİŞKENLERİ
+   (index.layout.tsx bu değişkenleri kullanır)
+   ========================= */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Marka / Aksiyon renkleri */
+  --primary: #2563eb;
+  --primary-400: #3479e3;
+  --accent: #1bbd8a;
+  --success: #16a34a;
+  --success-500: #22c55e;
+  --danger: #e11d48;
+  --warning: #f59e0b;
+
+  /* Metin renkleri */
+  --ink-900: #223555;
+  --ink-800: #1e293b;
+  --ink-500: #64748b;
+  --ink-300: #d1d5db;
+
+  /* Yüzey / Kenarlık */
+  --surface: #f8fafc;
+  --surface-200: #f1f5f9;
+  --border: #e4e9ef;
+  --border-200: #e2e8f0;
+  --border-soft: #e0e7ef;
+  --panel-border: #e3e8f2;
+
+  /* Vurgu / Not / Highlight */
+  --highlight: #fef08a;
+  --highlight-600: #eab308;
+  --highlight-border: #fbe192;
+  --highlight-img-border: #fae27a;
+  --note-bg: #fef9c3;
+  --note-fg: #92400e;
+  --price-discount: #ef4444;
+
+  /* Diğer yardımcılar */
+  --footer-bg: #0b1220;
+  --brand-700: #1648b0;
+  --bg-grad-end: #eafcf6;
+  --sky-500: #0ea5e9;
+  --cyan-400: #22d3ee;
+  --violet-700: #7c3aed;
+  --orange-500: #f97316;
+  --slate-700: #334155;
+  --slate-600: #475569;
+
+  /* Dropdown durumları */
+  --dropdown-hover: #f0f6ff;
+  --dropdown-active: #eef6fd;
+  --dropdown-border: #dde7fa;
 }
 
+/* Karanlık tema override’ları (istersen düzenle) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --surface: #0f172a;
+    --surface-200: #111827;
+    --border: #1f2937;
+    --border-200: #1f2937;
+    --border-soft: #243244;
+    --panel-border: #1f2a3a;
+
+    --ink-900: #e5e7eb;
+    --ink-800: #f3f4f6;
+    --ink-500: #cbd5e1;
+    --ink-300: #94a3b8;
+
+    --footer-bg: #0b1220;
+    --note-bg: #3b2f0d;
+    --note-fg: #facc15;
+
+    /* Aksiyon renklerini istersen aynı bırak */
+    /* --primary, --accent, vs. */
   }
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-}
-
-/* ========================= */
-/* PWA / SAFE-AREA EKLEMELER */
-/* ========================= */
-
-/* Alt çentik için güvenli alan */
-body { padding-bottom: env(safe-area-inset-bottom); }
-
-/* Üst durum çubuğu/çentik alanı için header padding */
-.pwa-header {
-  padding-top: constant(safe-area-inset-top);
-  padding-top: env(safe-area-inset-top);
-  min-height: calc(70px + env(safe-area-inset-top));
-}
-
-/* ============ */
-/* RESPONSIVE   */
-/* ============ */
-
-/* Tablet ve aşağısı: reklamları gizle, layout tek kolona düşsün */
-@media (max-width: 1024px) {
-  .layout-3col {
-    flex-direction: column !important;
-    gap: 12px !important;
-    padding: 0 !important;
-    width: 100% !important;
-  }
-
-  .ads-left,
-  .ads-right {
-    display: none !important;
-  }
-
-  /* Kart gridleri: 2 sütun */
-  .ilanGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 14px !important;
-  }
-
-  /* Arama kutusu genişlesin */
-  header input[type="text"] {
-    width: 100% !important;
-    max-width: none !important;
-  }
-}
-
-/* Telefon: tam genişlik görünüm + 1 sütun grid */
-@media (max-width: 640px) {
-  /* Header iç divini kenardan kenara yap */
-  .header-inner {
-    max-width: none !important;
-    width: 100% !important;
-    padding: 0 12px !important;
-  }
-
-  /* Ana kolon: kenar boşluklarını kaldır, full-bleed */
-  .main-col {
-    max-width: none !important;
-    padding: 0 !important;
-  }
-
-  .main-col > section {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    border-radius: 0 !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
-  }
-
-  /* Grid: 1 sütun */
-  .ilanGrid { grid-template-columns: 1fr !important; }
-}
-/* Force desktop mode on mobile PWA */
-.force-desktop .layout-3col {
-  flex-direction: row !important;
-  gap: 20px !important;
-  padding: 0 6px !important;
-  width: 100% !important;
-}
-
-.force-desktop .ads-left,
-.force-desktop .ads-right {
-  display: flex !important;        /* reklam kolonlarını yeniden göster */
-}
-
-.force-desktop .main-col {
-  max-width: 950px !important;     /* masaüstü ana sütun genişliği */
-  padding: 0 10px !important;
-}
-
-.force-desktop .ilanGrid {
-  grid-template-columns: repeat(3, minmax(235px, 1fr)) !important; /* 3 sütun */
-  gap: 23px !important;
-}
-
-/* İsteğe bağlı: header içeriği masaüstü gibi ortalansın */
-.force-desktop .header-inner {
-  max-width: 1200px !important;
-  margin: 0 auto !important;
-  padding: 0 18px !important;
+/* =========================
+   ANİMASYONLAR
+   ========================= */
+@keyframes dropdownShow {
+  from { transform: translateY(-6px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }

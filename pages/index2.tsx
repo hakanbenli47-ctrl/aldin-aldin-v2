@@ -1,3 +1,5 @@
+// NOTE: Colors now use CSS variables with fallbacks to your current palette.
+// Define these in your global CSS (e.g., :root { --primary: #yourColor; ... }) to match your site theme.
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
@@ -44,9 +46,9 @@ function renderStars(rating: number, max = 5) {
   const empty = max - full - half;
   return (
     <>
-      {Array(full).fill(0).map((_, i) => <span key={"f"+i} style={{ color: "#f59e0b", fontSize: 15 }}>★</span>)}
-      {half ? <span key="h" style={{ color: "#f59e0b", fontSize: 15 }}>☆</span> : null}
-      {Array(empty).fill(0).map((_, i) => <span key={"e"+i} style={{ color: "#d1d5db", fontSize: 15 }}>★</span>)}
+      {Array(full).fill(0).map((_, i) => <span key={"f"+i} style={{ color: "var(--warning, #f59e0b)", fontSize: 15 }}>★</span>)}
+      {half ? <span key="h" style={{ color: "var(--warning, #f59e0b)", fontSize: 15 }}>☆</span> : null}
+      {Array(empty).fill(0).map((_, i) => <span key={"e"+i} style={{ color: "var(--ink-300, #d1d5db)", fontSize: 15 }}>★</span>)}
     </>
   );
 }
@@ -84,7 +86,7 @@ function FirmaBilgiSatiri({
       {/* Yıldız */}
       <span>
   {renderStars(info.puan)}
-  <span style={{ color: "#64748b", fontSize: 13, marginLeft: 5 }}>
+  <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
     ({info.puan.toFixed(1)})
   </span>
 </span>
@@ -94,8 +96,8 @@ function FirmaBilgiSatiri({
         onClick={onYorumClick}
         style={{
           background: "#f3f4f6",
-          border: "1.5px solid #e4e9ef",
-          color: "#223555",
+          border: "1.5px solid var(--border, #e4e9ef)",
+          color: "var(--ink-900, #223555)",
           borderRadius: 8,
           fontSize: 13.5,
           fontWeight: 600,
@@ -139,17 +141,17 @@ const iconMap: Record<string, ReactNode> = {
 
 // ad’a göre renk ataması
 const renkMap: Record<string, string> = {
-  'Tümü': '#1bbd8a',
-  'Elektronik': '#2563eb',
-  'Araçlar':     '#16a34a',
-  'Moda':        '#e11d48',
-  'Ev & Yaşam':  '#f97316',
-  'Kitap & Hobi':'#7c3aed',
+  'Tümü': 'var(--accent, #1bbd8a)',
+  'Elektronik': 'var(--primary, #2563eb)',
+  'Araçlar':     'var(--success, #16a34a)',
+  'Moda':        'var(--danger, #e11d48)',
+  'Ev & Yaşam':  'var(--orange-500, #f97316)',
+  'Kitap & Hobi':'var(--violet-700, #7c3aed)',
   'Spor & Outdoor':'#1d8cf8',
-  'Anne & Bebek':'#22d3ee',
-  'Evcil Hayvan':'#0ea5e9',
-  'Kozmetik':'#f59e0b',
-  'Diğer':'#334155',
+  'Anne & Bebek':'var(--cyan-400, #22d3ee)',
+  'Evcil Hayvan':'var(--sky-500, #0ea5e9)',
+  'Kozmetik':'var(--warning, #f59e0b)',
+  'Diğer':'var(--slate-700, #334155)',
 };
 type Ilan = {
   id: number;
@@ -404,18 +406,18 @@ const findKategoriAd = (id: number | null | undefined): string => {
       <div
         style={{
           minHeight: '100vh',
-          background: 'linear-gradient(120deg, #f8fafc 0%, #eafcf6 100%)',
+          background: 'linear-gradient(120deg, var(--surface, #f8fafc) 0%, var(--bg-grad-end, #eafcf6) 100%)',
         }}
       >
         {/* HEADER */}
       <header className="pwa-header"
   style={{
     background: '#fff',
-    boxShadow: '0 2px 14px #1648b005',
+    boxShadow: '0 2px 14px var(--brand-700, #1648b0)05',
     position: 'sticky',
     top: 0,
     zIndex: 1000,
-    borderBottom: '1.5px solid #e4e9ef',
+    borderBottom: '1.5px solid var(--border, #e4e9ef)',
     padding: 0
   }}
 >
@@ -435,7 +437,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
       style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: "pointer" }}
     >
       <Image src="/logo.png" alt="Aldın Aldın Logo" width={100} height={50} />
-      <span style={{ fontWeight: 900, fontSize: 24, color: '#1648b0', letterSpacing: '.5px' }}>
+      <span style={{ fontWeight: 900, fontSize: 24, color: 'var(--brand-700, #1648b0)', letterSpacing: '.5px' }}>
         
       </span>
            {/* --- KATEGORİ DROPDOWN --- */}
@@ -444,15 +446,15 @@ const findKategoriAd = (id: number | null | undefined): string => {
     onClick={() => setDropdownOpen(o => !o)}
     style={{
       background: dropdownOpen
-        ? 'linear-gradient(93deg,#223555 60%,#3479e3 100%)'
-        : 'linear-gradient(90deg,#f8fafc 0%,#e9effc 100%)',
+        ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
+        : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,#e9effc 100%)',
       color: dropdownOpen ? '#fff' : '#ec751bff',
-      border: '1.5px solid #dde7fa',
+      border: '1.5px solid var(--dropdown-border, #dde7fa)',
       fontWeight: 700,
       fontSize: 15,
       padding: '8px 22px 8px 15px',
       borderRadius: 12,
-      boxShadow: dropdownOpen ? '0 6px 18px #3479e327' : '0 2px 8px #22355511',
+      boxShadow: dropdownOpen ? '0 6px 18px var(--primary-400, #3479e3)27' : '0 2px 8px var(--ink-900, #223555)11',
       display: 'flex',
       alignItems: 'center',
       gap: 11,
@@ -462,10 +464,10 @@ const findKategoriAd = (id: number | null | undefined): string => {
       transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
       position: 'relative'
     }}
-    onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(93deg,#223555 60%,#3479e3 100%)')}
+    onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)')}
     onMouseLeave={e => (e.currentTarget.style.background = dropdownOpen
-      ? 'linear-gradient(93deg,#223555 60%,#3479e3 100%)'
-      : 'linear-gradient(90deg,#f8fafc 0%,#e9effc 100%)')}
+      ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
+      : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,#e9effc 100%)')}
   >
     <FiTag size={20} style={{ marginRight: 5 }} />
     <span style={{
@@ -483,7 +485,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
         marginLeft: 4,
         transition: 'transform 0.19s',
         transform: dropdownOpen ? 'rotate(-180deg)' : 'none',
-        color: dropdownOpen ? "#fff" : "#223555"
+        color: dropdownOpen ? "#fff" : "var(--ink-900, #223555)"
       }}
     />
   </button>
@@ -497,12 +499,12 @@ const findKategoriAd = (id: number | null | undefined): string => {
         marginTop: 6,
         padding: '9px 0',
         background: '#fff',
-        boxShadow: '0 10px 32px 0 #3479e311,0 2px 8px #22355518',
+        boxShadow: '0 10px 32px 0 var(--primary-400, #3479e3)11,0 2px 8px var(--ink-900, #223555)18',
         borderRadius: 11,
         listStyle: 'none',
         minWidth: 210,
         zIndex: 2000,
-        border: '1.5px solid #e3e8f2',
+        border: '1.5px solid var(--panel-border, #e3e8f2)',
         animation: 'dropdownShow .18s cubic-bezier(.6,.2,.17,1.08)'
       }}
       onMouseLeave={() => setDropdownOpen(false)}
@@ -514,12 +516,12 @@ const findKategoriAd = (id: number | null | undefined): string => {
             background: 'none',
             border: 'none',
             padding: '10px 19px',
-            color: aktifKategori.ad === 'Tümü' ? '#2563eb' : '#223555',
+            color: aktifKategori.ad === 'Tümü' ? 'var(--primary, #2563eb)' : 'var(--ink-900, #223555)',
             fontWeight: 700,
             textAlign: 'left',
             cursor: 'pointer',
             fontSize: 15.5,
-            backgroundColor: aktifKategori.ad === 'Tümü' ? '#eef6fd' : 'transparent',
+            backgroundColor: aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active, #eef6fd)' : 'transparent',
             display: 'flex',
             alignItems: 'center',
             gap: 10,
@@ -530,8 +532,8 @@ const findKategoriAd = (id: number | null | undefined): string => {
             setAktifKategori({ ad: 'Tümü', id: undefined });
             setDropdownOpen(false);
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#f0f6ff')}
-          onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? '#eef6fd' : 'transparent')}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover, #f0f6ff)')}
+          onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active, #eef6fd)' : 'transparent')}
         >
           {iconMap['Tümü'] || <FiMoreHorizontal size={20} />} Tümü
         </button>
@@ -544,12 +546,12 @@ const findKategoriAd = (id: number | null | undefined): string => {
               background: 'none',
               border: 'none',
               padding: '10px 19px',
-              color: aktifKategori.id === kat.id ? '#2563eb' : '#223555',
+              color: aktifKategori.id === kat.id ? 'var(--primary, #2563eb)' : 'var(--ink-900, #223555)',
               fontWeight: 700,
               textAlign: 'left',
               cursor: 'pointer',
               fontSize: 15.5,
-              backgroundColor: aktifKategori.id === kat.id ? '#eef6fd' : 'transparent',
+              backgroundColor: aktifKategori.id === kat.id ? 'var(--dropdown-active, #eef6fd)' : 'transparent',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
@@ -560,8 +562,8 @@ const findKategoriAd = (id: number | null | undefined): string => {
               setAktifKategori({ ad: kat.ad, id: kat.id });
               setDropdownOpen(false);
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#f0f6ff')}
-            onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? '#eef6fd' : 'transparent')}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover, #f0f6ff)')}
+            onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? 'var(--dropdown-active, #eef6fd)' : 'transparent')}
           >
             {iconMap[kat.ad] || <FiMoreHorizontal size={20} />} {kat.ad}
           </button>
@@ -579,15 +581,15 @@ const findKategoriAd = (id: number | null | undefined): string => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{
-          border: '1.5px solid #e2e8f0',
+          border: '1.5px solid var(--border-200, #e2e8f0)',
           borderRadius: 11,
           padding: '10px 21px',
           fontSize: 16,
-          background: '#f8fafc',
+          background: 'var(--surface, #f8fafc)',
           outline: 'none',
-          color: '#223555',
+          color: 'var(--ink-900, #223555)',
           width: 340,
-          boxShadow: '0 1px 10px #1bbd8a07',
+          boxShadow: '0 1px 10px var(--accent, #1bbd8a)07',
           marginRight: 18,
         }}
       />
@@ -599,15 +601,15 @@ const findKategoriAd = (id: number | null | undefined): string => {
           position: "relative",
           cursor: "pointer",
           padding: 8,
-          background: "#f8fafc",
+          background: "var(--surface, #f8fafc)",
           borderRadius: 9,
-          boxShadow: "0 1px 7px #1bbd8a09",
+          boxShadow: "0 1px 7px var(--accent, #1bbd8a)09",
           display: "flex",
           alignItems: "center"
         }}
         title="Sepetim"
       >
-        <FiShoppingCart size={28} color="#1bbd8a" />
+        <FiShoppingCart size={28} color="var(--accent, #1bbd8a)" />
         {cartItems.length > 0 && (
           <span style={{
             position: "absolute",
@@ -616,12 +618,12 @@ const findKategoriAd = (id: number | null | undefined): string => {
             fontSize: 13,
             fontWeight: 800,
             color: "#fff",
-            background: "#22c55e",
+            background: "var(--success-500, #22c55e)",
             borderRadius: 16,
             padding: "2px 7px",
             minWidth: 20,
             textAlign: "center",
-            boxShadow: "0 1px 8px #16a34a22"
+            boxShadow: "0 1px 8px var(--success, #16a34a)22"
           }}>
             {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
           </span>
@@ -632,7 +634,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           <button
             onClick={() => window.location.href = '/rol-secim'}
             style={{
-              background: '#2563eb',
+              background: 'var(--primary, #2563eb)',
               color: '#fff',
               padding: '9px 20px',
               borderRadius: 11,
@@ -640,7 +642,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               fontWeight: 600,
               fontSize: 15,
               cursor: 'pointer',
-              boxShadow: '0 2px 10px #2563eb18'
+              boxShadow: '0 2px 10px var(--primary, #2563eb)18'
             }}
           >
             Giriş Yap
@@ -648,7 +650,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           <button
             onClick={() => window.location.href = '/kayit'}
             style={{
-              background: '#1bbd8a',
+              background: 'var(--accent, #1bbd8a)',
               color: '#fff',
               padding: '9px 20px',
               borderRadius: 11,
@@ -656,7 +658,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               fontWeight: 600,
               fontSize: 15,
               cursor: 'pointer',
-              boxShadow: '0 2px 10px #1bbd8a18'
+              boxShadow: '0 2px 10px var(--accent, #1bbd8a)18'
             }}
           >
             Kaydol
@@ -668,8 +670,8 @@ const findKategoriAd = (id: number | null | undefined): string => {
             onClick={() => window.location.href = '/profil2'}
             style={{
               background: '#f3f4f6',
-              color: '#2563eb',
-              border: '1px solid #2563eb22',
+              color: 'var(--primary, #2563eb)',
+              border: '1px solid var(--primary, #2563eb)22',
               padding: '9px 20px',
               borderRadius: 11,
               fontWeight: 600,
@@ -678,7 +680,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              boxShadow: '0 1px 7px #2563eb0a'
+              boxShadow: '0 1px 7px var(--primary, #2563eb)0a'
             }}
           >
             👤 Profilim
@@ -686,7 +688,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           <button
             onClick={handleLogout}
             style={{
-              background: '#e11d48',
+              background: 'var(--danger, #e11d48)',
               color: '#fff',
               padding: '9px 22px',
               borderRadius: 11,
@@ -694,7 +696,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               fontWeight: 600,
               fontSize: 15,
               cursor: 'pointer',
-              boxShadow: '0 2px 10px #e11d4811'
+              boxShadow: '0 2px 10px var(--danger, #e11d48)11'
             }}
           >
             Çıkış Yap
@@ -724,10 +726,10 @@ const findKategoriAd = (id: number | null | undefined): string => {
               minWidth: 100,
               maxWidth: 170,
               height: 280,
-              background: '#f8fafc',
+              background: 'var(--surface, #f8fafc)',
               padding: 13,
               borderRadius: 14,
-              boxShadow: '0 4px 12px #2563eb09',
+              boxShadow: '0 4px 12px var(--primary, #2563eb)09',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -741,7 +743,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               style={{
                 marginBottom: 8,
                 fontSize: 13,
-                color: '#475569',
+                color: 'var(--slate-600, #475569)',
                 fontWeight: 600,
                 textAlign: 'center'
               }}
@@ -756,7 +758,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                 height: '100%',
                 borderRadius: 10,
                 objectFit: 'cover',
-                boxShadow: '0 2px 9px #1648b018'
+                boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
               }}
             />
           </aside>
@@ -775,15 +777,15 @@ const findKategoriAd = (id: number | null | undefined): string => {
                 padding: '30px 24px',
                 borderRadius: 18,
                 marginBottom: 42,
-                boxShadow: '0 4px 22px #f59e0b09',
-                border: '1.5px solid #e2e8f0'
+                boxShadow: '0 4px 22px var(--warning, #f59e0b)09',
+                border: '1.5px solid var(--border-200, #e2e8f0)'
               }}
             >
               <h2
                 style={{
                   fontSize: 23,
                   fontWeight: 800,
-                  color: '#b45309',
+                  color: 'var(--amber-700, #b45309)',
                   marginBottom: 20,
                   letterSpacing: ".2px"
                 }}
@@ -793,11 +795,11 @@ const findKategoriAd = (id: number | null | undefined): string => {
               {dopedIlanlar.length === 0 ? (
                 <div
                   style={{
-                    background: '#fef9c3',
+                    background: 'var(--note-bg, #fef9c3)',
                     padding: 40,
                     textAlign: 'center',
                     borderRadius: 13,
-                    color: '#92400e',
+                    color: 'var(--note-fg, #92400e)',
                     fontWeight: 500,
                     fontSize: 16
                   }}
@@ -817,13 +819,13 @@ const findKategoriAd = (id: number | null | undefined): string => {
                     <div
                       key={product.id}
                       style={{
-                        background: '#fef08a',
+                        background: 'var(--highlight, #fef08a)',
                         borderRadius: 15,
                         padding: 15,
-                        boxShadow: '0 4px 17px #eab30817',
+                        boxShadow: '0 4px 17px var(--highlight-600, #eab308)17',
                         transition: 'transform 0.15s, box-shadow 0.18s',
                         cursor: 'pointer',
-                        border: "1.5px solid #fbe192"
+                        border: "1.5px solid var(--highlight-border, #fbe192)"
                       }}
                       onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
                       onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
@@ -842,14 +844,14 @@ const findKategoriAd = (id: number | null | undefined): string => {
                           objectFit: 'cover',
                           borderRadius: 10,
                           marginBottom: 12,
-                          border: "1.5px solid #fae27a"
+                          border: "1.5px solid var(--highlight-img-border, #fae27a)"
                         }}
                       />
                       <h3
                         style={{
                           fontSize: 18,
                           fontWeight: 700,
-                          color: '#78350f',
+                          color: 'var(--amber-900, #78350f)',
                           marginBottom: 6
                         }}
                       >
@@ -862,7 +864,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
 />{product.ortalamaPuan !== undefined && (
   <span style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
     {renderStars(product.ortalamaPuan ?? 0)}
-    <span style={{ color: "#64748b", fontSize: 13, marginLeft: 5 }}>
+    <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
       ({(product.ortalamaPuan ?? 0).toFixed(1)})
     </span>
   </span>
@@ -873,7 +875,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
   style={{
     fontSize: 16,
     fontWeight: 600,
-    color: product.indirimli_fiyat ? "#ef4444" : "#16a34a",
+    color: product.indirimli_fiyat ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
     marginBottom: 4
   }}
 >
@@ -881,13 +883,13 @@ const findKategoriAd = (id: number | null | undefined): string => {
     <>
       <span style={{
         textDecoration: "line-through",
-        color: "#d1d5db",
+        color: "var(--ink-300, #d1d5db)",
         fontWeight: 500,
         marginRight: 7
       }}>
         {product.price} ₺
       </span>
-      <span style={{ color: "#ef4444", fontWeight: 700 }}>
+      <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
         {product.indirimli_fiyat} ₺
       </span>
     </>
@@ -927,10 +929,10 @@ const findKategoriAd = (id: number | null | undefined): string => {
           style={{
             minWidth: 200,
             maxWidth: 220,
-            background: "#f1f5f9",
+            background: "var(--surface-200, #f1f5f9)",
             borderRadius: 13,
             boxShadow: "0 2px 13px #1d8cf80b",
-            border: "1.5px solid #e4e9ef",
+            border: "1.5px solid var(--border, #e4e9ef)",
             marginRight: 5,
             cursor: "pointer",
             padding: "13px 9px",
@@ -945,18 +947,18 @@ const findKategoriAd = (id: number | null | undefined): string => {
               height: 92,
               objectFit: "cover",
               borderRadius: 8,
-              border: "1px solid #e0e7ef"
+              border: "1px solid var(--border-soft, #e0e7ef)"
             }} />
           <div style={{
             fontWeight: 700, fontSize: 15,
-            color: "#223555", marginTop: 5
+            color: "var(--ink-900, #223555)", marginTop: 5
           }}>{product.title}</div>
           {/* Ortalama yıldız */}
           <div style={{
-            color: "#f59e0b", fontWeight: 600, fontSize: 18
+            color: "var(--warning, #f59e0b)", fontWeight: 600, fontSize: 18
           }}>
             {renderStars(product.ortalamaPuan ?? 0)}
-            <span style={{ fontWeight: 500, fontSize: 14, color: "#64748b", marginLeft: 5 }}>
+            <span style={{ fontWeight: 500, fontSize: 14, color: "var(--ink-500, #64748b)", marginLeft: 5 }}>
               ({(product.ortalamaPuan ?? 0).toFixed(1)})
             </span>
           </div>
@@ -964,20 +966,20 @@ const findKategoriAd = (id: number | null | undefined): string => {
           <div style={{
             fontSize: 16,
             fontWeight: 600,
-            color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "#ef4444" : "#16a34a",
+            color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
             marginBottom: 4
           }}>
             {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
               <>
                 <span style={{
                   textDecoration: "line-through",
-                  color: "#d1d5db",
+                  color: "var(--ink-300, #d1d5db)",
                   fontWeight: 500,
                   marginRight: 7
                 }}>
                   {product.price} ₺
                 </span>
-                <span style={{ color: "#ef4444", fontWeight: 700 }}>
+                <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
                   {product.indirimli_fiyat} ₺
                 </span>
               </>
@@ -996,7 +998,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               <h2 style={{
                 fontSize: 24,
                 fontWeight: 900,
-                color: '#e11d48',
+                color: 'var(--danger, #e11d48)',
                 marginBottom: 8,
                 letterSpacing: ".2px",
                 display: "flex",
@@ -1007,7 +1009,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                 <span style={{fontSize: 28, marginTop: -4}}>🔥</span>
                 Ayın İndirimleri Başladı!
                 <span style={{
-                  background: "#22c55e",
+                  background: "var(--success-500, #22c55e)",
                   color: "#fff",
                   borderRadius: 7,
                   fontSize: 14,
@@ -1036,7 +1038,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                       background: "#fff6",
                       borderRadius: 13,
                       boxShadow: "0 2px 13px #f871710b",
-                      border: "1.5px solid #e4e9ef",
+                      border: "1.5px solid var(--border, #e4e9ef)",
                       marginRight: 5,
                       cursor: "pointer",
                       padding: "13px 9px",
@@ -1048,15 +1050,15 @@ const findKategoriAd = (id: number | null | undefined): string => {
                     {p.indirimli_fiyat &&
                       <span style={{
                         position: "absolute", top: 11, left: 11,
-                        background: "#ef4444", color: "#fff",
-                        fontWeight: 800, fontSize: 12, borderRadius: 7, padding: "2px 10px", boxShadow: "0 1px 5px #ef444415"
+                        background: "var(--price-discount, #ef4444)", color: "#fff",
+                        fontWeight: 800, fontSize: 12, borderRadius: 7, padding: "2px 10px", boxShadow: "0 1px 5px var(--price-discount, #ef4444)15"
                       }}>İNDİRİMDE</span>}
 
                     {/* ÇOK SATAN ROZETİ */}
                     {idx < 3 &&
                       <span style={{
                         position: "absolute", top: 11, right: 11,
-                        background: "#f59e0b", color: "#fff", fontWeight: 800,
+                        background: "var(--warning, #f59e0b)", color: "#fff", fontWeight: 800,
                         fontSize: 12, borderRadius: 7, padding: "2px 10px"
                       }}>Çok Satan</span>}
 
@@ -1067,28 +1069,28 @@ const findKategoriAd = (id: number | null | undefined): string => {
                         height: 92,
                         objectFit: "cover",
                         borderRadius: 8,
-                        border: "1px solid #fde68a"
+                        border: "1px solid var(--yellow-300, #fde68a)"
                       }} />
                     <div style={{
                       fontWeight: 700, fontSize: 15,
-                      color: "#e11d48", marginTop: 5
+                      color: "var(--danger, #e11d48)", marginTop: 5
                     }}>{p.title}</div>
                     <div style={{
-                      fontWeight: 700, fontSize: 15, color: "#22c55e"
+                      fontWeight: 700, fontSize: 15, color: "var(--success-500, #22c55e)"
                     }}>
                       {p.indirimli_fiyat ?
                         <>
-                          <span style={{ textDecoration: "line-through", color: "#d1d5db", fontWeight: 600, marginRight: 4 }}>
+                          <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 600, marginRight: 4 }}>
                             {p.price}₺
                           </span>
-                          <span style={{ color: "#ef4444" }}>{p.indirimli_fiyat}₺</span>
+                          <span style={{ color: "var(--price-discount, #ef4444)" }}>{p.indirimli_fiyat}₺</span>
                         </>
                         : `${p.price}₺`}
                     </div>
                     {/* Stok azaldı badge örneği */}
                     {p.stok && p.stok < 5 &&
                       <div style={{
-                        color: "#e11d48", fontWeight: 700, fontSize: 13, marginTop: 2
+                        color: "var(--danger, #e11d48)", fontWeight: 700, fontSize: 13, marginTop: 2
                       }}>
                         Son {p.stok} ürün!
                       </div>
@@ -1105,7 +1107,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                 style={{
                   fontSize: 23,
                   fontWeight: 800,
-                  color: '#223555',
+                  color: 'var(--ink-900, #223555)',
                   marginBottom: 20
                 }}
               >
@@ -1116,11 +1118,11 @@ const findKategoriAd = (id: number | null | undefined): string => {
               {normalIlanlar.length === 0 ? (
                 <div
                   style={{
-                    background: '#f8fafc',
+                    background: 'var(--surface, #f8fafc)',
                     padding: 40,
                     textAlign: 'center',
                     borderRadius: 13,
-                    color: '#64748b',
+                    color: 'var(--ink-500, #64748b)',
                     fontWeight: 500,
                     fontSize: 16
                   }}
@@ -1149,11 +1151,11 @@ const findKategoriAd = (id: number | null | undefined): string => {
                           background: '#fff',
                           borderRadius: 15,
                           padding: 15,
-                          boxShadow: '0 3px 16px #16a34a14',
+                          boxShadow: '0 3px 16px var(--success, #16a34a)14',
                           transition: 'transform 0.16s',
                           cursor: 'pointer',
                           position: 'relative',
-                          border: "1.5px solid #e4e9ef"
+                          border: "1.5px solid var(--border, #e4e9ef)"
                         }}
                         onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
                         onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
@@ -1164,13 +1166,13 @@ const findKategoriAd = (id: number | null | undefined): string => {
                             style={{
                               position: 'absolute',
                               top: 13, left: 13,
-                              background: '#16a34a',
+                              background: 'var(--success, #16a34a)',
                               color: '#fff',
                               fontWeight: 800,
                               fontSize: 13,
                               borderRadius: 8,
                               padding: '4px 13px',
-                              boxShadow: '0 2px 8px #16a34a15',
+                              boxShadow: '0 2px 8px var(--success, #16a34a)15',
                               zIndex: 1
                             }}
                           >
@@ -1184,7 +1186,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                             position: 'absolute',
                             top: 12, right: 14,
                             fontSize: 22,
-                            color: favoriler.includes(product.id) ? "#fb8500" : "#bbb",
+                            color: favoriler.includes(product.id) ? "var(--attention, #fb8500)" : "#bbb",
                             cursor: 'pointer',
                             userSelect: 'none',
                             zIndex: 2,
@@ -1207,14 +1209,14 @@ const findKategoriAd = (id: number | null | undefined): string => {
                             borderRadius: 10,
                             marginBottom: 12,
                             background: '#f0fdf4',
-                            border: "1px solid #e4e9ef"
+                            border: "1px solid var(--border, #e4e9ef)"
                           }}
                         />
                         <h3
                           style={{
                             fontSize: 17,
                             fontWeight: 700,
-                            color: '#1e293b',
+                            color: 'var(--ink-800, #1e293b)',
                             marginBottom: 6
                           }}
                         >
@@ -1229,7 +1231,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
   style={{
     fontSize: 16,
     fontWeight: 600,
-    color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "#ef4444" : "#16a34a",
+    color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
     marginBottom: 4
   }}
 >
@@ -1237,13 +1239,13 @@ const findKategoriAd = (id: number | null | undefined): string => {
     <>
       <span style={{
         textDecoration: "line-through",
-        color: "#d1d5db",
+        color: "var(--ink-300, #d1d5db)",
         fontWeight: 500,
         marginRight: 7
       }}>
         {product.price} ₺
       </span>
-      <span style={{ color: "#ef4444", fontWeight: 700 }}>
+      <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
         {product.indirimli_fiyat} ₺
       </span>
     </>
@@ -1255,7 +1257,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                         <span
                           style={{
                             fontSize: 14,
-                            color: '#64748b'
+                            color: 'var(--ink-500, #64748b)'
                           }}
                         >
                           {findKategoriAd(product.kategori_id)}
@@ -1264,7 +1266,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                           <button
                             style={{
                               marginTop: 13,
-                              background: 'linear-gradient(90deg, #1bbd8a 0%, #16a34a 90%)',
+                              background: 'linear-gradient(90deg, var(--accent, #1bbd8a) 0%, var(--success, #16a34a) 90%)',
                               color: '#fff',
                               padding: '10px 0',
                               borderRadius: 10,
@@ -1273,7 +1275,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                               fontSize: 15,
                               cursor: 'pointer',
                               width: '100%',
-                              boxShadow: '0 2px 8px #fb850022',
+                              boxShadow: '0 2px 8px var(--attention, #fb8500)22',
                               letterSpacing: 0.5,
                               transition: 'background 0.18s'
                             }}
@@ -1288,7 +1290,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                           <button
                             style={{
                               marginTop: 13,
-                              background: 'linear-gradient(90deg, #fb8500 0%, #ffbc38 80%)',
+                              background: 'linear-gradient(90deg, var(--attention, #fb8500) 0%, var(--attention-300, #ffbc38) 80%)',
                               color: '#fff',
                               padding: '10px 0',
                               borderRadius: 10,
@@ -1297,7 +1299,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                               fontSize: 15,
                               cursor: 'pointer',
                               width: '100%',
-                              boxShadow: '0 2px 8px #fb850022',
+                              boxShadow: '0 2px 8px var(--attention, #fb8500)22',
                               letterSpacing: 0.5,
                               transition: 'background 0.18s'
                             }}
@@ -1323,10 +1325,10 @@ const findKategoriAd = (id: number | null | undefined): string => {
               minWidth: 100,
               maxWidth: 170,
               height: 280,
-              background: '#f8fafc',
+              background: 'var(--surface, #f8fafc)',
               padding: 13,
               borderRadius: 14,
-              boxShadow: '0 4px 12px #2563eb09',
+              boxShadow: '0 4px 12px var(--primary, #2563eb)09',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -1340,7 +1342,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               style={{
                 marginBottom: 8,
                 fontSize: 13,
-                color: '#475569',
+                color: 'var(--slate-600, #475569)',
                 fontWeight: 600,
                 textAlign: 'center'
               }}
@@ -1355,7 +1357,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                 height: '100%',
                 borderRadius: 10,
                 objectFit: 'cover',
-                boxShadow: '0 2px 9px #1648b018'
+                boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
               }}
             />
           </aside>
