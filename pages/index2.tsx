@@ -420,7 +420,8 @@ const findKategoriAd = (id: number | null | undefined): string => {
   }}
 >
   <div
-    style={{
+  className="header-inner"
+  style={{
       maxWidth: 1200,
       margin: '0 auto',
       padding: '0 18px',
@@ -761,7 +762,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           </aside>
 
           {/* ANA İÇERİK */}
-          <main style={{
+          <main className="main-col" style={{
             maxWidth: 950,
             width: "100%",
             padding: '0 10px',
@@ -1359,40 +1360,67 @@ const findKategoriAd = (id: number | null | undefined): string => {
             />
           </aside>
         </div>
-        {/* Responsive düzen için */}
- <style jsx global>{`
-  body { padding-bottom: env(safe-area-inset-bottom); }
 
-  /* Tablet ve aşağısı: reklamları gizle, tek kolona düş */
+        {/* Responsive düzen için */}
+
+<style jsx global>{`
+  /* PWA / çentik güvenli alanları */
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  .pwa-header{
+    padding-top: constant(safe-area-inset-top);
+    padding-top: env(safe-area-inset-top);
+    min-height: calc(70px + env(safe-area-inset-top));
+  }
+
+  /* Tablet ve aşağısı: reklamları gizle, layout tek kolona düşsün */
   @media (max-width: 1024px) {
     .layout-3col {
       flex-direction: column !important;
       gap: 12px !important;
-      padding: 0 10px !important;
-    }
-    .ads-left, .ads-right {
-      display: none !important;
-    }
-    header input[type="text"] {
+      padding: 0 !important;
       width: 100% !important;
-      max-width: none !important;
     }
+    .ads-left, .ads-right { display: none !important; }
+
     /* Kart gridleri: 2 sütun */
     .ilanGrid {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
       gap: 14px !important;
     }
-  }
 
-  /* Telefon: kartlar 1 sütun */
-  @media (max-width: 640px) {
-    .ilanGrid {
-      grid-template-columns: 1fr !important;
+    /* Arama kutusu genişlesin */
+    header input[type="text"] {
+      width: 100% !important;
+      max-width: none !important;
     }
   }
+
+  /* Telefon: tam genişlik görünüm + 1 sütun grid */
+  @media (max-width: 640px) {
+    /* Header iç divini kenardan kenara yap */
+    .header-inner{
+      max-width: none !important;
+      width: 100% !important;
+      padding: 0 12px !important;
+    }
+
+    /* Ana kolon: kenar boşluklarını kaldır, full-bleed */
+    .main-col{
+      max-width: none !important;
+      padding: 0 !important;
+    }
+    .main-col > section{
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      border-radius: 0 !important;
+      padding-left: 16px !important;
+      padding-right: 16px !important;
+    }
+
+    /* Grid: 1 sütun */
+    .ilanGrid { grid-template-columns: 1fr !important; }
+  }
 `}</style>
-
-
       </div>
     </>
   );
