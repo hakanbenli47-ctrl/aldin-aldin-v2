@@ -421,180 +421,160 @@ const findKategoriAd = (id: number | null | undefined): string => {
     padding: 0
   }}
 >
+  
   <div
   className="header-inner"
   style={{
       maxWidth: 1200,
       margin: '0 auto',
-      padding: '0 18px',
-      display: 'flex',
-      justifyContent: 'space-between',
+      padding: '0 12px',
+      display: 'grid',
+      gridTemplateColumns: 'auto 1fr auto',
       alignItems: 'center',
       minHeight: 70,
+      gap: 10,
     }}
   >
-    <div
-      style={{ display: 'flex', alignItems: 'center', gap: 13, cursor: "pointer" }}
-    >
+    {/* LEFT: Logo */}
+    <div className="header-left" style={{ display:'flex', alignItems:'center', gap:10 }}>
       <Image src="/logo.png" alt="Aldın Aldın Logo" width={100} height={50} />
-      <span style={{ fontWeight: 900, fontSize: 24, color: 'var(--brand-700, #1648b0)', letterSpacing: '.5px' }}>
-        
-      </span>
-           {/* --- KATEGORİ DROPDOWN --- */}
-<div style={{ position: 'relative', marginLeft: 18 }}>
-  <button
-    onClick={() => setDropdownOpen(o => !o)}
-    style={{
-      background: dropdownOpen
-        ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
-        : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,#e9effc 100%)',
-      color: dropdownOpen ? '#fff' : '#ec751bff',
-      border: '1.5px solid var(--dropdown-border, #dde7fa)',
-      fontWeight: 700,
-      fontSize: 15,
-      padding: '8px 22px 8px 15px',
-      borderRadius: 12,
-      boxShadow: dropdownOpen ? '0 6px 18px var(--primary-400, #3479e3)27' : '0 2px 8px var(--ink-900, #223555)11',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 11,
-      cursor: 'pointer',
-      letterSpacing: '.5px',
-      outline: 'none',
-      transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
-      position: 'relative'
-    }}
-    onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)')}
-    onMouseLeave={e => (e.currentTarget.style.background = dropdownOpen
-      ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
-      : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,#e9effc 100%)')}
-  >
-    <FiTag size={20} style={{ marginRight: 5 }} />
-    <span style={{
-      textTransform: 'uppercase',
-      fontSize: 15.2,
-      fontWeight: 800,
-      letterSpacing: '.8px',
-      fontFamily: 'Inter, sans-serif'
-    }}>
-      KATEGORİLER
-    </span>
-    <FiChevronDown
-      size={18}
-      style={{
-        marginLeft: 4,
-        transition: 'transform 0.19s',
-        transform: dropdownOpen ? 'rotate(-180deg)' : 'none',
-        color: dropdownOpen ? "#fff" : "var(--ink-900, #223555)"
-      }}
-    />
-  </button>
+    </div>
 
-  {dropdownOpen && (
-    <ul
-      style={{
-        position: 'absolute',
-        top: '110%',
-        left: 0,
-        marginTop: 6,
-        padding: '9px 0',
-        background: '#fff',
-        boxShadow: '0 10px 32px 0 var(--primary-400, #3479e3)11,0 2px 8px var(--ink-900, #223555)18',
-        borderRadius: 11,
-        listStyle: 'none',
-        minWidth: 210,
-        zIndex: 2000,
-        border: '1.5px solid var(--panel-border, #e3e8f2)',
-        animation: 'dropdownShow .18s cubic-bezier(.6,.2,.17,1.08)'
-      }}
-      onMouseLeave={() => setDropdownOpen(false)}
-    >
-      <li>
+    {/* MIDDLE: Categories + Search (fills space on mobile) */}
+    <div className="header-middle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%' }}>
+      {/* Categories button */}
+      <div style={{ position: 'relative' }}>
         <button
+          onClick={() => setDropdownOpen(o => !o)}
           style={{
-            width: "100%",
-            background: 'none',
-            border: 'none',
-            padding: '10px 19px',
-            color: aktifKategori.ad === 'Tümü' ? 'var(--primary, #2563eb)' : 'var(--ink-900, #223555)',
+            background: dropdownOpen
+              ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
+              : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,var(--dropdown-active, #eef6fd) 100%)',
+            color: dropdownOpen ? '#fff' : 'var(--primary,#2563eb)',
+            border: '1.5px solid var(--dropdown-border, #dde7fa)',
             fontWeight: 700,
-            textAlign: 'left',
-            cursor: 'pointer',
-            fontSize: 15.5,
-            backgroundColor: aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active, #eef6fd)' : 'transparent',
+            fontSize: 14,
+            padding: '8px 12px',
+            borderRadius: 10,
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
-            borderRadius: 7,
-            transition: 'background .14s'
+            gap: 8,
+            cursor: 'pointer',
+            outline: 'none',
+            transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
+            position: 'relative'
           }}
-          onClick={() => {
-            setAktifKategori({ ad: 'Tümü', id: undefined });
-            setDropdownOpen(false);
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover, #f0f6ff)')}
-          onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active, #eef6fd)' : 'transparent')}
         >
-          {iconMap['Tümü'] || <FiMoreHorizontal size={20} />} Tümü
+          <FiTag size={18} />
+          <span style={{ fontWeight:800, letterSpacing:'.4px' }}>Kategoriler</span>
+          <FiChevronDown size={16} style={{ transform: dropdownOpen ? 'rotate(-180deg)' : 'none' }} />
         </button>
-      </li>
-      {dbKategoriler.map((kat) => (
-        <li key={kat.id}>
-          <button
-            style={{
-              width: "100%",
-              background: 'none',
-              border: 'none',
-              padding: '10px 19px',
-              color: aktifKategori.id === kat.id ? 'var(--primary, #2563eb)' : 'var(--ink-900, #223555)',
-              fontWeight: 700,
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontSize: 15.5,
-              backgroundColor: aktifKategori.id === kat.id ? 'var(--dropdown-active, #eef6fd)' : 'transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              borderRadius: 7,
-              transition: 'background .14s'
-            }}
-            onClick={() => {
-              setAktifKategori({ ad: kat.ad, id: kat.id });
-              setDropdownOpen(false);
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover, #f0f6ff)')}
-            onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? 'var(--dropdown-active, #eef6fd)' : 'transparent')}
-          >
-            {iconMap[kat.ad] || <FiMoreHorizontal size={20} />} {kat.ad}
-          </button>
-        </li>
-      ))}
-    </ul>
-  )}
-</div>
 
-    </div>
-    <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+        {dropdownOpen && (
+          <ul
+            style={{
+              position: 'absolute',
+              top: '110%',
+              left: 0,
+              marginTop: 6,
+              padding: '9px 0',
+              background: '#fff',
+              boxShadow: '0 10px 32px 0 #3479e311,0 2px 8px #22355518',
+              borderRadius: 11,
+              listStyle: 'none',
+              minWidth: 210,
+              zIndex: 2000,
+              border: '1.5px solid var(--panel-border, #e3e8f2)',
+              animation: 'dropdownShow .18s cubic-bezier(.6,.2,.17,1.08)'
+            }}
+            onMouseLeave={() => setDropdownOpen(false)}
+          >
+            <li>
+              <button
+                style={{
+                  width: "100%",
+                  background: 'none',
+                  border: 'none',
+                  padding: '10px 19px',
+                  color: aktifKategori.ad === 'Tümü' ? 'var(--primary)' : 'var(--ink-900)',
+                  fontWeight: 700,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  fontSize: 15.5,
+                  backgroundColor: aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active)' : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  borderRadius: 7,
+                  transition: 'background .14s'
+                }}
+                onClick={() => {
+                  setAktifKategori({ ad: 'Tümü', id: undefined });
+                  setDropdownOpen(false);
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active)' : 'transparent')}
+              >
+                {iconMap['Tümü'] || <FiMoreHorizontal size={20} />} Tümü
+              </button>
+            </li>
+            {dbKategoriler.map((kat) => (
+              <li key={kat.id}>
+                <button
+                  style={{
+                    width: "100%",
+                    background: 'none',
+                    border: 'none',
+                    padding: '10px 19px',
+                    color: aktifKategori.id === kat.id ? 'var(--primary)' : 'var(--ink-900)',
+                    fontWeight: 700,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: 15.5,
+                    backgroundColor: aktifKategori.id === kat.id ? 'var(--dropdown-active)' : 'transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    borderRadius: 7,
+                    transition: 'background .14s'
+                  }}
+                  onClick={() => {
+                    setAktifKategori({ ad: kat.ad, id: kat.id });
+                    setDropdownOpen(false);
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? 'var(--dropdown-active)' : 'transparent')}
+                >
+                  {iconMap[kat.ad] || <FiMoreHorizontal size={20} />} {kat.ad}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Search input fills remaining space */}
       <input
         type="text"
         placeholder="🔍 Ürün ara..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{
+          flex: 1,
           border: '1.5px solid var(--border-200, #e2e8f0)',
-          borderRadius: 11,
-          padding: '10px 21px',
+          borderRadius: 10,
+          padding: '10px 14px',
           fontSize: 16,
           background: 'var(--surface, #f8fafc)',
           outline: 'none',
           color: 'var(--ink-900, #223555)',
-          width: 340,
-          boxShadow: '0 1px 10px var(--accent, #1bbd8a)07',
-          marginRight: 18,
+          minWidth: 0
         }}
       />
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+
+    {/* RIGHT: Cart + Auth */}
+    <div className="header-actions" style={{ display:'flex', alignItems:'center', gap:10 }}>
       <div
         onClick={sepeteGit}
         style={{
@@ -603,46 +583,45 @@ const findKategoriAd = (id: number | null | undefined): string => {
           padding: 8,
           background: "var(--surface, #f8fafc)",
           borderRadius: 9,
-          boxShadow: "0 1px 7px var(--accent, #1bbd8a)09",
+          boxShadow: "0 1px 7px rgba(27,189,138,.09)",
           display: "flex",
           alignItems: "center"
         }}
         title="Sepetim"
       >
-        <FiShoppingCart size={28} color="var(--accent, #1bbd8a)" />
+        <FiShoppingCart size={26} color="var(--accent, #1bbd8a)" />
         {cartItems.length > 0 && (
           <span style={{
             position: "absolute",
             top: -4,
             right: -7,
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: 800,
             color: "#fff",
             background: "var(--success-500, #22c55e)",
             borderRadius: 16,
-            padding: "2px 7px",
-            minWidth: 20,
-            textAlign: "center",
-            boxShadow: "0 1px 8px var(--success, #16a34a)22"
+            padding: "2px 6px",
+            minWidth: 18,
+            textAlign: "center"
           }}>
-            {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
+            {cartItems.reduce((top, c) => top + (c.adet or 1), 0)}
           </span>
         )}
       </div>
+
       {!isLoggedIn ? (
         <>
           <button
-            onClick={() => window.location.href = '/rol-secim'}
+            onClick={() => window.location.href = '/giris'}
             style={{
               background: 'var(--primary, #2563eb)',
               color: '#fff',
-              padding: '9px 20px',
-              borderRadius: 11,
+              padding: '8px 14px',
+              borderRadius: 10,
               border: 'none',
-              fontWeight: 600,
-              fontSize: 15,
-              cursor: 'pointer',
-              boxShadow: '0 2px 10px var(--primary, #2563eb)18'
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer'
             }}
           >
             Giriş Yap
@@ -652,13 +631,12 @@ const findKategoriAd = (id: number | null | undefined): string => {
             style={{
               background: 'var(--accent, #1bbd8a)',
               color: '#fff',
-              padding: '9px 20px',
-              borderRadius: 11,
+              padding: '8px 14px',
+              borderRadius: 10,
               border: 'none',
-              fontWeight: 600,
-              fontSize: 15,
-              cursor: 'pointer',
-              boxShadow: '0 2px 10px var(--accent, #1bbd8a)18'
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer'
             }}
           >
             Kaydol
@@ -669,18 +647,14 @@ const findKategoriAd = (id: number | null | undefined): string => {
           <button
             onClick={() => window.location.href = '/profil2'}
             style={{
-              background: '#f3f4f6',
+              background: 'var(--surface, #f3f4f6)',
               color: 'var(--primary, #2563eb)',
-              border: '1px solid var(--primary, #2563eb)22',
-              padding: '9px 20px',
-              borderRadius: 11,
-              fontWeight: 600,
-              fontSize: 15,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              boxShadow: '0 1px 7px var(--primary, #2563eb)0a'
+              border: '1px solid rgba(37,99,235,.15)',
+              padding: '8px 14px',
+              borderRadius: 10,
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer'
             }}
           >
             👤 Profilim
@@ -690,21 +664,21 @@ const findKategoriAd = (id: number | null | undefined): string => {
             style={{
               background: 'var(--danger, #e11d48)',
               color: '#fff',
-              padding: '9px 22px',
-              borderRadius: 11,
+              padding: '8px 14px',
+              borderRadius: 10,
               border: 'none',
-              fontWeight: 600,
-              fontSize: 15,
-              cursor: 'pointer',
-              boxShadow: '0 2px 10px var(--danger, #e11d48)11'
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer'
             }}
           >
-            Çıkış Yap
+            Çıkış
           </button>
         </>
       )}
     </div>
   </div>
+
 </header>
 <SloganBar />
         {/* Layout: Sol reklam, ana, sağ reklam */}
