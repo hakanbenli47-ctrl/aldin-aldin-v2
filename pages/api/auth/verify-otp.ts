@@ -23,22 +23,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // --- ENV KONTROLLERİ ---
-    const SUPABASE_URL =
-      process.env.NEXT_PUBLIC_SUPABASE_URL || (process.env as any).SUPABASE_URL;
-    const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
     if (!SUPABASE_URL || !SERVICE_KEY) {
-      console.error("[verify-otp] Supabase env eksik", { SUPABASE_URL: !!SUPABASE_URL, SERVICE_KEY: !!SERVICE_KEY });
-      return res.status(500).send("Supabase yapılandırması eksik");
+      return res
+        .status(500)
+        .send(`Supabase env eksik (url=${!!SUPABASE_URL}, key=${!!SERVICE_KEY})`);
     }
+
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    const method = req.method;
     const email =
-      method === "POST"
+      req.method === "POST"
         ? (req.body as any)?.email
         : (req.query?.email as string | undefined);
     const code =
-      method === "POST"
+      req.method === "POST"
         ? (req.body as any)?.code
         : (req.query?.code as string | undefined);
 

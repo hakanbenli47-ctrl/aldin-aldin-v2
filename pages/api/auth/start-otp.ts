@@ -23,29 +23,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(405).send("Method Not Allowed");
     }
 
-    // --- ENV KONTROLLERİ (kritik) ---
-    const SUPABASE_URL =
-      process.env.NEXT_PUBLIC_SUPABASE_URL || (process.env as any).SUPABASE_URL;
-    const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const SG_KEY = process.env.SENDGRID_API_KEY;
-    const SG_FROM = process.env.SENDGRID_FROM;
+    // --- ENV KONTROLLERİ ---
+    // SUPABASE_URL'i önce oku; yoksa NEXT_PUBLIC'tan al
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const SG_KEY       = process.env.SENDGRID_API_KEY;
+    const SG_FROM      = process.env.SENDGRID_FROM;
 
     if (!SUPABASE_URL || !SERVICE_KEY) {
-      console.error("[start-otp] Supabase env eksik", { SUPABASE_URL: !!SUPABASE_URL, SERVICE_KEY: !!SERVICE_KEY });
-      return res.status(500).send("Supabase yapılandırması eksik");
+      return res
+        .status(500)
+        .send(`Supabase env eksik (url=${!!SUPABASE_URL}, key=${!!SERVICE_KEY})`);
     }
     if (!SG_KEY || !SG_FROM) {
-      console.error("[start-otp] SendGrid env eksik", { SG_KEY: !!SG_KEY, SG_FROM: !!SG_FROM });
-      return res.status(500).send("Mail gönderim yapılandırması eksik");
+      return res
+        .status(500)
+        .send(`SendGrid env eksik (key=${!!SG_KEY}, from=${!!SG_FROM})`);
     }
 
     // Client'ları handler içinde kur
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
     sgMail.setApiKey(SG_KEY);
 
-    const method = req.method;
     const email =
-      method === "POST"
+      req.method === "POST"
         ? (req.body as any)?.email
         : (req.query?.email as string | undefined);
 
@@ -67,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 6 haneli OTP üret
+    // 6 haneli OTP
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const code_hash = hashCode(email, code);
     const expires_at = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 dk
