@@ -214,7 +214,7 @@ Ayakkabı,Şık ayakkabı,399,20,2,https://site.com/ayakkabi.jpg
       </div>
 
       {/* ANA İÇERİK */}
-      <div style={{
+      <div className="ilanver-card" style={{
         maxWidth: 850,
         width: "100%",
         margin: "32px auto",
@@ -228,7 +228,7 @@ Ayakkabı,Şık ayakkabı,399,20,2,https://site.com/ayakkabi.jpg
         border: "1.5px solid #e4e9ef"
       }}>
         {/* SOL: Önizleme / Bilgilendirme */}
-        <div style={{
+        <div className="ilanver-left" style={{
           flex: "1 1 280px",
           borderRight: "1px dashed #e2e8f0",
           paddingRight: 24,
@@ -238,7 +238,7 @@ Ayakkabı,Şık ayakkabı,399,20,2,https://site.com/ayakkabi.jpg
           gap: 16
         }}>
           {/* ÜRÜN ÖNİZLEME */}
-          <div style={{
+          <div className="preview-box" style={{
             width: 190, height: 190,
             border: "1.5px solid #e6e9ee",
             background: "#f7fafc",
@@ -274,7 +274,7 @@ Ayakkabı,Şık ayakkabı,399,20,2,https://site.com/ayakkabi.jpg
           </div>
         </div>
         {/* SAĞ: FORM */}
-        <form
+        <form className="ilanver-right"
           onSubmit={handleSubmit}
           style={{
             flex: "2 1 0%",
@@ -452,6 +452,34 @@ Ayakkabı,Şık ayakkabı,399,20,2,https://site.com/ayakkabi.jpg
       }}>
         © {new Date().getFullYear()} Aldın Aldın | Geleceğin Alışverişi Burada!
       </footer>
+      <style jsx global>{`
+  /* iOS çentik boşluğu */
+  body { padding-bottom: env(safe-area-inset-bottom); }
+
+  @media (max-width: 768px) {
+    .ilanver-card {
+      flex-direction: column !important;
+      gap: 16px !important;
+      padding: 18px 14px !important;
+      margin: 16px auto !important;
+    }
+    .ilanver-left {
+      border-right: 0 !important;
+      padding-right: 0 !important;
+      margin-bottom: 6px !important;
+      align-items: stretch !important;
+    }
+    .ilanver-right {
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+    .preview-box {
+      width: 100% !important;
+      height: 220px !important;
+    }
+  }
+`}</style>
+
     </div>
   );
 }

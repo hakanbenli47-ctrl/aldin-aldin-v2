@@ -17,6 +17,9 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#2563eb" />
         <link rel="manifest" href="/manifest.json" />

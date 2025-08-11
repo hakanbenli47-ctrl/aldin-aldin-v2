@@ -705,7 +705,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
 </header>
 <SloganBar />
         {/* Layout: Sol reklam, ana, sağ reklam */}
-        <div
+        <div className="layout-3col"
           style={{
             display: 'flex',
             width: '100%',
@@ -718,8 +718,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           }}
         >
           {/* SOL REKLAM */}
-          <aside
-            style={{
+          <aside className="ads-left" style={{
               width: 150,
               minWidth: 100,
               maxWidth: 170,
@@ -1318,8 +1317,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           </main>
 
           {/* SAĞ REKLAM */}
-          <aside
-            style={{
+        <aside className="ads-right" style={{
               width: 150,
               minWidth: 100,
               maxWidth: 170,
@@ -1362,7 +1360,38 @@ const findKategoriAd = (id: number | null | undefined): string => {
           </aside>
         </div>
         {/* Responsive düzen için */}
- 
+ <style jsx global>{`
+  body { padding-bottom: env(safe-area-inset-bottom); }
+
+  /* Tablet ve aşağısı: reklamları gizle, tek kolona düş */
+  @media (max-width: 1024px) {
+    .layout-3col {
+      flex-direction: column !important;
+      gap: 12px !important;
+      padding: 0 10px !important;
+    }
+    .ads-left, .ads-right {
+      display: none !important;
+    }
+    header input[type="text"] {
+      width: 100% !important;
+      max-width: none !important;
+    }
+    /* Kart gridleri: 2 sütun */
+    .ilanGrid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      gap: 14px !important;
+    }
+  }
+
+  /* Telefon: kartlar 1 sütun */
+  @media (max-width: 640px) {
+    .ilanGrid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+`}</style>
+
 
       </div>
     </>
