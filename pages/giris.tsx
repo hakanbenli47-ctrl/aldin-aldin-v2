@@ -1,3 +1,4 @@
+// pages/giris.tsx
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
@@ -11,10 +12,7 @@ export default function Giris() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const isTrusted =
-    typeof window !== "undefined" && localStorage.getItem("trustedDevice") === "true";
-
-  // 1) Parola kontrolü → OTP gönder
+  // 1) Parola kontrolü → check-trust → gerekirse OTP gönder
   async function handlePasswordCheck(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
@@ -25,15 +23,7 @@ export default function Giris() {
     const pw = password;
 
     try {
-      if (isTrusted) {
-        if (!em || !pw) {
-          setMessage("❌ E-posta ve şifre gerekli.");
-          return;
-        }
-        return await finalLogin(em, pw);
-      }
-
-      // Şifreyi doğrula (session açılır), sonra kapat
+      // Şifreyi doğrula (geçici session açılır)
       const { data, error } = await supabase.auth.signInWithPassword({ email: em, password: pw });
       if (error) {
         setMessage("❌ Giriş başarısız: " + error.message);
@@ -51,9 +41,31 @@ export default function Giris() {
         return;
       }
 
+      // 🔍 Bu IP güvenilir mi?
+      try {
+        const c = await fetch("/api/auth/check-trust", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: em }),
+        });
+        if (c.ok) {
+          const { trusted } = await c.json();
+          if (trusted) {
+            setMessage("🔓 Güvenilir IP - OTP istenmedi.");
+            const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
+            // mevcut session'ı kullanarak yönlendir
+            setTimeout(() => {
+              if (role === "satici") router.push("/");
+              else router.push("/index2");
+            }, 500);
+            return;
+          }
+        }
+      } catch {}
+
+      // Güvenilir değilse: session'ı kapat, OTP başlat
       await supabase.auth.signOut();
 
-      // OTP başlat
       const base = `${window.location.origin}/api/auth/start-otp`;
       let resp = await fetch(base, {
         method: "POST",
@@ -108,13 +120,6 @@ export default function Giris() {
         const t = await v.text();
         setMessage("❌ Kod doğrulanamadı: " + t);
         return;
-      }
-
-      const trust = confirm(
-        "Bu cihazı güvenilir olarak işaretlemek ister misiniz? Bundan sonraki girişlerde kod istenmez."
-      );
-      if (trust) {
-        localStorage.setItem("trustedDevice", "true");
       }
 
       setMessage("✅ Kod doğru, giriş yapılıyor...");

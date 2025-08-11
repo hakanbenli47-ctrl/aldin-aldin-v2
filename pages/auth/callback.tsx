@@ -19,7 +19,7 @@ export default function AuthCallback() {
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
-          localStorage.setItem("trustedDevice", "true");
+       
           setMsg("Giriş başarılı, yönlendiriliyorsunuz...");
           router.replace("/index2");
           return;
