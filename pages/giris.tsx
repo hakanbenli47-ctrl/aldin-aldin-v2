@@ -14,6 +14,7 @@ export default function Giris() {
   const isTrusted =
     typeof window !== "undefined" && localStorage.getItem("trustedDevice") === "true";
 
+  // 1) Parola kontrolü → OTP gönder
   async function handlePasswordCheck(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
@@ -32,6 +33,7 @@ export default function Giris() {
         return await finalLogin(em, pw);
       }
 
+      // Şifreyi doğrula (session açılır), sonra kapat
       const { data, error } = await supabase.auth.signInWithPassword({ email: em, password: pw });
       if (error) {
         setMessage("❌ Giriş başarısız: " + error.message);
@@ -49,7 +51,6 @@ export default function Giris() {
         return;
       }
 
-      // Oturumu kapat (OTP doğrulanmadan session açık kalmasın)
       await supabase.auth.signOut();
 
       // OTP başlat
@@ -69,14 +70,16 @@ export default function Giris() {
 
       setMessage("📩 Doğrulama kodu e-posta adresinize gönderildi.");
       setOtpStep(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error("OTP gönderim hatası:", err);
-      setMessage("❌ Kod gönderilemedi, lütfen tekrar deneyin.");
+      const msg = typeof err?.message === "string" ? err.message : "Kod gönderilemedi.";
+      setMessage("❌ " + msg);
     } finally {
       setLoading(false);
     }
   }
 
+  // 2) OTP kontrolü
   async function handleOtpCheck(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
@@ -116,14 +119,16 @@ export default function Giris() {
 
       setMessage("✅ Kod doğru, giriş yapılıyor...");
       await finalLogin(em, password);
-    } catch (err) {
+    } catch (err: any) {
       console.error("OTP doğrulama hatası:", err);
-      setMessage("❌ Doğrulama sırasında hata oluştu.");
+      const msg = typeof err?.message === "string" ? err.message : "Doğrulama sırasında hata oluştu.";
+      setMessage("❌ " + msg);
     } finally {
       setLoading(false);
     }
   }
 
+  // 3) Final login
   async function finalLogin(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {

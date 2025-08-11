@@ -1,31 +1,26 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-// Deploy test - {bugünün tarihi}
 
-const validatePassword = (s: string) => {
-  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(s);
-};
+// Şifre: min 8, 1 büyük, 1 küçük, 1 rakam
+const validatePassword = (s: string) =>
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(s);
 
-// Benzersiz firma kodu üret
+// DB'ye dokunmadan benzersiz firma_kodu üret (sonsuz döngü yok)
 async function generateUniqueFirmaKodu() {
-  let unique = false;
-  let kod = "";
-
-  while (!unique) {
-    kod = "FIRMA-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-
+  const MAX_TRIES = 12;
+  for (let i = 0; i < MAX_TRIES; i++) {
+    const kod = "FIRMA-" + Math.random().toString(36).slice(2, 8).toUpperCase();
     const { data, error } = await supabase
       .from("satici_firmalar")
       .select("id")
       .eq("firma_kodu", kod)
       .maybeSingle();
-
-    if (!error && !data) {
-      unique = true;
-    }
+    if (error) throw new Error("firma_kodu kontrol hatası: " + error.message);
+    if (!data) return kod; // benzersiz
   }
-
-  return kod;
+  // son çare: zaman damgalı
+  const ts = Date.now().toString(36).toUpperCase().slice(-6);
+  return "FIRMA-" + ts;
 }
 
 export default function Kayit() {
@@ -38,10 +33,8 @@ export default function Kayit() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const r = localStorage.getItem("selectedRole");
-    if (r === "alici" || r === "satici") {
-      setSelectedRole(r);
-    }
+    const r = typeof window !== "undefined" ? localStorage.getItem("selectedRole") : null;
+    if (r === "alici" || r === "satici") setSelectedRole(r);
   }, []);
 
   async function handleSignup(e: React.FormEvent) {
@@ -70,74 +63,74 @@ export default function Kayit() {
     }
 
     setLoading(true);
-
-    // 1. Auth ile kullanıcı oluştur
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          role: selectedRole === "satici" ? "pending_satici" : "alici",
-          firmaAdi: selectedRole === "satici" ? firmaAdi : null,
+    try {
+      // 1) Auth kullanıcı oluştur
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            role: selectedRole === "satici" ? "pending_satici" : "alici",
+            firmaAdi: selectedRole === "satici" ? firmaAdi : null,
+          },
+          emailRedirectTo: `${window.location.origin}/giris`,
         },
-        emailRedirectTo: `${window.location.origin}/giris`,
-      },
-    });
-
-    if (error) {
-      setMessage("❌ Kayıt başarısız: " + error.message);
-      setLoading(false);
-      return;
-    }
-
-    // 2. Eğer satıcı ise satici_firmalar tablosuna aktif: false ile ekle
-    if (selectedRole === "satici" && data.user) {
-      const firmaKodu = await generateUniqueFirmaKodu();
-
-      const { error: insertError } = await supabase.from("satici_firmalar").insert([
-        {
-          user_id: data.user.id,
-          firma_kodu: firmaKodu,
-          email: email,
-          firma_adi: firmaAdi,
-          puan: 0,
-          aktif: false, // Onay bekliyor
-        },
-      ]);
-
-      if (insertError) {
-        console.error("Firma ekleme hatası:", insertError.message);
-      }
-
-      // Admin'e bilgilendirme maili gönder
-      await fetch("/api/send-mail", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: "80birinfo@gmail.com",
-          subject: "Yeni Satıcı Kaydı Bekliyor",
-          text: `Yeni bir satıcı kaydı yapıldı:\n\nE-posta: ${email}\nFirma Adı: ${firmaAdi}\nFirma Kodu: ${firmaKodu}\n\nSupabase panelinden onaylayabilirsiniz.`,
-        }),
       });
-    }
+      if (error) throw new Error(error.message);
 
-    // 3. Mesaj belirleme
-    setMessage(
-      selectedRole === "satici"
-        ? "✅ Kayıt başarılı! Satıcı hesabınız onay bekliyor."
-        : "✅ Kayıt başarılı! Lütfen e-posta adresinizi doğrulayın."
-    );
+      // 2) Satıcı ise firma kaydı + admin mail
+      if (selectedRole === "satici" && data.user) {
+        try {
+          const firmaKodu = await generateUniqueFirmaKodu();
 
-    setLoading(false);
+          const { error: insertError } = await supabase.from("satici_firmalar").insert([
+            {
+              user_id: data.user.id,
+              firma_kodu: firmaKodu,
+              email,
+              firma_adi: firmaAdi,
+              puan: 0,
+              aktif: false, // onay bekliyor
+            },
+          ]);
+          if (insertError) throw insertError;
 
-    // 4. Rolüne göre yönlendir
-    setTimeout(() => {
-      if (selectedRole === "satici") {
-        window.location.href = "/giris-satici";
+          // Admin'e bilgi maili (başarısız olsa da kayıt tamam)
+          try {
+            await fetch("/api/send-mail", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                to: "80birinfo@gmail.com",
+                subject: "Yeni Satıcı Kaydı Bekliyor",
+                text: `Yeni satıcı kaydı:\nE-posta: ${email}\nFirma: ${firmaAdi}\nFirma Kodu: ${firmaKodu}`,
+              }),
+            });
+          } catch (mErr) {
+            console.warn("Admin maili gönderilemedi:", mErr);
+          }
+
+          setMessage("✅ Kayıt başarılı! Satıcı hesabınız onay bekliyor.");
+        } catch (e: any) {
+          console.error("Satıcı ekleme hatası:", e?.message || e);
+          setMessage("❌ Satıcı bilgisi kaydedilemedi: " + (e?.message || "bilinmeyen hata"));
+          setLoading(false);
+          return;
+        }
       } else {
-        window.location.href = "/giris";
+        setMessage("✅ Kayıt başarılı! Lütfen e-posta adresinizi doğrulayın.");
       }
-    }, 1800);
+
+      // 3) Yönlendirme
+      setTimeout(() => {
+        if (selectedRole === "satici") window.location.href = "/giris-satici";
+        else window.location.href = "/giris";
+      }, 1800);
+    } catch (err: any) {
+      setMessage("❌ Kayıt başarısız: " + (err?.message || "bilinmeyen hata"));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -171,7 +164,7 @@ export default function Kayit() {
           Kayıt Ol
         </h2>
 
-        {/* Rol Seçim Butonları */}
+        {/* Rol seçim */}
         <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 16 }}>
           <button
             type="button"
@@ -233,6 +226,8 @@ export default function Kayit() {
               background: "#f8fafc",
               color: "#222",
             }}
+            autoComplete="email"
+            required
           />
           <input
             type="password"
@@ -249,6 +244,8 @@ export default function Kayit() {
               background: "#f8fafc",
               color: "#222",
             }}
+            autoComplete="new-password"
+            required
           />
           <input
             type="password"
@@ -265,6 +262,8 @@ export default function Kayit() {
               background: "#f8fafc",
               color: "#222",
             }}
+            autoComplete="new-password"
+            required
           />
           {selectedRole === "satici" && (
             <input
@@ -282,6 +281,7 @@ export default function Kayit() {
                 background: "#f8fafc",
                 color: "#222",
               }}
+              required
             />
           )}
           <button
