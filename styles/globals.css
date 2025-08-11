@@ -1,8 +1,11 @@
 /* =========================
-   TEMA DEĞİŞKENLERİ
-   (index.layout.tsx bu değişkenleri kullanır)
+   TEMEL TEMA
    ========================= */
 :root {
+  /* Arka plan / Metin */
+  --background: #ffffff;
+  --foreground: #171717;
+
   /* Marka / Aksiyon renkleri */
   --primary: #2563eb;
   --primary-400: #3479e3;
@@ -12,7 +15,7 @@
   --danger: #e11d48;
   --warning: #f59e0b;
 
-  /* Metin renkleri */
+  /* Metin tonları */
   --ink-900: #223555;
   --ink-800: #1e293b;
   --ink-500: #64748b;
@@ -50,11 +53,18 @@
   --dropdown-hover: #f0f6ff;
   --dropdown-active: #eef6fd;
   --dropdown-border: #dde7fa;
+
+  /* Bölüm/kart arka planlarını biraz daha ferah yapalım */
+  --section-bg: #ffffff;
+  --card-bg: #ffffff;
 }
 
-/* Karanlık tema override’ları (istersen düzenle) */
+/* Karanlık tema */
 @media (prefers-color-scheme: dark) {
   :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+
     --surface: #0f172a;
     --surface-200: #111827;
     --border: #1f2937;
@@ -71,10 +81,123 @@
     --note-bg: #3b2f0d;
     --note-fg: #facc15;
 
-    /* Aksiyon renklerini istersen aynı bırak */
-    /* --primary, --accent, vs. */
+    /* Bölüm/kartlar koyu zeminde de ferah kalsın */
+    --section-bg: #101826;
+    --card-bg: #122035;
+  }
+
+  html { color-scheme: dark; }
+}
+
+/* =========================
+   GENEL RESET / TEMEL
+   ========================= */
+html, body { max-width: 100vw; overflow-x: hidden; }
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Sabit header için scroll-padding: ilk bölümün üstü kesilmesin */
+  scroll-padding-top: 86px;
+}
+* { box-sizing: border-box; padding: 0; margin: 0; }
+a { color: inherit; text-decoration: none; }
+
+/* =========================
+   PWA / SAFE-AREA
+   ========================= */
+body { padding-bottom: env(safe-area-inset-bottom); }
+.pwa-header {
+  padding-top: constant(safe-area-inset-top);
+  padding-top: env(safe-area-inset-top);
+  min-height: calc(70px + env(safe-area-inset-top));
+}
+
+/* =========================
+   KOMPONENT STİLLERİ (layout)
+   ========================= */
+/* Bölümler: daha ferah yüzey + yumuşak kenarlık */
+.section-block {
+  background: var(--section-bg) !important;
+  border: 1.5px solid var(--border) !important;
+}
+
+/* Kartlar: açık yüzey + hafif gölge */
+.product-card {
+  background: var(--card-bg) !important;
+  border: 1.5px solid var(--border) !important;
+  box-shadow: 0 3px 16px rgba(0,0,0,.06) !important;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+/* Tablet ve aşağısı */
+@media (max-width: 1024px) {
+  .layout-3col {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .ads-left, .ads-right { display: none !important; }
+
+  /* Kart gridleri: 2 sütun */
+  .ilanGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  /* Arama kutusu genişlesin */
+  header input[type="text"] {
+    width: 100% !important;
+    max-width: none !important;
   }
 }
+
+/* Telefon: tam genişlik görünüm + 1 sütun grid */
+@media (max-width: 640px) {
+  .header-inner {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 12px !important;
+  }
+
+  .main-col {
+    max-width: none !important;
+    padding: 0 !important;
+    width: 100vw !important;
+  }
+
+  /* Full-bleed bölümler */
+  .main-col > section,
+  .main-col > .section-block {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Grid: 1 sütun (tam sayfa) */
+  .ilanGrid { grid-template-columns: 1fr !important; gap: 16px !important; }
+}
+
+/* Force desktop mode on mobile PWA */
+.force-desktop .layout-3col {
+  flex-direction: row !important;
+  gap: 20px !important;
+  padding: 0 6px !important;
+  width: 100% !important;
+}
+.force-desktop .ads-left, .force-desktop .ads-right { display: flex !important; }
+.force-desktop .main-col { max-width: 950px !important; padding: 0 10px !important; }
+.force-desktop .ilanGrid { grid-template-columns: repeat(3, minmax(235px, 1fr)) !important; gap: 23px !important; }
+.force-desktop .header-inner { max-width: 1200px !important; margin: 0 auto !important; padding: 0 18px !important; }
 
 /* =========================
    ANİMASYONLAR

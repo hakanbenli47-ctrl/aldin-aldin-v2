@@ -66,7 +66,7 @@ function FirmaBilgiSatiri({
   if (!info) return null;
 
   return (
-    <div style={{
+                      <div className="product-card standard" style={{
       display: 'flex',
       alignItems: 'center',
       gap: 10,
@@ -816,7 +816,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
                   }}
                 >
                   {dopedIlanlar.map((product) => (
-                    <div
+                    <div className="product-card featured"
                       key={product.id}
                       style={{
                         background: 'var(--highlight, #fef08a)',
@@ -913,7 +913,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
             </section>
 
             {populerIlanlar.length > 0 && (
-  <section style={{ marginBottom: 32 }}>
+  <section className="section-block" style={{ marginBottom: 32 }}>
     <h2 style={{
       fontSize: 24,
       fontWeight: 900,
@@ -994,7 +994,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
 )}
 
             {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
-            <section style={{ marginBottom: 32 }}>
+            <section className="section-block" style={{ marginBottom: 32 }}>
               <h2 style={{
                 fontSize: 24,
                 fontWeight: 900,
@@ -1031,7 +1031,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               </p>
               <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
                 {indirimliUrunler.slice(0, 6).map((p, idx) => (
-                  <div key={idx}
+                  <div className="product-card discount" key={idx}
                     style={{
                       minWidth: 200,
                       maxWidth: 220,
@@ -1102,7 +1102,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
 
           
             {/* Standart İlan Kartları */}
-            <section>
+            <section className="section-block">
               <h2
                 style={{
                   fontSize: 23,
