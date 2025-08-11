@@ -112,3 +112,32 @@ body { padding-bottom: env(safe-area-inset-bottom); }
   /* Grid: 1 sütun */
   .ilanGrid { grid-template-columns: 1fr !important; }
 }
+/* Force desktop mode on mobile PWA */
+.force-desktop .layout-3col {
+  flex-direction: row !important;
+  gap: 20px !important;
+  padding: 0 6px !important;
+  width: 100% !important;
+}
+
+.force-desktop .ads-left,
+.force-desktop .ads-right {
+  display: flex !important;        /* reklam kolonlarını yeniden göster */
+}
+
+.force-desktop .main-col {
+  max-width: 950px !important;     /* masaüstü ana sütun genişliği */
+  padding: 0 10px !important;
+}
+
+.force-desktop .ilanGrid {
+  grid-template-columns: repeat(3, minmax(235px, 1fr)) !important; /* 3 sütun */
+  gap: 23px !important;
+}
+
+/* İsteğe bağlı: header içeriği masaüstü gibi ortalansın */
+.force-desktop .header-inner {
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+  padding: 0 18px !important;
+}
