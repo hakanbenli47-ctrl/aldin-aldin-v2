@@ -1,5 +1,5 @@
 {
-  "id": "/",
+  "id": "/?source=pwa",
   "name": "80bir",
   "short_name": "80bir",
   "description": "80bir – akıllı alışveriş ve fırsatlar.",
@@ -7,13 +7,11 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
+  "launch_handler": { "client_mode": "navigate-existing" },
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
-  "launch_handler": {
-    "client_mode": "focus-existing"
-  },
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
