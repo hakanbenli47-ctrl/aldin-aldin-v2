@@ -84,12 +84,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).send("OTP yazılamadı");
     }
 
-    await sgMail.send({
-      to: email,
-      from: SG_FROM, // ör: no-reply@80bir.com.tr
-      subject: "Giriş Doğrulama Kodu",
-      text: `Giriş doğrulama kodunuz: ${code}\nBu kod 5 dakika geçerlidir.`,
-    });
+   await sgMail.send({
+  to: email,
+  from: { email: process.env.SENDGRID_FROM!, name: "80bir Güvenlik" },
+  replyTo: "destek@80bir.com.tr", // varsa
+  subject: "80bir • Giriş doğrulama kodunuz",
+  text: `Giriş doğrulama kodunuz: ${code}\nBu kod 5 dakika geçerlidir.\n\nKod: ${code}`,
+  trackingSettings: {
+    clickTracking: { enable: false, enableText: false },
+    openTracking: { enable: false },
+    subscriptionTracking: { enable: false },
+  },
+});
+
 
     return res.status(200).json({ ok: true });
   } catch (e: any) {
