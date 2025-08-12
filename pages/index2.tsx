@@ -196,6 +196,14 @@ const { kategori } = router.query
   });
   const [favoriler, setFavoriler] = useState<number[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  // ANDROID tespiti
+const [isAndroid, setIsAndroid] = useState(false);
+useEffect(() => {
+  if (typeof navigator !== 'undefined') {
+    setIsAndroid(/Android/i.test(navigator.userAgent));
+  }
+}, []);
+
     useEffect(() => {
     if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
       document.documentElement.classList.add('is-android');
@@ -693,6 +701,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           }} 
         >
           {/* SOL REKLAM */}
+          {!isAndroid && (
           <aside className="ads-left" style={{
               width: 150,
               minWidth: 100,
@@ -710,6 +719,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               top: 92,
               zIndex: 10
             }}
+            
           >
             <span
               style={{
@@ -734,7 +744,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               }}
             />
           </aside>
-
+)}
           {/* ANA İÇERİK */}
           <main className="main-col" style={{
             maxWidth: 950,
@@ -1290,6 +1300,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
           </main>
 
           {/* SAĞ REKLAM */}
+        {!isAndroid && (
         <aside className="ads-right" style={{
               width: 150,
               minWidth: 100,
@@ -1331,6 +1342,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
               }}
             />
           </aside>
+          )}
         </div>
 
         {/* Responsive düzen için */}
@@ -1506,6 +1518,80 @@ img, video { max-width: 100%; height: auto; display: block; }
 
 /* (İstersen) Android’de logo’yu da sakla: */
 /* .is-android .header-left{ display:none !important; } */
+/* ===== ANDROID: reklamsız, tam genişlik, 2 sütun grid ===== */
+.is-android .ads-left,
+.is-android .ads-right{
+  display:none !important;
+  width:0 !important; min-width:0 !important; max-width:0 !important;
+  height:0 !important; padding:0 !important; margin:0 !important;
+  border:0 !important; box-shadow:none !important;
+}
+
+.is-android .layout-3col{
+  display:block !important;
+  max-width:none !important;
+}
+
+.is-android .main-col{
+  width:100% !important;
+  max-width:none !important;
+  padding:0 12px !important;
+}
+
+/* Bölümler kompakt */
+.is-android .main-col > .section-block{
+  margin:0 0 18px !important;
+  border-radius:12px !important;
+  padding:16px 12px !important;
+}
+
+/* ÖNE ÇIKANLAR / EN POPÜLER / AYIN İNDİRİMLERİ → 2 sütun grid */
+.is-android .section-block h2 + div,
+.is-android .section-block h2 + p + div{
+  display:grid !important;
+  grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+  gap:12px !important;
+  overflow:visible !important;
+}
+
+/* TÜM İLANLAR grid’i de 2 sütun */
+.is-android .ilanGrid{
+  display:grid !important;
+  grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+  gap:12px !important;
+}
+
+/* Küçük telefonlarda (<=480px) tek sütun */
+@media (max-width:480px){
+  .is-android .section-block h2 + div,
+  .is-android .section-block h2 + p + div,
+  .is-android .ilanGrid{
+    grid-template-columns:1fr !important;
+  }
+}
+
+/* Kart görselleri sabit ve taşmasın */
+.is-android .product-card img{
+  height:140px !important;
+  object-fit:cover !important;
+}
+
+/* Header mobil: logoyu sakla, orta alan genişlesin */
+@media (max-width:640px){
+  .header-left{ display:none !important; }
+  .header-inner{
+    grid-template-columns:1fr !important;
+    min-height:56px !important;
+    padding:0 12px !important;
+  }
+  .header-middle{ width:100% !important; gap:8px !important; }
+  .header-actions{ gap:8px !important; }
+  .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
+}
+
+/* Güvenlik bandı (yan kaymayı engelle) */
+html, body { max-width: 100vw; overflow-x: hidden; }
+img, video { max-width: 100%; height: auto; display: block; }
 
 
 `}</style>
