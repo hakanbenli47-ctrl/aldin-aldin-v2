@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
-
+import {  useRef } from "react"; 
 // ----- MAIL GÖNDERME
 async function sendOrderEmails({
   aliciMail,
@@ -567,6 +567,22 @@ if (siparisBilgi.isCustom) {
 // ---- Sipariş Modalı
 function SiparisModal({ addresses, cards, onSiparisVer }: any) {
   const [useSaved, setUseSaved] = useState(true);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+   useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(ua) ||
+      (typeof window !== "undefined" && window.innerWidth <= 480);
+
+    if (!isMobile) return;
+
+    const t = setTimeout(() => {
+      confirmBtnRef.current?.focus();
+      confirmBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 120);
+
+    return () => clearTimeout(t);
+  }, []);
 // Sadece rakam bırak
 const onlyDigits = (v: string) => v.replace(/\D+/g, "");
 
@@ -944,6 +960,7 @@ const onlyDigits = (v: string) => v.replace(/\D+/g, "");
 
       {/* TEK BUTON */}
       <button
+       ref={confirmBtnRef} 
         style={{
           background: "#2563eb",
           color: "#fff",

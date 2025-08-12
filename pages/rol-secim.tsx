@@ -1,7 +1,33 @@
+// pages/rol-secim.tsx
 import { useRouter } from "next/router";
+import { useEffect, useRef } from "react"; // << eklendi
 
 export default function RolSecim() {
   const router = useRouter();
+
+  // << eklendi: ilk buton için ref
+  const firstBtnRef = useRef<HTMLButtonElement>(null);
+
+  // << eklendi: sadece mobilde odakla + görünür alana getir
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(ua) ||
+      (typeof window !== "undefined" && window.innerWidth <= 480);
+
+    if (!isMobile) return;
+
+    const t = setTimeout(() => {
+      try {
+        firstBtnRef.current?.focus({ preventScroll: true } as FocusOptions);
+      } catch {}
+      firstBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // güvenli alan: iOS/Android çentikler için en üste hafifçe kaydırmak istersen:
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 120);
+
+    return () => clearTimeout(t);
+  }, []);
 
   const handleSelect = (rol: "alici" | "satici") => {
     localStorage.setItem("selectedRole", rol);
@@ -11,6 +37,7 @@ export default function RolSecim() {
       router.push("/giris-satici");
     }
   };
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -34,6 +61,7 @@ export default function RolSecim() {
         Lütfen alıcı mı yoksa satıcı mı olduğunuzu seçiniz. Seçiminize göre yönlendirileceksiniz.
       </p>
       <button
+        ref={firstBtnRef} // << eklendi
         style={{
           padding: "14px 28px", fontSize: 18, borderRadius: 10, border: "2px solid #94a3b8",
           backgroundColor: "white", color: "#475569", cursor: "pointer", width: 240,
