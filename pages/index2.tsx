@@ -1389,51 +1389,51 @@ img, video { max-width: 100%; height: auto; display: block; }
 
 /* Tablet ve telefon (<=1024px): masaüstü zorlamasını iptal et,
    reklam kolonlarını gizle, ana kolon tam genişlik olsun */
-@media (max-width: 1024px){
-  .force-desktop{           /* varsa masaüstü sabitlemesini burada kırıyoruz */
-    width:100% !important;
-    max-width:none !important;
-    min-width:0 !important;
-    transform:none !important; /* bazı temalarda ölçek/zoom olabiliyor */
+/* === PHONE REFINEMENTS (<=640px) === */
+/* Logo ve reklam bannerlarını gizle, header'ı sadeleştir */
+@media (max-width: 640px){
+  .header-left{ display:none !important; }        /* LOGO gizle */
+  .ads-left, .ads-right{ display:none !important; } /* Reklamları gizle (ek güvence) */
+
+  .header-inner{
+    grid-template-columns: 1fr !important;
+    min-height: 56px !important;
+    padding: 0 12px !important;
+  }
+  .header-middle{ width:100% !important; gap:8px !important; }
+  .header-middle input[type="text"], .searchBar{
+    width:100% !important; height:40px !important;
+  }
+  .header-actions{ gap:8px !important; }
+  .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
+
+  /* Bölümlerin içini kompakt yap */
+  .main-col > .section-block{
+    padding:16px 12px !important;
+    margin-bottom:20px !important;
+    border-radius:10px !important;
   }
 
-  .layout-3col{
-    display:block !important;
-    max-width:none !important;
-  }
+  /* Kart görsellerini çok uzun göstermeyelim */
+  .product-card img{ height:140px !important; object-fit:cover !important; }
+}
 
-  .ads-left, .ads-right{ display:none !important; }
-
-  .main-col{
-    width:100% !important;
-    max-width:none !important;
-    padding:0 10px !important;
-  }
-
-  /* kart ızgaraları 2 sütuna düşsün (sende hangisi varsa çalışır) */
-  .featuredGrid,
-  .ilanGrid,
-  .products,
-  .cards{
-    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+/* Küçük telefonlar (<=480px): grid tek sütun */
+@media (max-width: 480px){
+  .featuredGrid, .ilanGrid, .products, .cards{
+    grid-template-columns: 1fr !important;
     gap:12px !important;
   }
 }
 
-/* Küçük telefon (<=640px): header tek kolona, grid 1 sütun */
-@media (max-width: 640px){
-  .header-inner{ grid-template-columns:1fr !important; row-gap:8px; }
-  .header-middle, .searchBar{ width:100% !important; }
-
-  .featuredGrid,
-  .ilanGrid,
-  .products,
-  .cards{
-    grid-template-columns:1fr !important;
+/* Orta telefonlar (481–640px): grid iki sütun */
+@media (min-width: 481px) and (max-width: 640px){
+  .featuredGrid, .ilanGrid, .products, .cards{
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+    gap:12px !important;
   }
-
-  .product-card.standard{ padding:10px !important; }
 }
+
 
 `}</style>
       </div></div>
