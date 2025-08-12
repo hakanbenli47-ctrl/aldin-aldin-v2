@@ -1519,12 +1519,16 @@ img, video { max-width: 100%; height: auto; display: block; }
 /* (İstersen) Android’de logo’yu da sakla: */
 /* .is-android .header-left{ display:none !important; } */
 /* ===== ANDROID: reklamsız, tam genişlik, otomatik ızgara ===== */
+/* === ANDROID: enine daha geniş, mobil çerçeve içinde === */
 .is-android .ads-left,
 .is-android .ads-right{
   display:none !important;
-  width:0 !important; min-width:0 !important; max-width:0 !important;
-  height:0 !important; padding:0 !important; margin:0 !important;
-  border:0 !important; box-shadow:none !important;
+}
+
+.is-android .force-desktop{
+  max-width:100vw !important;
+  width:100% !important;
+  transform:none !important;
 }
 
 .is-android .layout-3col{
@@ -1535,54 +1539,54 @@ img, video { max-width: 100%; height: auto; display: block; }
 .is-android .main-col{
   width:100% !important;
   max-width:none !important;
-  padding:0 !important; /* kenar boşluklarını minimuma indirdik */
+  /* kenar boşluklarını iyice küçült -> kartlar genişler */
+  padding:0 4px !important;
 }
 
-/* Bölümleri kompakt tutalım */
+/* bölümlerin iç yatay paddingini de küçült */
 .is-android .main-col > .section-block{
+  padding:12px 6px !important;
   margin:0 0 18px !important;
-  border-radius:0 !important;
-  padding:14px 8px !important;
+  border-radius:8px !important;
 }
 
-/* --- ÖNE ÇIKANLAR / EN POPÜLER / AYIN İNDİRİMLERİ / TÜM İLANLAR ---
-   Ekran genişliğine göre otomatik sütun sayısı: min 160px kart */
+/* Kart ızgarası: 2 sütunu zorla, gap'i küçült -> kartlar enine büyür */
 .is-android .section-block h2 + div,
 .is-android .section-block h2 + p + div,
 .is-android .ilanGrid{
   display:grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
-  gap:12px !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  column-gap:8px !important;
+  row-gap:10px !important;
   overflow:visible !important;
 }
 
-/* Çok küçük ekranlarda kart genişliğini biraz daha küçült, 2 sütun korunsun */
-@media (max-width: 360px){
+/* 400px+ ekranlarda biraz daha nefes alanı aç */
+@media (min-width: 400px){
+  .is-android .main-col{ padding:0 6px !important; }
+  .is-android .main-col > .section-block{ padding:14px 8px !important; }
   .is-android .section-block h2 + div,
   .is-android .section-block h2 + p + div,
   .is-android .ilanGrid{
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
-    gap:10px !important;
+    column-gap:10px !important;
+    row-gap:12px !important;
   }
 }
 
-/* Kart görselleri: yan yana görünümde boyu çok uzamasın */
+/* Görsel boyu: kart enine büyürken oran bozulmasın */
 .is-android .product-card img{
-  height:140px !important;
+  height:150px !important;
   object-fit:cover !important;
 }
 
-/* Header mobil düzeni */
+/* Header: mobilde kadrajı tam kullan */
 @media (max-width:640px){
-  .header-left{ display:none !important; }     /* logoyu gizle */
+  .header-left{ display:none !important; }
   .header-inner{
     grid-template-columns:1fr !important;
+    padding:0 8px !important;
     min-height:56px !important;
-    padding:0 10px !important;
   }
-  .header-middle{ width:100% !important; gap:8px !important; }
-  .header-actions{ gap:8px !important; }
-  .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
 }
 
 
