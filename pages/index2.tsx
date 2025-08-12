@@ -451,30 +451,31 @@ const findKategoriAd = (id: number | null | undefined): string => {
       {/* Categories button */}
       <div style={{ position: 'relative' }}>
         <button
-          onClick={() => setDropdownOpen(o => !o)}
-          style={{
-            background: dropdownOpen
-              ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
-              : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,var(--dropdown-active, #eef6fd) 100%)',
-            color: dropdownOpen ? '#fff' : 'var(--primary,#2563eb)',
-            border: '1.5px solid var(--dropdown-border, #dde7fa)',
-            fontWeight: 700,
-            fontSize: 14,
-            padding: '8px 12px',
-            borderRadius: 10,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            cursor: 'pointer',
-            outline: 'none',
-            transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
-            position: 'relative'
-          }}
-        >
-          <FiTag size={18} />
-          <span style={{ fontWeight:800, letterSpacing:'.4px' }}>Kategoriler</span>
-          <FiChevronDown size={16} style={{ transform: dropdownOpen ? 'rotate(-180deg)' : 'none' }} />
-        </button>
+  onClick={() => setDropdownOpen(o => !o)}
+  style={{
+    background: dropdownOpen
+      ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
+      : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,var(--dropdown-active, #eef6fd) 100%)',
+    color: dropdownOpen ? '#fff' : 'var(--primary,#2563eb)',
+    border: '1.5px solid var(--dropdown-border, #dde7fa)',
+    fontWeight: 700,
+    fontSize: isAndroid ? 13 : 14,     // << küçüldü
+    padding: isAndroid ? '6px 10px' : '8px 12px', // << daraldı
+    borderRadius: isAndroid ? 8 : 10,   // << daha kompakt
+    display: 'flex',
+    alignItems: 'center',
+    gap: isAndroid ? 6 : 8,
+    cursor: 'pointer',
+    outline: 'none',
+    transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
+    position: 'relative'
+  }}
+>
+  <FiTag size={isAndroid ? 16 : 18} />  {/* << ikon küçüldü */}
+  <span style={{ fontWeight:800, letterSpacing:'.3px' }}>Kategoriler</span>
+  <FiChevronDown size={isAndroid ? 14 : 16} />
+</button>
+
 
         {dropdownOpen && (
           <ul
@@ -561,22 +562,24 @@ const findKategoriAd = (id: number | null | undefined): string => {
 
       {/* Search input fills remaining space */}
       <input
-        type="text"
-        placeholder="🔍 Ürün ara..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{
-          flex: 1,
-          border: '1.5px solid var(--border-200, #e2e8f0)',
-          borderRadius: 10,
-          padding: '10px 14px',
-          fontSize: 16,
-          background: 'var(--surface, #f8fafc)',
-          outline: 'none',
-          color: 'var(--ink-900, #223555)',
-          minWidth: 0
-        }}
-      />
+  type="text"
+  placeholder="🔍 Ürün ara..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  style={{
+    flex: 1,
+    border: '1.5px solid var(--border-200, #e2e8f0)',
+    borderRadius: 10,
+    padding: '10px 14px',
+    fontSize: isAndroid ? 16 : 16,
+    height: isAndroid ? 48 : undefined,       // << daha yüksek
+    background: 'var(--surface, #f8fafc)',
+    outline: 'none',
+    color: 'var(--ink-900, #223555)',
+    minWidth: 0
+  }}
+/>
+
     </div>
 
     {/* RIGHT: Cart + Auth */}
@@ -1616,6 +1619,20 @@ img, video { max-width: 100%; height: auto; display: block; }
 html, body { max-width: 100vw; overflow-x: hidden; }
 
 img, video { max-width: 100%; height: auto; display: block; }
+/* Android: 420px ve aşağısında Kategoriler üstte, Arama altta */
+@media (max-width: 420px){
+  .is-android .header-middle{
+    display:flex !important;
+    flex-direction: column !important; /* << alta indi */
+    gap:8px !important;
+  }
+  .is-android .header-inner{
+    grid-template-columns: 1fr auto !important; /* orta + sağ */
+  }
+  .is-android .header-middle input[type="text"]{
+    width:100% !important;
+  }
+}
 
 
 `}</style>
