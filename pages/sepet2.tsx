@@ -49,6 +49,10 @@ export default function Sepet2() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [cards, setCards] = useState<any[]>([]);
 
+// Mobil odak için:
+const emptyStateRef = useRef<HTMLParagraphElement>(null);
+const openModalBtnRef = useRef<HTMLButtonElement>(null);
+
   function HeaderBar() {
     return (
       <header
@@ -193,6 +197,29 @@ useEffect(() => {
   fetchAddressesAndCards();
 }, [currentUser]);
 
+useEffect(() => {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isMobile =
+    /Android|iPhone|iPad|iPod/i.test(ua) ||
+    (typeof window !== "undefined" && window.innerWidth <= 480);
+
+  // Modal açıkken bu odaklamayı yapma
+  if (!isMobile || showSiparisModal) return;
+
+  const t = setTimeout(() => {
+    if (cartItems.length === 0) {
+      // Boş sepet: mesajı odakla + ortala
+      emptyStateRef.current?.focus();
+      emptyStateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      // Dolu sepet: "Sipariş Ver" butonunu odakla + ortala
+      openModalBtnRef.current?.focus();
+      openModalBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, 120);
+
+  return () => clearTimeout(t);
+}, [cartItems.length, showSiparisModal]);
 
   // ADET GÜNCELLEME --->
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
@@ -223,7 +250,7 @@ useEffect(() => {
   }, 0);
 
   // SİPARİŞ VER — aynı satıcıya tek order
-  async function handleSiparisVer(siparisBilgi: any) {
+  async function handleSiparisVer(siparisBilgi: any,) {
   if (cartItems.length === 0) {
     alert("Sepetiniz boş!");
     return;
@@ -356,18 +383,22 @@ if (siparisBilgi.isCustom) {
           boxShadow: "0 4px 24px #e7e7e71a",
         }}
       >
-        {cartItems.length === 0 ? (
-          <p
-            style={{
-              textAlign: "center",
-              color: "#64748b",
-              fontSize: 17,
-              padding: 40,
-            }}
-          >
-            Sepetiniz boş.
-          </p>
-        ) : (
+       {cartItems.length === 0 ? (
+  <p
+    ref={emptyStateRef}
+    tabIndex={-1}
+    style={{
+      textAlign: "center",
+      color: "#64748b",
+      fontSize: 17,
+      padding: 40,
+      outline: "none",
+    }}
+  >
+    Sepetiniz boş.
+  </p>
+) : (
+
           <>
             {cartItems.map((item) => {
               const indirimVar =
@@ -514,23 +545,26 @@ if (siparisBilgi.isCustom) {
               {toplamFiyat.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
             </div>
             <button
-              style={{
-                marginTop: 24,
-                width: "100%",
-                background: "linear-gradient(90deg, #1bbd8a 0%, #16a34a 80%)",
-                color: "#fff",
-                padding: 13,
-                borderRadius: 8,
-                border: "none",
-                fontWeight: 700,
-                fontSize: 17,
-                cursor: "pointer",
-                letterSpacing: 0.4,
-              }}
-              onClick={() => setShowSiparisModal(true)}
-            >
-              ✅ Sipariş Ver
-            </button>
+  ref={openModalBtnRef}
+  style={{
+    marginTop: 24,
+    width: "100%",
+    background: "linear-gradient(90deg, #1bbd8a 0%, #16a34a 80%)",
+    color: "#fff",
+    padding: 13,
+    borderRadius: 8,
+    border: "none",
+    fontWeight: 700,
+    fontSize: 17,
+    cursor: "pointer",
+    letterSpacing: 0.4,
+    outline: "none",
+  }}
+  onClick={() => setShowSiparisModal(true)}
+>
+  ✅ Sipariş Ver
+</button>
+
           </>
         )}
       </div>
@@ -568,21 +602,10 @@ if (siparisBilgi.isCustom) {
 function SiparisModal({ addresses, cards, onSiparisVer }: any) {
   const [useSaved, setUseSaved] = useState(true);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
-   useEffect(() => {
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const isMobile =
-      /Android|iPhone|iPad|iPod/i.test(ua) ||
-      (typeof window !== "undefined" && window.innerWidth <= 480);
+  // Sepet2 içinde, state'lerin hemen altı:
 
-    if (!isMobile) return;
 
-    const t = setTimeout(() => {
-      confirmBtnRef.current?.focus();
-      confirmBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 120);
-
-    return () => clearTimeout(t);
-  }, []);
+  
 // Sadece rakam bırak
 const onlyDigits = (v: string) => v.replace(/\D+/g, "");
 
