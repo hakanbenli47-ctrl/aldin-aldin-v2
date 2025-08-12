@@ -671,7 +671,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
 </header>
 <SloganBar />
         {/* Layout: Sol reklam, ana, sağ reklam */}
-        <div className="layout-3col"
+         <div className="layout-3col"
           style={{
             display: 'flex',
             width: '100%',
@@ -681,7 +681,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
             gap: 20,
             alignItems: "flex-start",
             padding: "0 6px"
-          }}
+          }} 
         >
           {/* SOL REKLAM */}
           <aside className="ads-left" style={{
@@ -1383,6 +1383,58 @@ const findKategoriAd = (id: number | null | undefined): string => {
     /* Grid: 1 sütun */
     .ilanGrid { grid-template-columns: 1fr !important; }
   }
+    /* Genel güvenlik bandı */
+html, body { max-width: 100vw; overflow-x: hidden; }
+img, video { max-width: 100%; height: auto; display: block; }
+
+/* Tablet ve telefon (<=1024px): masaüstü zorlamasını iptal et,
+   reklam kolonlarını gizle, ana kolon tam genişlik olsun */
+@media (max-width: 1024px){
+  .force-desktop{           /* varsa masaüstü sabitlemesini burada kırıyoruz */
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+    transform:none !important; /* bazı temalarda ölçek/zoom olabiliyor */
+  }
+
+  .layout-3col{
+    display:block !important;
+    max-width:none !important;
+  }
+
+  .ads-left, .ads-right{ display:none !important; }
+
+  .main-col{
+    width:100% !important;
+    max-width:none !important;
+    padding:0 10px !important;
+  }
+
+  /* kart ızgaraları 2 sütuna düşsün (sende hangisi varsa çalışır) */
+  .featuredGrid,
+  .ilanGrid,
+  .products,
+  .cards{
+    grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+    gap:12px !important;
+  }
+}
+
+/* Küçük telefon (<=640px): header tek kolona, grid 1 sütun */
+@media (max-width: 640px){
+  .header-inner{ grid-template-columns:1fr !important; row-gap:8px; }
+  .header-middle, .searchBar{ width:100% !important; }
+
+  .featuredGrid,
+  .ilanGrid,
+  .products,
+  .cards{
+    grid-template-columns:1fr !important;
+  }
+
+  .product-card.standard{ padding:10px !important; }
+}
+
 `}</style>
       </div></div>
     </>
