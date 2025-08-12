@@ -50,7 +50,7 @@ export default function Sepet2() {
   const [cards, setCards] = useState<any[]>([]);
 
 // Mobil odak için:
-const emptyStateRef = useRef<HTMLParagraphElement>(null);
+const emptyStateRef = useRef<HTMLDivElement>(null);
 const openModalBtnRef = useRef<HTMLButtonElement>(null);
 
   function HeaderBar() {
@@ -383,21 +383,34 @@ if (siparisBilgi.isCustom) {
           boxShadow: "0 4px 24px #e7e7e71a",
         }}
       >
-       {cartItems.length === 0 ? (
-  <p
+     {cartItems.length === 0 ? (
+  <div
     ref={emptyStateRef}
     tabIndex={-1}
     style={{
-      textAlign: "center",
-      color: "#64748b",
-      fontSize: 17,
-      padding: 40,
+      minHeight: "40vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
       outline: "none",
+      scrollMarginTop: 72, // sticky header için
     }}
   >
-    Sepetiniz boş.
-  </p>
+    <p
+      style={{
+        textAlign: "center",
+        color: "#64748b",
+        fontSize: 17,
+        padding: 40,
+        margin: 0,
+      }}
+    >
+      Sepetiniz boş.
+    </p>
+  </div>
 ) : (
+  /* ... mevcut dolu sepet içeriği ... */
+
 
           <>
             {cartItems.map((item) => {
@@ -559,6 +572,7 @@ if (siparisBilgi.isCustom) {
     cursor: "pointer",
     letterSpacing: 0.4,
     outline: "none",
+       scrollMarginTop: 72, 
   }}
   onClick={() => setShowSiparisModal(true)}
 >
@@ -570,30 +584,45 @@ if (siparisBilgi.isCustom) {
       </div>
 
       {showSiparisModal && (
-        <div
-          style={{
-            position: "fixed",
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.14)",
-            zIndex: 2000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          onClick={() => setShowSiparisModal(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <SiparisModal
-              addresses={addresses}
-              cards={cards}
-              onSiparisVer={handleSiparisVer}
-            />
-          </div>
-        </div>
-      )}
+  <div
+    style={{
+      position: "fixed",
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0,0,0,0.14)",
+      zIndex: 2000,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      // küçük ekranlar için
+      padding: 16,
+      overflowY: "auto",
+    }}
+    onClick={() => setShowSiparisModal(false)}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        // içerik tam merkezde kalsın
+        width: "100%",
+        maxWidth: 520,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100%",
+      }}
+    >
+      <SiparisModal
+        addresses={addresses}
+        cards={cards}
+        onSiparisVer={handleSiparisVer}
+      />
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
@@ -603,6 +632,21 @@ function SiparisModal({ addresses, cards, onSiparisVer }: any) {
   const [useSaved, setUseSaved] = useState(true);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
   // Sepet2 içinde, state'lerin hemen altı:
+useEffect(() => {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isMobile =
+    /Android|iPhone|iPad|iPod/i.test(ua) ||
+    (typeof window !== "undefined" && window.innerWidth <= 480);
+
+  if (!isMobile) return;
+
+  const t = setTimeout(() => {
+    confirmBtnRef.current?.focus();
+    confirmBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 150);
+
+  return () => clearTimeout(t);
+}, []); // modal mount olduğunda 1 kez çalışsın
 
 
   
@@ -635,18 +679,23 @@ const onlyDigits = (v: string) => v.replace(/\D+/g, "");
   const [selectedCardId, setSelectedCardId] = useState(cards?.[0]?.id ?? null);
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 12,
-        padding: 32,
-        boxShadow: "0 1px 12px rgba(30,41,59,0.09)",
-        maxWidth: 470,
-        minWidth: 320,
-        margin: "32px auto",
-        color: "#222e3a",
-      }}
-    >
+  <div
+  style={{
+    background: "#fff",
+    borderRadius: 12,
+    padding: 32,
+    boxShadow: "0 1px 12px rgba(30,41,59,0.09)",
+    maxWidth: 470,
+    width: "100%",
+    // ÖNEMLİ: margin 0 olsun, yükseklik kontrolü ekleyelim
+    margin: 0,
+    boxSizing: "border-box",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    color: "#222e3a",
+  }}
+>
+
       <h2 style={{ color: "#1e293b", fontWeight: 700, marginBottom: 18 }}>
         Sipariş Bilgileri
       </h2>
