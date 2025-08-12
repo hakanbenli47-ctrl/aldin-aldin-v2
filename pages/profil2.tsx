@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
-
+type MobileTab = { id: string; label: string };
 type Order = {
   id: number;
   status: string;
@@ -216,6 +216,13 @@ useEffect(() => {
   return () => { supabase.removeChannel(channel); };
 }, [user]);
 
+
+const allMobileTabs: MobileTab[] = [
+  ...menuItems.map(m => ({ id: m.id, label: m.label })),
+  ...specialItems.map(m => ({ id: m.id, label: m.label })),
+  ...servicesItems.map(m => ({ id: m.id, label: m.label })),   // badge yok sayılıyor
+  ...accountHelpItems.map(m => ({ id: m.id, label: m.label })),
+];
   // --- VERİ ÇEKME ---
   useEffect(() => {
     async function fetchAll() {
@@ -411,15 +418,15 @@ const renderCardForm = () => (
       }}
     />
 
-    <input
-      placeholder="Kart Üzerindeki İsim"
-      value={cardForm.name_on_card}
-      onChange={e => setCardForm(f => ({ ...f, name_on_card: e.target.value }))}
-      style={{
-        padding: 10, borderRadius: 8, border: "1.5px solid #bae6fd",
-        background: "#fff", color: "#222",
-      }}
-    />
+   // BUNU SİL ---
+<input
+  placeholder="Kart Üzerindeki İsim"
+  value={cardForm.name_on_card}
+  onChange={e => setCardForm(f => ({ ...f, name_on_card: e.target.value }))}
+  style={{ padding: 10, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", color: "#222" }}
+/>
+// --- BİTTİ
+
 
     <input
       placeholder="Kart Numarası"
@@ -491,19 +498,6 @@ const renderCardForm = () => (
   </form>
 );
 
-
-<input
-  placeholder="Kart Üzerindeki İsim"
-  value={cardForm.name_on_card}
-  onChange={e => setCardForm(f => ({ ...f, name_on_card: e.target.value }))}
-  style={{
-    padding: 10,
-    borderRadius: 8,
-    border: "1.5px solid #bae6fd",
-    background: "#fff",
-    color: "#222",
-  }}
-/>
 
 
 
@@ -1121,95 +1115,190 @@ if (selectedMenu === "favoriIlanlar") {
 >
 
 
-        {/* ASIDE */}
-    <aside style={{
-  flex: isMobile ? "0 1 auto" : "0 0 280px",   // ✅ masaüstünde 280px sabit, mobilde akışkan
-  width: isMobile ? "100%" : "auto",
-  background: "white",
-  borderRadius: 12,
-  padding: isMobile ? 16 : 24,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-  boxSizing: "border-box",
-  marginBottom: isMobile ? 12 : 0,
-}}>
+  {/* ASIDE */}
+{!isMobile && (
+  <aside
+    style={{
+      flex: "0 0 280px",
+      background: "white",
+      borderRadius: 12,
+      padding: 24,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+    }}
+  >
+    <div
+      style={{
+        marginBottom: 12,
+        fontWeight: 700,
+        fontSize: 17,
+        color: "#1e293b",
+        wordBreak: "break-word",
+      }}
+    >
+      {profile?.first_name || ""} {profile?.last_name || ""}
+    </div>
 
+    <nav>
+      <ul style={{ listStyle: "none", padding: 0, marginBottom: 30 }}>
+        {menuItems.map((item) => (
+          <li
+            key={item.id}
+            onClick={() => {
+              setSelectedMenu(item.id);
+              setShowProfileForm(false);
+            }}
+            style={{
+              cursor: "pointer",
+              padding: "10px 15px",
+              marginBottom: 8,
+              background: selectedMenu === item.id ? "#d1fae5" : "transparent",
+              borderRadius: 8,
+              fontWeight: selectedMenu === item.id ? "700" : "400",
+              color: selectedMenu === item.id ? "#16a34a" : "#475569",
+              transition: "background-color 0.2s",
+            }}
+          >
+            {item.label}
+          </li>
+        ))}
+      </ul>
 
-          <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 17, color: "#1e293b", wordBreak: "break-word" }}>
-            {profile?.first_name || ""} {profile?.last_name || ""}
-          </div>
-          <nav>
-            <ul style={{ listStyle: "none", padding: 0, marginBottom: 30 }}>
-              {menuItems.map(item => (
-                <li key={item.id}
-                  onClick={() => { setSelectedMenu(item.id); setShowProfileForm(false); }}
-                  style={{
-                    cursor: "pointer", padding: "10px 15px", marginBottom: 8,
-                    background: selectedMenu === item.id ? "#d1fae5" : "transparent",
-                    borderRadius: 8, fontWeight: selectedMenu === item.id ? "700" : "400",
-                    color: selectedMenu === item.id ? "#16a34a" : "#475569",
-                    transition: "background-color 0.2s"
-                  }}>
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-            <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>Sana Özel</h3>
-            <ul style={{ listStyle: "none", padding: 0, marginBottom: 30 }}>
-              {specialItems.map(item => (
-                <li key={item.id}
-                  style={{
-                    padding: "8px 15px", marginBottom: 8, cursor: "pointer", color: "#475569",
-                    fontWeight: 500, borderRadius: 6, transition: "background-color 0.15s"
-                  }}
-                  onClick={() => setSelectedMenu(item.id)}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#f0fdfa")}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-            <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>Hizmetlerim</h3>
-            <ul style={{ listStyle: "none", padding: 0, marginBottom: 30 }}>
-              {servicesItems.map(item => (
-                <li key={item.id}
-                  style={{
-                    padding: "8px 15px", marginBottom: 8, cursor: "pointer", color: "#475569", fontWeight: 500, borderRadius: 6,
-                    display: "flex", justifyContent: "space-between", alignItems: "center", transition: "background-color 0.15s"
-                  }}
-                  onClick={() => setSelectedMenu(item.id)}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#f0fdfa")}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span style={{
-                      background: item.badge === "YENİ" ? "#ef4444" : "#f97316",
-                      color: "white", borderRadius: 6, padding: "0 6px", fontSize: 11, fontWeight: "700"
-                    }}>{item.badge}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>Hesabım & Yardım</h3>
-            <ul style={{ listStyle: "none", padding: 0 }}>
-              {accountHelpItems.map(item => (
-                <li key={item.id}
-                  style={{
-                    padding: "8px 15px", marginBottom: 8, cursor: "pointer", color: "#475569",
-                    fontWeight: 500, borderRadius: 6, transition: "background-color 0.15s"
-                  }}
-                  onClick={() => setSelectedMenu(item.id)}
-                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#f0fdfa")}
-                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  {item.label}
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </aside>
+      <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>
+        Sana Özel
+      </h3>
+      <ul style={{ listStyle: "none", padding: 0, marginBottom: 30 }}>
+        {specialItems.map((item) => (
+          <li
+            key={item.id}
+            style={{
+              padding: "8px 15px",
+              marginBottom: 8,
+              cursor: "pointer",
+              color: "#475569",
+              fontWeight: 500,
+              borderRadius: 6,
+              transition: "background-color 0.15s",
+            }}
+            onClick={() => setSelectedMenu(item.id)}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f0fdfa")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            {item.label}
+          </li>
+        ))}
+      </ul>
+
+      <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>
+        Hizmetlerim
+      </h3>
+      <ul style={{ listStyle: "none", padding: 0, marginBottom: 30 }}>
+        {servicesItems.map((item) => (
+          <li
+            key={item.id}
+            style={{
+              padding: "8px 15px",
+              marginBottom: 8,
+              cursor: "pointer",
+              color: "#475569",
+              fontWeight: 500,
+              borderRadius: 6,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              transition: "background-color 0.15s",
+            }}
+            onClick={() => setSelectedMenu(item.id)}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f0fdfa")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            <span>{item.label}</span>
+            {item.badge && (
+              <span
+                style={{
+                  background: item.badge === "YENİ" ? "#ef4444" : "#f97316",
+                  color: "white",
+                  borderRadius: 6,
+                  padding: "0 6px",
+                  fontSize: 11,
+                  fontWeight: "700",
+                }}
+              >
+                {item.badge}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>
+        Hesabım & Yardım
+      </h3>
+      <ul style={{ listStyle: "none", padding: 0 }}>
+        {accountHelpItems.map((item) => (
+          <li
+            key={item.id}
+            style={{
+              padding: "8px 15px",
+              marginBottom: 8,
+              cursor: "pointer",
+              color: "#475569",
+              fontWeight: 500,
+              borderRadius: 6,
+              transition: "background-color 0.15s",
+            }}
+            onClick={() => setSelectedMenu(item.id)}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f0fdfa")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+          >
+            {item.label}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </aside>
+)}
         {/* MAIN */}
+        {isMobile && (
+  <div
+    style={{
+      position: "sticky",
+      top: 56,                // header yüksekliğine göre 56–64 deneyebilirsin
+      zIndex: 10,
+      background: "#eef2f6",
+      padding: "8px 0",
+      marginBottom: 8,
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        gap: 8,
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+        paddingBottom: 4,
+      }}
+    >
+      {allMobileTabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => { setSelectedMenu(t.id); setShowProfileForm(false); }}
+          style={{
+            whiteSpace: "nowrap",
+            border: "1px solid #cfe3ee",
+            background: selectedMenu === t.id ? "#d1fae5" : "#fff",
+            color: selectedMenu === t.id ? "#16a34a" : "#223555",
+            borderRadius: 999,
+            padding: "8px 14px",
+            fontWeight: 700,
+            fontSize: 13,
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  </div>
+)} 
     <main style={{
   flex: isMobile ? "1 1 auto" : "1 1 0%",      // ✅ masaüstünde kalan alanı kapla
   width: isMobile ? "100%" : "auto",           // ✅ mobilde tam genişlik, masaüstünde otomatik
