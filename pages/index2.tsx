@@ -1518,7 +1518,7 @@ img, video { max-width: 100%; height: auto; display: block; }
 
 /* (İstersen) Android’de logo’yu da sakla: */
 /* .is-android .header-left{ display:none !important; } */
-/* ===== ANDROID: reklamsız, tam genişlik, 2 sütun grid ===== */
+/* ===== ANDROID: reklamsız, tam genişlik, otomatik ızgara ===== */
 .is-android .ads-left,
 .is-android .ads-right{
   display:none !important;
@@ -1535,61 +1535,57 @@ img, video { max-width: 100%; height: auto; display: block; }
 .is-android .main-col{
   width:100% !important;
   max-width:none !important;
-  padding:0 12px !important;
+  padding:0 8px !important;     /* kenar boşluklarını daha da küçülttük */
 }
 
-/* Bölümler kompakt */
+/* Bölümleri kompakt tutalım */
 .is-android .main-col > .section-block{
   margin:0 0 18px !important;
   border-radius:12px !important;
-  padding:16px 12px !important;
+  padding:16px 10px !important;
 }
 
-/* ÖNE ÇIKANLAR / EN POPÜLER / AYIN İNDİRİMLERİ → 2 sütun grid */
+/* --- ÖNE ÇIKANLAR / EN POPÜLER / AYIN İNDİRİMLERİ / TÜM İLANLAR ---
+   Ekran genişliğine göre otomatik sütun sayısı: min 160px kart */
 .is-android .section-block h2 + div,
-.is-android .section-block h2 + p + div{
+.is-android .section-block h2 + p + div,
+.is-android .ilanGrid{
   display:grid !important;
-  grid-template-columns:repeat(2, minmax(0,1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
   gap:12px !important;
   overflow:visible !important;
 }
 
-/* TÜM İLANLAR grid’i de 2 sütun */
-.is-android .ilanGrid{
-  display:grid !important;
-  grid-template-columns:repeat(2, minmax(0,1fr)) !important;
-  gap:12px !important;
-}
-
-/* Küçük telefonlarda (<=480px) tek sütun */
-@media (max-width:480px){
+/* Çok küçük ekranlarda kart genişliğini biraz daha küçült, 2 sütun korunsun */
+@media (max-width: 360px){
   .is-android .section-block h2 + div,
   .is-android .section-block h2 + p + div,
   .is-android .ilanGrid{
-    grid-template-columns:1fr !important;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    gap:10px !important;
   }
 }
 
-/* Kart görselleri sabit ve taşmasın */
+/* Kart görselleri: yan yana görünümde boyu çok uzamasın */
 .is-android .product-card img{
-  height:140px !important;
+  height:130px !important;
   object-fit:cover !important;
 }
 
-/* Header mobil: logoyu sakla, orta alan genişlesin */
+/* Header mobil düzeni */
 @media (max-width:640px){
-  .header-left{ display:none !important; }
+  .header-left{ display:none !important; }     /* logoyu gizle */
   .header-inner{
     grid-template-columns:1fr !important;
     min-height:56px !important;
-    padding:0 12px !important;
+    padding:0 10px !important;
   }
   .header-middle{ width:100% !important; gap:8px !important; }
   .header-actions{ gap:8px !important; }
   .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
 }
 
-/* Güvenlik bandı (yan kaymayı engelle) */
+/* Yan kaymayı tamamen kapat */
 html, body { max-width: 100vw; overflow-x: hidden; }
 img, video { max-width: 100%; height: auto; display: block; }
 
