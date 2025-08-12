@@ -94,6 +94,14 @@ export default function Profil2() {
     last_name: "",
     phone: ""
   });
+  const [isMobile, setIsMobile] = useState(false);
+
+useEffect(() => {
+  const onResize = () => setIsMobile(window.innerWidth <= 640);
+  onResize(); // ilk açılışta çalıştır
+  window.addEventListener("resize", onResize);
+  return () => window.removeEventListener("resize", onResize);
+}, []);
   const [orders, setOrders] = useState<Order[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 // Adres yönetimi
@@ -1098,28 +1106,33 @@ if (selectedMenu === "favoriIlanlar") {
           </span>
         </div>
       </header>
-      <div
+    <div
   style={{
     display: "flex",
-    flexWrap: "wrap",                  // ✅ küçük ekranda alt alta insin
-    maxWidth: "min(1200px, 100%)",     // ✅ tam ekranı doldur, 1200px’i geçme
-    width: "100%",                     // ✅ genişliği kilitle
-    margin: "40px auto",
-    gap: 24,
-    paddingLeft: 12,                   // ✅ mobilde kenarlardan nefes
-    paddingRight: 12,
+    flexDirection: isMobile ? "column" : "row", // ✅ mobilde alt alta
+    width: "100%",                              
+    maxWidth: "100%",                           // ✅ tam ekran
+    margin: isMobile ? "12px auto" : "24px auto",
+    gap: isMobile ? 12 : 24,
+    paddingLeft: isMobile ? 12 : 24,
+    paddingRight: isMobile ? 12 : 24,
+    boxSizing: "border-box",
   }}
 >
 
+
         {/* ASIDE */}
-        <aside style={{
-  flex: "1 1 280px",   // ✅ geniş ekranda ~280px, küçülünce alta geçer
-  width: "100%",       // ✅ mobilde tam genişlik
+    <aside style={{
+  flex: isMobile ? "0 1 auto" : "0 0 280px",   // ✅ masaüstünde 280px sabit, mobilde akışkan
+  width: isMobile ? "100%" : "auto",
   background: "white",
   borderRadius: 12,
-  padding: 24,
-  boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+  padding: isMobile ? 16 : 24,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+  boxSizing: "border-box",
+  marginBottom: isMobile ? 12 : 0,
 }}>
+
 
           <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 17, color: "#1e293b", wordBreak: "break-word" }}>
             {profile?.first_name || ""} {profile?.last_name || ""}
@@ -1197,16 +1210,18 @@ if (selectedMenu === "favoriIlanlar") {
           </nav>
         </aside>
         {/* MAIN */}
-        <main style={{
-  flex: "999 1 600px", // ✅ öncelikli geniş alan; küçük ekranda alta iner
-  width: "100%",       // ✅ mobilde tam genişlik
+    <main style={{
+  flex: isMobile ? "1 1 auto" : "1 1 0%",      // ✅ masaüstünde kalan alanı kapla
+  width: isMobile ? "100%" : "auto",           // ✅ mobilde tam genişlik, masaüstünde otomatik
   background: "#fff",
   borderRadius: 12,
-  padding: 32,
+  padding: isMobile ? 16 : 32,
   boxShadow: "0 2px 8px rgba(0,0,0,0.09)",
   color: "#222e3a",
-  minWidth: 0          // ✅ içerik taşmasını engeller
+  minWidth: 0,
+  boxSizing: "border-box",
 }}>
+
 
           {renderContent()}
         </main>
