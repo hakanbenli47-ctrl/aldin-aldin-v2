@@ -1455,7 +1455,7 @@ img, video { max-width: 100%; height: auto; display: block; }
   }
 }
 /* ===== ANDROID FULL-FIT + ADS OFF ===== */
-.is-android .ads-left,
+.is-android .ads-left
 .is-android .ads-right{
   display: none !important;      /* reklam sütunlarını kapat */
 }
@@ -1535,14 +1535,14 @@ img, video { max-width: 100%; height: auto; display: block; }
 .is-android .main-col{
   width:100% !important;
   max-width:none !important;
-  padding:0 8px !important;     /* kenar boşluklarını daha da küçülttük */
+  padding:0 !important; /* kenar boşluklarını minimuma indirdik */
 }
 
 /* Bölümleri kompakt tutalım */
 .is-android .main-col > .section-block{
   margin:0 0 18px !important;
-  border-radius:12px !important;
-  padding:16px 10px !important;
+  border-radius:0 !important;
+  padding:14px 8px !important;
 }
 
 /* --- ÖNE ÇIKANLAR / EN POPÜLER / AYIN İNDİRİMLERİ / TÜM İLANLAR ---
@@ -1568,7 +1568,7 @@ img, video { max-width: 100%; height: auto; display: block; }
 
 /* Kart görselleri: yan yana görünümde boyu çok uzamasın */
 .is-android .product-card img{
-  height:130px !important;
+  height:140px !important;
   object-fit:cover !important;
 }
 
@@ -1584,6 +1584,7 @@ img, video { max-width: 100%; height: auto; display: block; }
   .header-actions{ gap:8px !important; }
   .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
 }
+
 
 /* Yan kaymayı tamamen kapat */
 html, body { max-width: 100vw; overflow-x: hidden; }
