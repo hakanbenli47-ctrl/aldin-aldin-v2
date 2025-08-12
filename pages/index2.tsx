@@ -196,6 +196,15 @@ const { kategori } = router.query
   });
   const [favoriler, setFavoriler] = useState<number[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    useEffect(() => {
+    if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
+      document.documentElement.classList.add('is-android');
+      return () => {
+        // sayfadan çıkarken temizle (diğer sayfaları etkilemesin)
+        document.documentElement.classList.remove('is-android');
+      };
+    }
+  }, []);
   useEffect(() => {
   async function fetchFirmaAdlari() {
     // Email, firma_adi ve puan çekiyoruz
@@ -1433,6 +1442,70 @@ img, video { max-width: 100%; height: auto; display: block; }
     gap:12px !important;
   }
 }
+/* ===== ANDROID FULL-FIT + ADS OFF ===== */
+.is-android .ads-left,
+.is-android .ads-right{
+  display: none !important;      /* reklam sütunlarını kapat */
+}
+
+.is-android .layout-3col{
+  display: block !important;
+  max-width: none !important;
+}
+
+.is-android .main-col{
+  width: 100% !important;
+  max-width: none !important;
+  padding: 0 10px !important;
+}
+
+/* Bölümleri kompaktla */
+.is-android .main-col > .section-block{
+  margin: 0 0 18px !important;
+  border-radius: 10px !important;
+  padding: 16px 12px !important;
+}
+
+/* ÖNE ÇIKANLAR (h2 + div = featured grid) → grid yap ve sığdır */
+.is-android .section-block h2 + div{
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap: 12px !important;
+  overflow: visible !important;
+}
+
+/* EN POPÜLER ve AYIN İNDİRİMLERİ: bazen h2 + p + div geliyor → onu da kapsa */
+.is-android .section-block h2 + p + div{
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap: 12px !important;
+  overflow: visible !important;
+}
+
+/* TÜM İLANLAR grid’i */
+.is-android .ilanGrid{
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap: 12px !important;
+}
+
+/* Küçük telefonlarda (<=480px) tek sütun */
+@media (max-width: 480px){
+  .is-android .section-block h2 + div,
+  .is-android .section-block h2 + p + div,
+  .is-android .ilanGrid{
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Kart görsellerini çok uzun yapma; taşma olmasın */
+.is-android .product-card img{
+  height: 140px !important;
+  object-fit: cover !important;
+}
+
+/* (İstersen) Android’de logo’yu da sakla: */
+/* .is-android .header-left{ display:none !important; } */
 
 
 `}</style>
