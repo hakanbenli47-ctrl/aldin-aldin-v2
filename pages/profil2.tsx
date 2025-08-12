@@ -1098,12 +1098,29 @@ if (selectedMenu === "favoriIlanlar") {
           </span>
         </div>
       </header>
-      <div style={{ display: "flex", maxWidth: 1200, margin: "40px auto", gap: 24 }}>
+      <div
+  style={{
+    display: "flex",
+    flexWrap: "wrap",                  // ✅ küçük ekranda alt alta insin
+    maxWidth: "min(1200px, 100%)",     // ✅ tam ekranı doldur, 1200px’i geçme
+    width: "100%",                     // ✅ genişliği kilitle
+    margin: "40px auto",
+    gap: 24,
+    paddingLeft: 12,                   // ✅ mobilde kenarlardan nefes
+    paddingRight: 12,
+  }}
+>
+
         {/* ASIDE */}
         <aside style={{
-          flexBasis: 280, background: "white", borderRadius: 12, padding: 24,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-        }}>
+  flex: "1 1 280px",   // ✅ geniş ekranda ~280px, küçülünce alta geçer
+  width: "100%",       // ✅ mobilde tam genişlik
+  background: "white",
+  borderRadius: 12,
+  padding: 24,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+}}>
+
           <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 17, color: "#1e293b", wordBreak: "break-word" }}>
             {profile?.first_name || ""} {profile?.last_name || ""}
           </div>
@@ -1181,9 +1198,16 @@ if (selectedMenu === "favoriIlanlar") {
         </aside>
         {/* MAIN */}
         <main style={{
-          flexGrow: 1, background: "#fff", borderRadius: 12, padding: 32,
-          boxShadow: "0 2px 8px rgba(0,0,0,0.09)", color: "#222e3a"
-        }}>
+  flex: "999 1 600px", // ✅ öncelikli geniş alan; küçük ekranda alta iner
+  width: "100%",       // ✅ mobilde tam genişlik
+  background: "#fff",
+  borderRadius: 12,
+  padding: 32,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.09)",
+  color: "#222e3a",
+  minWidth: 0          // ✅ içerik taşmasını engeller
+}}>
+
           {renderContent()}
         </main>
       </div>
