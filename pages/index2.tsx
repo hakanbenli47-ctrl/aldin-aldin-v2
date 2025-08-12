@@ -1519,79 +1519,102 @@ img, video { max-width: 100%; height: auto; display: block; }
 /* (İstersen) Android’de logo’yu da sakla: */
 /* .is-android .header-left{ display:none !important; } */
 /* ===== ANDROID: reklamsız, tam genişlik, otomatik ızgara ===== */
-/* === ANDROID: enine daha geniş, mobil çerçeve içinde === */
+/* ===== ANDROID — reklamsız, geniş header, grid ayarları ===== */
 .is-android .ads-left,
 .is-android .ads-right{
   display:none !important;
-}
-
-.is-android .force-desktop{
-  max-width:100vw !important;
-  width:100% !important;
-  transform:none !important;
 }
 
 .is-android .layout-3col{
   display:block !important;
   max-width:none !important;
 }
-
 .is-android .main-col{
   width:100% !important;
   max-width:none !important;
-  /* kenar boşluklarını iyice küçült -> kartlar genişler */
-  padding:0 4px !important;
+  padding:0 4px !important; /* yan boşlukları kıstık -> kartlar genişler */
 }
 
-/* bölümlerin iç yatay paddingini de küçült */
+/* HEADER: yatay daha geniş ve sade */
+.is-android .header-left{ display:none !important; } /* logo gizli */
+.is-android .header-inner{
+  grid-template-columns: 1fr auto !important; /* orta (kategori+arama) + sağ (butonlar) */
+  padding:0 6px !important;
+  min-height:54px !important;
+}
+.is-android .header-middle{ gap:6px !important; width:100% !important; }
+.is-android .header-middle input[type="text"]{ height:42px !important; }
+.is-android .header-actions{ gap:6px !important; }
+.is-android .header-actions button{ padding:6px 10px !important; font-size:13px !important; border-radius:8px !important; }
+
+/* Bölüm içleri kompakt */
 .is-android .main-col > .section-block{
   padding:12px 6px !important;
-  margin:0 0 18px !important;
+  margin:0 0 16px !important;
   border-radius:8px !important;
 }
 
-/* Kart ızgarası: 2 sütunu zorla, gap'i küçült -> kartlar enine büyür */
-.is-android .section-block h2 + div,
-.is-android .section-block h2 + p + div,
-.is-android .ilanGrid{
+/* ÖNE ÇIKANLAR: İlanlar gibi 2 sütun grid */
+.is-android .featuredGrid{
   display:grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  column-gap:8px !important;
-  row-gap:10px !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap:10px !important;
+}
+
+/* EN POPÜLER: 2 sütun grid */
+.is-android .section-block h2 + div{
+  display:grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap:10px !important;
   overflow:visible !important;
 }
 
-/* 400px+ ekranlarda biraz daha nefes alanı aç */
-@media (min-width: 400px){
-  .is-android .main-col{ padding:0 6px !important; }
-  .is-android .main-col > .section-block{ padding:14px 8px !important; }
-  .is-android .section-block h2 + div,
-  .is-android .section-block h2 + p + div,
-  .is-android .ilanGrid{
-    column-gap:10px !important;
-    row-gap:12px !important;
-  }
+/* AYIN İNDİRİMLERİ: tek sıra, kaydırmalı (slider) */
+.is-android .section-block h2 + p + div{
+  display:flex !important;
+  gap:12px !important;
+  overflow-x:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  scroll-snap-type:x mandatory;
+  padding-bottom:6px !important;
+}
+.is-android .section-block h2 + p + div > *{
+  scroll-snap-align:start;
+  min-width:220px; /* kart eni: kaydırmada ferah dursun */
 }
 
-/* Görsel boyu: kart enine büyürken oran bozulmasın */
+/* İLANLAR: 2 sütun grid (zaten güzel, garantiye alıyoruz) */
+.is-android .ilanGrid{
+  display:grid !important;
+  grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  gap:10px !important;
+}
+
+/* Kart görselleri: oranı koru, yükseklik tutarlı */
 .is-android .product-card img{
   height:150px !important;
   object-fit:cover !important;
+  border-radius:10px !important;
 }
 
-/* Header: mobilde kadrajı tam kullan */
-@media (max-width:640px){
-  .header-left{ display:none !important; }
-  .header-inner{
-    grid-template-columns:1fr !important;
-    padding:0 8px !important;
-    min-height:56px !important;
-  }
+/* Phablet (>=400px): biraz daha nefes alanı */
+@media (min-width:400px){
+  .is-android .main-col{ padding:0 6px !important; }
+  .is-android .main-col > .section-block{ padding:14px 8px !important; }
+  .is-android .featuredGrid,
+  .is-android .section-block h2 + div,
+  .is-android .ilanGrid{ gap:12px !important; }
+  .is-android .section-block h2 + p + div > *{ min-width:240px; }
 }
 
+/* Çok küçük ekranlar (<=360px) */
+@media (max-width:360px){
+  .is-android .product-card img{ height:140px !important; }
+}
 
-/* Yan kaymayı tamamen kapat */
+/* Yan kaymayı kapat */
 html, body { max-width: 100vw; overflow-x: hidden; }
+
 img, video { max-width: 100%; height: auto; display: block; }
 
 
