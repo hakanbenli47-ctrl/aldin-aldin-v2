@@ -621,7 +621,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
       {!isLoggedIn ? (
         <>
           <button
-            onClick={() => window.location.href = '/giris'}
+            onClick={() => window.location.href = '/rol-secim'}
             style={{
               background: 'var(--primary, #2563eb)',
               color: '#fff',
