@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
+  "dev": "next dev",
+  "build": "next build",
+  "postbuild": "next-sitemap",
+  "start": "next start",
+  "lint": "next lint"
+},
   "dependencies": {
     "@supabase/supabase-js": "^2.52.1",
     "browser-image-compression": "^2.0.2",
@@ -26,4 +27,5 @@
     "@types/uuid": "^10.0.0",
     "typescript": "^5"
   }
+  
 }
