@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://80bir.com.tr
+
+# Sitemaps
+Sitemap: https://80bir.com.tr/sitemap.xml
