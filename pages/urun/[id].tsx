@@ -3,7 +3,8 @@ import { useRouter } from "next/router";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import Head from "next/head";
-import { supabaseServer } from "../../lib/supabaseServerClient";
+import { supabase } from "../../lib/supabaseClient"; // ✅ Supabase import
+
 
 interface Ilan {
   id: number;
@@ -32,7 +33,7 @@ function renderStars(rating: number, max = 5) {
 export async function getServerSideProps(context: any) {
   const { id } = context.params;
 
-  const { data: ilan, error } = await supabaseServer
+  const { data: ilan, error } = await supabase
     .from("ilan")
     .select("*")
     .eq("id", id)
@@ -42,7 +43,7 @@ export async function getServerSideProps(context: any) {
   let firmaAdi = null;
   let firmaPuan = 0;
   if (ilan.user_email) {
-    const { data: firma } = await supabaseServer
+    const { data: firma } = await supabase
       .from("satici_firmalar")
       .select("firma_adi, puan")
       .eq("email", ilan.user_email)
@@ -51,7 +52,7 @@ export async function getServerSideProps(context: any) {
     firmaPuan = firma?.puan ?? 0;
   }
 
-  const { data: benzerler } = await supabaseServer
+  const { data: benzerler } = await supabase
     .from("ilan")
     .select("*")
     .eq("kategori_id", ilan.kategori_id)
@@ -94,7 +95,7 @@ export default function UrunDetay({
   const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
 
   async function fetchYorumlar() {
-    const { data } = await supabaseServer
+    const { data } = await supabase
       .from("yorumlar")
       .select("*")
       .eq("urun_id", ilan.id)
@@ -115,7 +116,7 @@ export default function UrunDetay({
 
   // Kullanıcıyı çek
   useEffect(() => {
-  supabaseServer.auth.getSession().then(({ data }) => {
+  supabase.auth.getSession().then(({ data }) => {
     if (data?.session) {
       setUser(data.session.user);
     } else {
@@ -129,7 +130,7 @@ export default function UrunDetay({
   useEffect(() => {
     if (!user) return;
     async function checkFavori() {
-      const { data } = await supabaseServer
+      const { data } = await supabase
         .from("favoriler")
         .select("ilan_id")
         .eq("user_id", user.id)
@@ -145,19 +146,19 @@ export default function UrunDetay({
       router.push("/rol-secim");
       return;
     }
-    const { data: sepetteVar } = await supabaseServer
+    const { data: sepetteVar } = await supabase
       .from("cart")
       .select("*")
       .eq("user_id", user.id)
       .eq("product_id", urun.id)
       .single();
     if (sepetteVar) {
-      await supabaseServer
+      await supabase
         .from("cart")
         .update({ adet: sepetteVar.adet + 1 })
         .eq("id", sepetteVar.id);
     } else {
-      await supabaseServer
+      await supabase
         .from("cart")
         .insert([{ user_id: user.id, product_id: urun.id, adet: 1 }]);
     }
@@ -171,14 +172,14 @@ export default function UrunDetay({
       return;
     }
     if (favori) {
-      await supabaseServer
+      await supabase
         .from("favoriler")
         .delete()
         .eq("user_id", user.id)
         .eq("ilan_id", ilan.id);
       setFavori(false);
     } else {
-      await supabaseServer
+      await supabase
         .from("favoriler")
         .insert([{ user_id: user.id, ilan_id: ilan.id }]);
       setFavori(true);
@@ -396,7 +397,7 @@ export default function UrunDetay({
               e.preventDefault();
               if (!user) return alert("Giriş yapmalısınız.");
               if (!yorum) return alert("Yorum boş olamaz.");
-              supabaseServer.from("yorumlar").insert([{
+              supabase.from("yorumlar").insert([{
                 urun_id: ilan.id,
                 user_id: user.id,
                 yorum,
