@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import { supabase } from "../../lib/supabaseClient"; // ✅ Supabase import
+import type { User } from "@supabase/supabase-js";
 
 
 interface Ilan {
@@ -85,7 +86,7 @@ export default function UrunDetay({
 
   const [mainImg, setMainImg] = useState<string | null>(null);
   const [favori, setFavori] = useState(false);
-  const [user, setUser] = useState<any>(null);
+ const [user, setUser] = useState<User | null>(null);
   const [shareUrl, setShareUrl] = useState("");
   const [yorumlar, setYorumlar] = useState<any[]>([]);
   const [yorum, setYorum] = useState("");
@@ -115,43 +116,72 @@ export default function UrunDetay({
   }, []);
 
   // Kullanıcıyı çek
-  useEffect(() => {
+  // Kullanıcıyı çek (stabil)
+useEffect(() => {
+  let mounted = true;
   supabase.auth.getSession().then(({ data }) => {
-    if (data?.session) {
-      setUser(data.session.user);
-    } else {
-      setUser(null);
-    }
+    if (!mounted) return;
+    const newUser = data?.session?.user || null;
+    // Aynı kullanıcıysa state’i gereksiz güncelleyip render tetikleme
+    setUser((prev: User | null) => (prev?.id === newUser?.id ? prev : newUser));
   });
+  return () => { mounted = false; };
 }, []);
 
 
+
   // Favori kontrolü
-  useEffect(() => {
-    if (!user) return;
-    async function checkFavori() {
-      const { data } = await supabase
-        .from("favoriler")
-        .select("ilan_id")
-        .eq("user_id", user.id)
-        .eq("ilan_id", ilan.id)
-        .single();
-      setFavori(!!data);
+  // Favori kontrolü - Düzeltilmiş versiyon
+// Favori kontrolü (sadece user.id veya ilan.id değişince)
+// Favori kontrolü (stabil; TS'e userId'yi sabit ver)
+useEffect(() => {
+  const userId = user?.id;      // 👈 önce yerel değişkene al
+  if (!userId) return;
+
+  let cancelled = false;
+
+  async function checkFavori() {
+    const { data, error } = await supabase
+      .from("favoriler")
+      .select("ilan_id")
+      .eq("user_id", userId)    // 👈 burası artık userId
+      .eq("ilan_id", ilan.id);
+
+    if (cancelled) return;
+
+    if (error) {
+      console.error("Favori kontrol hatası:", error);
+      setFavori(false);
+    } else {
+      setFavori((data?.length ?? 0) > 0);
     }
-    checkFavori();
-  }, [user, ilan.id]);
+  }
+
+  checkFavori();
+  return () => { cancelled = true; };
+}, [user?.id, ilan.id]);
+
+
   const sepeteEkle = async (urun: Ilan) => {
-    if (!user) {
-      alert("Lütfen giriş yapınız!");
-      router.push("/rol-secim");
-      return;
-    }
-    const { data: sepetteVar } = await supabase
-      .from("cart")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("product_id", urun.id)
-      .single();
+ if (!user) {
+  alert("Lütfen giriş yapınız!");
+  router.push("/rol-secim");
+  return;
+}
+const userId = user.id;  // guard sonrası tek değişken
+const { data: sepetteVar } = await supabase
+  .from("cart")
+  .select("*")
+  .eq("user_id", userId)
+  .eq("product_id", urun.id)
+  .single();
+
+if (sepetteVar) {
+  await supabase.from("cart").update({ adet: sepetteVar.adet + 1 }).eq("id", sepetteVar.id);
+} else {
+  await supabase.from("cart").insert([{ user_id: userId, product_id: urun.id, adet: 1 }]);
+}
+
     if (sepetteVar) {
       await supabase
         .from("cart")
@@ -166,24 +196,23 @@ export default function UrunDetay({
   };
 
   const favoriyeToggle = async () => {
-    if (!user) {
-      alert("Lütfen giriş yapınız!");
-      router.push("/giris");
-      return;
-    }
-    if (favori) {
-      await supabase
-        .from("favoriler")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("ilan_id", ilan.id);
-      setFavori(false);
-    } else {
-      await supabase
-        .from("favoriler")
-        .insert([{ user_id: user.id, ilan_id: ilan.id }]);
-      setFavori(true);
-    }
+   if (!user) {
+  alert("Lütfen giriş yapınız!");
+  router.push("/giris");
+  return;
+}
+const userId = user.id;
+
+if (favori) {
+  await supabase.from("favoriler").delete()
+    .eq("user_id", userId)
+    .eq("ilan_id", ilan.id);
+  setFavori(false);
+} else {
+  await supabase.from("favoriler").insert([{ user_id: userId, ilan_id: ilan.id }]);
+  setFavori(true);
+}
+
   };
 
   const sepeteGit = () => {
@@ -393,30 +422,25 @@ export default function UrunDetay({
 
           {/* Yorum Formu */}
           <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!user) return alert("Giriş yapmalısınız.");
-              if (!yorum) return alert("Yorum boş olamaz.");
-              supabase.from("yorumlar").insert([{
-                urun_id: ilan.id,
-                user_id: user.id,
-                yorum,
-                puan,
-              }]).then(() => {
-                fetchYorumlar();
-                setYorum("");
-                setPuan(5);
-              });
-            }}
-            style={{
-              background: "#f3faf7",
-              padding: 18,
-              borderRadius: 12,
-              marginBottom: 24,
-              boxShadow: "0 1px 8px #000000a1",
-              border: "1.5px solid #e0f7ee",
-            }}
-          >
+  onSubmit={(e) => {
+    e.preventDefault();
+    const uid = user?.id;                // <- önce yerel değişken
+    if (!uid) return alert("Giriş yapmalısınız.");
+    if (!yorum) return alert("Yorum boş olamaz.");
+
+    supabase.from("yorumlar").insert([{
+      urun_id: ilan.id,
+      user_id: uid,                      // <- user.id yerine uid
+      yorum,
+      puan,
+    }]).then(() => {
+      fetchYorumlar();
+      setYorum("");
+      setPuan(5);
+    });
+  }}
+>
+
             <div style={{ marginBottom: 12, fontWeight: 700, fontSize: 17, color: "#10b981" }}>
               Ürüne Yorum Yap ve Puan Ver
             </div>

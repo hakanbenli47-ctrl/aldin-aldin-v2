@@ -412,8 +412,8 @@ const findKategoriAd = (id: number | null | undefined): string => {
   return (
     <>
       <Head>
-        <title>Aldın Aldın - Alıcı</title>
-        <meta name="description" content="Aldın Aldın Alıcı Sayfası" />
+        <title>80bir - Alıcı</title>
+        <meta name="description" content="80bir -En iyi fırsatlar burada" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </Head>
       <div className="force-desktop"><div

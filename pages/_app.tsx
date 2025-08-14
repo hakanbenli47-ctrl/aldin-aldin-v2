@@ -5,6 +5,7 @@ import Head from "next/head";
 import { useEffect } from "react";
 
 export default function App({ Component, pageProps }: AppProps) {
+  
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
