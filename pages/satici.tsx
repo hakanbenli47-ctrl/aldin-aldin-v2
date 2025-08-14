@@ -3,6 +3,55 @@ import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import DopingModal from "../components/DopingModal";
+import type React from "react";
+
+function OzellikEtiketleri({ item }: { item: any }) {
+  const options = item?.options || {};     // ürünün özellik snapshot’ı
+  const selection = item?.selection || {}; // alıcının seçimi (beden/renk/Miktar...)
+
+  const chip: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    background: "#eef2ff",
+    color: "#3730a3",
+    border: "1px solid #c7d2fe",
+    borderRadius: 999,
+    padding: "2px 8px",
+    fontSize: 11,
+    fontWeight: 800,
+    marginRight: 6,
+    marginTop: 4,
+  };
+
+ const tags: React.ReactNode[] = [];
+
+  // 1) Seçimler (örn. beden: M, renk: Siyah, Miktar: 500 gr)
+  Object.entries(selection).forEach(([k, v]) => {
+    if (v !== null && v !== "" && v !== undefined) {
+      tags.push(
+        <span key={"sel-" + k} style={chip}>
+          {k}: {String(v)}
+        </span>
+      );
+    }
+  });
+
+  // 2) Bilgi alanları (örn. sonTuketim, agirlikMiktar/agirlikBirim)
+  Object.entries(options).forEach(([k, v]: any) => {
+    if (Array.isArray(v)) return;            // seçim listelerini tekrar göstermeyelim
+    if (selection && selection[k] != null) return; // zaten seçimde gösterildi
+    if (v == null || typeof v === "object") return;
+    tags.push(
+      <span key={"inf-" + k} style={chip}>
+        {k}: {String(v)}
+      </span>
+    );
+  });
+
+  return tags.length ? (
+    <div style={{ display: "flex", flexWrap: "wrap" }}>{tags}</div>
+  ) : null;
+}
 
 const TABS = [
   { key: "ilanlar", label: "Yayındaki İlanlar" },
@@ -965,7 +1014,7 @@ async function fetchSiparisler() {
                 </thead>
                 <tbody>
                   {(siparisTab === "aktif" ? aktifSiparisler : gecmisSiparisler).map(
-                    (sip) => {
+  (sip: any) => {
                       const edit =
                         siparisEdits[sip.id] || {
                           kargoNo: "",
@@ -976,25 +1025,28 @@ async function fetchSiparisler() {
                         <tr key={sip.id} style={{ borderBottom: "1.5px solid #e5e7eb" }}>
                           <td style={tdS}>{sip.id}</td>
                           <td style={tdS}>
-                            {Array.isArray(sip.cart_items) ? (
-                              sip.cart_items.map((u: any, i: number) => (
-                                <div key={i}>
-                                  {u.title}{" "}
-                                  <span style={{ color: "#888" }}>x{u.adet}</span>
-                                </div>
-                              ))
-                            ) : typeof sip.cart_items === "object" &&
-                              sip.cart_items !== null ? (
-                              <div>
-                                {sip.cart_items.title}{" "}
-                                <span style={{ color: "#888" }}>
-                                  x{sip.cart_items.adet}
-                                </span>
-                              </div>
-                            ) : (
-                              "-"
-                            )}
-                          </td>
+  {Array.isArray(sip.cart_items) ? (
+    sip.cart_items.map((u: any, i: number) => (
+      <div key={i} style={{ marginBottom: 6 }}>
+        <div>
+          {u.title} <span style={{ color: "#888" }}>x{u.adet}</span>
+        </div>
+        <OzellikEtiketleri item={u} />
+      </div>
+    ))
+  ) : typeof sip.cart_items === "object" && sip.cart_items !== null ? (
+    <div>
+      <div>
+        {sip.cart_items.title}{" "}
+        <span style={{ color: "#888" }}>x{sip.cart_items.adet}</span>
+      </div>
+      <OzellikEtiketleri item={sip.cart_items} />
+    </div>
+  ) : (
+    "-"
+  )}
+</td>
+
                           <td style={tdS}>{sip.user_id || "-"}</td>
                           <td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
                             {sip.total_price} ₺

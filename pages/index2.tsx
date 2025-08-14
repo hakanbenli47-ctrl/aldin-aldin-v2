@@ -156,6 +156,7 @@ type Ilan = {
   views?: number;
   user_email: string;  // <-- BURAYA EKLE!
    ortalamaPuan?: number;
+
 };
 
 
@@ -286,7 +287,13 @@ useEffect(() => {
     const { data: katData } = await supabase.from('kategori').select('*');
     setDbKategoriler(katData || []);
 
-    const { data: ilanData } = await supabase.from('ilan').select('*');
+    const { data: ilanData } = await supabase
+  .from('ilan')
+  .select(`
+    id, title, desc, price, kategori_id, resim_url, stok,
+    created_at, doped, doped_expiration, indirimli_fiyat,
+    views, user_email, ozellikler
+  `);
     const ilanlarWithAvg = await ilanlaraOrtalamaPuanEkle(ilanData || []);
     setIlanlar(ilanlarWithAvg);
 

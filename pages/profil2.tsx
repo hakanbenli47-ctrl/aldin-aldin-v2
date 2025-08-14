@@ -418,14 +418,14 @@ const renderCardForm = () => (
       }}
     />
 
-   // BUNU SİL ---
+
 <input
   placeholder="Kart Üzerindeki İsim"
   value={cardForm.name_on_card}
   onChange={e => setCardForm(f => ({ ...f, name_on_card: e.target.value }))}
   style={{ padding: 10, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", color: "#222" }}
 />
-// --- BİTTİ
+
 
 
     <input
@@ -991,7 +991,6 @@ if (selectedMenu === "favoriIlanlar") {
   );
 }
 
-// BİTTİ
 
     
     if (selectedMenu === "profilim") return renderProfileBox();

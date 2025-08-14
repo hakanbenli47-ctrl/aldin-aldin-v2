@@ -5,7 +5,6 @@ import Head from "next/head";
 import { useEffect } from "react";
 
 export default function App({ Component, pageProps }: AppProps) {
-  // Service Worker kaydı
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
@@ -14,11 +13,9 @@ export default function App({ Component, pageProps }: AppProps) {
     }
   }, []);
 
-  // Mobil PWA'da masaüstü görünümü zorla (isteğin)
   useEffect(() => {
     const isStandalone =
       window.matchMedia?.("(display-mode: standalone)")?.matches ||
-      // iOS PWA
       (typeof navigator !== "undefined" && (navigator as any).standalone === true);
 
     const isMobileUA =
@@ -29,14 +26,12 @@ export default function App({ Component, pageProps }: AppProps) {
 
     if (isStandalone && isMobileUA) {
       document.body.classList.add("force-desktop");
-      // Telefonda masaüstü genişliği simüle et
       meta?.setAttribute(
         "content",
         "width=1200, initial-scale=0.9, viewport-fit=cover"
       );
     } else {
       document.body.classList.remove("force-desktop");
-      // Normal davranış
       meta?.setAttribute(
         "content",
         "width=device-width, initial-scale=1, viewport-fit=cover"
@@ -47,12 +42,14 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        {/* Varsayılan viewport – yukarıdaki effect gerekirse bunu değiştirir */}
+        {/* Varsayılan viewport */}
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content="#2563eb" />
         <link rel="manifest" href="/manifest.json" />
-        {/* iOS kısayol ikonu: elindeki 192px dosyayı kullanıyoruz (180 yoksa 404 olmasın) */}
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+        {/* Favicon ekleme satırı */}
+        <link rel="icon" href="/favicon.ico" />
       </Head>
       <Component {...pageProps} />
     </>
