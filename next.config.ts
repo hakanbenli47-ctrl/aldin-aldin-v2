@@ -9,9 +9,9 @@ const nextConfig: NextConfig = {
     ],
     unoptimized: true,
   },
+ 
   async redirects() {
     return [
-      // non-www → www yönlendirmesi
       {
         source: "/:path*",
         has: [{ type: "host", value: "80bir.com.tr" }],
