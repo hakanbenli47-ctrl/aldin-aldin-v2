@@ -1143,6 +1143,22 @@ if (siparisBilgi.isCustom) {
 )}
 
 </div>
+<button 
+  onClick={handleSiparisVer}
+  style={{
+    width: "100%",
+    padding: "12px 16px",
+    backgroundColor: "#16a34a",
+    color: "#fff",
+    fontSize: "16px",
+    fontWeight: "bold",
+    borderRadius: "8px",
+    border: "none",
+    cursor: "pointer"
+  }}
+>
+  ✅ Sipariş Ver
+</button>
 
 </div>
 
