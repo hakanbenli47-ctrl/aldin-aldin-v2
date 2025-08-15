@@ -48,13 +48,17 @@ export default function Sepet2() {
   const [cards, setCards] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
-  const [newAddress, setNewAddress] = useState<any>({
+const [newAddress, setNewAddress] = useState<any>({
+  first_name: "",
+  last_name: "",
+  phone: "",
   title: "",
   address: "",
   city: "",
   postal_code: "",
   country: ""
 });
+
 
 const [selectedCardId, setSelectedCardId] = useState<string>("");
 const [showNewCardForm, setShowNewCardForm] = useState(false);
@@ -65,28 +69,70 @@ const [newCard, setNewCard] = useState<any>({
   cvv: "",
   title: ""
 });
+// --- Kart formatlama yardımcıları ---
+function formatCardNumber(value: string) {
+  return value
+    .replace(/\D/g, "")
+    .replace(/(.{4})/g, "$1 ")
+    .trim();
+}
 
-  async function handleNewAddressSave() {
-  if (!newAddress.title || !newAddress.address || !newAddress.city || !newAddress.postal_code || !newAddress.country) {
-    alert("Lütfen tüm adres alanlarını doldurun!");
-    return;
+function formatExpiry(value: string) {
+  const cleaned = value.replace(/\D/g, "");
+  if (cleaned.length >= 3) {
+    return cleaned.slice(0, 2) + "/" + cleaned.slice(2, 4);
   }
+  return cleaned;
+}
 
-  const { data, error } = await supabase
-    .from("user_addresses")
-    .insert([
-      {
-        user_id: currentUser.id,
-        title: newAddress.title,
-        address: newAddress.address,
-        city: newAddress.city,
-        postal_code: newAddress.postal_code,
-        country: newAddress.country,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-    ])
-    .select();
+function formatCVV(value: string) {
+  return value.replace(/\D/g, "").slice(0, 4);
+}
+
+const inputStyle = {
+    width: "100%",
+    padding: "10px 14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "15px",
+    marginBottom: "10px",
+    outline: "none",
+    transition: "0.2s",
+  };
+  async function handleNewAddressSave() {
+  if (!newAddress.first_name || !newAddress.last_name || !newAddress.phone ||
+    !newAddress.title || !newAddress.address || !newAddress.city ||
+    !newAddress.postal_code || !newAddress.country) {
+  alert("Lütfen tüm alanları doldurun!");
+  return;
+}
+
+if (!/^(05\d{9})$/.test(newAddress.phone)) {
+  alert("Geçerli bir telefon numarası girin!");
+  return;
+}
+
+
+ const { data, error } = await supabase
+  .from("user_addresses")
+  .insert([
+    {
+      user_id: currentUser.id,
+      first_name: newAddress.first_name,
+      last_name: newAddress.last_name,
+      phone: newAddress.phone,
+      title: newAddress.title,
+      address: newAddress.address,
+      city: newAddress.city,
+      postal_code: newAddress.postal_code,
+      country: newAddress.country,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+  ])
+  .select();
+
+    
 
   if (error) {
     console.error("Adres ekleme hatası:", error);
@@ -106,13 +152,29 @@ async function handleNewCardSave() {
     return;
   }
 
+  const cardDigits = newCard.card_number.replace(/\s/g, "");
+  if (cardDigits.length !== 16) {
+    alert("Geçerli bir kart numarası girin!");
+    return;
+  }
+
+  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(newCard.expiry)) {
+    alert("Son kullanma tarihi geçersiz!");
+    return;
+  }
+
+  if (!/^\d{3,4}$/.test(newCard.cvv)) {
+    alert("Geçerli bir CVV girin!");
+    return;
+  }
+
   const { data, error } = await supabase
     .from("user_cards")
     .insert([
       {
         user_id: currentUser.id,
         name_on_card: newCard.name_on_card,
-        card_number: newCard.card_number,
+        card_number: cardDigits,
         expiry: newCard.expiry,
         cvv: newCard.cvv,
         title: newCard.title,
@@ -544,6 +606,7 @@ if (siparisBilgi.isCustom) {
                     >
                       {item.product?.title}
                     </h3>
+  
                     {/* Ürün Özellikleri Gösterimi */}
                     {/* Ürün Özellikleri Düzenleme */}
 {/* Ürün özellikleri - Sepette değiştirme */}
@@ -551,6 +614,7 @@ if (siparisBilgi.isCustom) {
 {(
   Object.entries(item.product?.ozellikler || {}).map(([ozellik, secenekler]) => {
   const seciliDeger = item.ozellikler?.[ozellik] || "";
+  
   return [ozellik, seciliDeger];
 })
 ).map(([ozellik, deger]) => (
@@ -708,6 +772,7 @@ if (siparisBilgi.isCustom) {
               Toplam:{" "}
               {toplamFiyat.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
             </div>
+
      {/* Adres Seçim Alanı */}
 <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
   <h3
@@ -783,7 +848,14 @@ if (siparisBilgi.isCustom) {
   )}
 
   {showNewAddressForm && (
-    <div style={{ marginTop: 15 }}>
+
+<div style={{ marginTop: 15 }}>
+      <input
+  type="text"
+  placeholder="İsim"
+  style={inputStyle}
+  onChange={(e) => setNewAddress({ ...newAddress, first_name: e.target.value })}
+/>
    <input
   type="text"
   placeholder="Adres Başlığı"
@@ -966,86 +1038,49 @@ if (siparisBilgi.isCustom) {
 
   {showNewCardForm && (
   <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: "10px" }}>
-    <input
-      type="text"
-      placeholder="Kart Üstündeki İsim"
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid #d1d5db",
-        backgroundColor: "#f9fafb",
-        fontSize: "14px",
-        transition: "all 0.2s ease",
-      }}
-      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
-      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
-      onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
-    />
-    <input
-      type="text"
-      placeholder="Kart Numarası"
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid #d1d5db",
-        backgroundColor: "#f9fafb",
-        fontSize: "14px",
-        transition: "all 0.2s ease",
-      }}
-      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
-      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
-      onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
-    />
-    <input
-      type="text"
-      placeholder="Son Kullanma (AA/YY)"
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid #d1d5db",
-        backgroundColor: "#f9fafb",
-        fontSize: "14px",
-        transition: "all 0.2s ease",
-      }}
-      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
-      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
-      onChange={(e) => setNewCard({ ...newCard, expiry: e.target.value })}
-    />
-    <input
-      type="text"
-      placeholder="CVV"
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid #d1d5db",
-        backgroundColor: "#f9fafb",
-        fontSize: "14px",
-        transition: "all 0.2s ease",
-      }}
-      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
-      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
-      onChange={(e) => setNewCard({ ...newCard, cvv: e.target.value })}
-    />
-    <input
-      type="text"
-      placeholder="Kart Başlığı"
-      style={{
-        width: "100%",
-        padding: "10px 12px",
-        borderRadius: "8px",
-        border: "1px solid #d1d5db",
-        backgroundColor: "#f9fafb",
-        fontSize: "14px",
-        transition: "all 0.2s ease",
-      }}
-      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
-      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
-      onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
-    />
+    {/* Kart Üzerindeki İsim */}
+<input
+  style={inputStyle}
+  type="text"
+  placeholder="Kart Üzerindeki İsim"
+  value={newCard.name_on_card}
+  onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
+/>
+
+{/* Kart Numarası */}
+<input
+  style={inputStyle}
+  type="text"
+  placeholder="Kart Numarası"
+  value={newCard.card_number}
+  onChange={(e) =>
+    setNewCard({ ...newCard, card_number: formatCardNumber(e.target.value) })
+  }
+/>
+
+{/* Son Kullanma Tarihi */}
+<input
+  style={inputStyle}
+  type="text"
+  placeholder="Son Kullanma Tarihi (AA/YY)"
+  value={newCard.expiry}
+  onChange={(e) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length >= 3) val = val.slice(0, 2) + "/" + val.slice(2, 4);
+    setNewCard({ ...newCard, expiry: val });
+  }}
+/>
+
+{/* CVV */}
+<input
+  style={inputStyle}
+  type="text"
+  placeholder="CVV"
+  value={newCard.cvv}
+  onChange={(e) =>
+    setNewCard({ ...newCard, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })
+  }
+/>
 
     <button
       style={{
