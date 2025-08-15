@@ -49,32 +49,91 @@ export default function Sepet2() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState<any>({
-    baslik: "",
-    il: "",
-    ilce: "",
-    acik_adres: ""
-  });
+  title: "",
+  address: "",
+  city: "",
+  postal_code: "",
+  country: ""
+});
+
+const [selectedCardId, setSelectedCardId] = useState<string>("");
+const [showNewCardForm, setShowNewCardForm] = useState(false);
+const [newCard, setNewCard] = useState<any>({
+  name_on_card: "",
+  card_number: "",
+  expiry: "",
+  cvv: "",
+  title: ""
+});
 
   async function handleNewAddressSave() {
-    if (!newAddress.baslik || !newAddress.il || !newAddress.ilce || !newAddress.acik_adres) {
-      alert("Lütfen tüm adres alanlarını doldurun!");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("user_addresses")
-      .insert([{ ...newAddress, user_id: currentUser.id }])
-      .select();
-
-    if (error) {
-      alert("Adres kaydedilemedi!");
-      return;
-    }
-
-    setAddresses((prev) => [...prev, data[0]]);
-    setShowNewAddressForm(false);
-    setSelectedAddressId(data[0].id);
+  if (!newAddress.title || !newAddress.address || !newAddress.city || !newAddress.postal_code || !newAddress.country) {
+    alert("Lütfen tüm adres alanlarını doldurun!");
+    return;
   }
+
+  const { data, error } = await supabase
+    .from("user_addresses")
+    .insert([
+      {
+        user_id: currentUser.id,
+        title: newAddress.title,
+        address: newAddress.address,
+        city: newAddress.city,
+        postal_code: newAddress.postal_code,
+        country: newAddress.country,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+    ])
+    .select();
+
+  if (error) {
+    console.error("Adres ekleme hatası:", error);
+    alert("Adres kaydedilemedi: " + error.message);
+    return;
+  }
+
+  setAddresses((prev) => [...prev, data[0]]);
+  setShowNewAddressForm(false);
+  setSelectedAddressId(data[0].id);
+
+  alert("Adres başarıyla kaydedildi ✅");
+}
+async function handleNewCardSave() {
+  if (!newCard.name_on_card || !newCard.card_number || !newCard.expiry || !newCard.cvv || !newCard.title) {
+    alert("Lütfen tüm kart alanlarını doldurun!");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("user_cards")
+    .insert([
+      {
+        user_id: currentUser.id,
+        name_on_card: newCard.name_on_card,
+        card_number: newCard.card_number,
+        expiry: newCard.expiry,
+        cvv: newCard.cvv,
+        title: newCard.title,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+    ])
+    .select();
+
+  if (error) {
+    console.error("Kart ekleme hatası:", error);
+    alert("Kart kaydedilemedi: " + error.message);
+    return;
+  }
+
+  setCards((prev) => [...prev, data[0]]);
+  setShowNewCardForm(false);
+  setSelectedCardId(data[0].id);
+
+  alert("Kart başarıyla kaydedildi ✅");
+}
 
 // Mobil odak için:
 const emptyStateRef = useRef<HTMLDivElement>(null);
@@ -655,9 +714,10 @@ if (siparisBilgi.isCustom) {
       >
         <option value="">Adres Seçiniz</option>
         {addresses.map((adres) => (
-          <option key={adres.id} value={adres.id}>
-            {adres.baslik} - {adres.il}, {adres.ilce}
-          </option>
+         <option key={adres.id} value={adres.id}>
+  {adres.title} - {adres.city}, {adres.country}
+</option>
+
         ))}
       </select>
       <button
@@ -695,29 +755,36 @@ if (siparisBilgi.isCustom) {
 
   {showNewAddressForm && (
     <div style={{ marginTop: 15 }}>
-      <input
-        type="text"
-        placeholder="Adres Başlığı"
-        style={{ width: "100%", padding: 8, marginBottom: 6 }}
-        onChange={(e) => setNewAddress({ ...newAddress, baslik: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="İl"
-        style={{ width: "100%", padding: 8, marginBottom: 6 }}
-        onChange={(e) => setNewAddress({ ...newAddress, il: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="İlçe"
-        style={{ width: "100%", padding: 8, marginBottom: 6 }}
-        onChange={(e) => setNewAddress({ ...newAddress, ilce: e.target.value })}
-      />
-      <textarea
-        placeholder="Açık Adres"
-        style={{ width: "100%", padding: 8, marginBottom: 6 }}
-        onChange={(e) => setNewAddress({ ...newAddress, acik_adres: e.target.value })}
-      />
+    <input
+  type="text"
+  placeholder="Adres Başlığı"
+  onChange={(e) => setNewAddress({ ...newAddress, title: e.target.value })}
+/>
+
+<input
+  type="text"
+  placeholder="Açık Adres"
+  onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
+/>
+
+<input
+  type="text"
+  placeholder="Şehir"
+  onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
+/>
+
+<input
+  type="text"
+  placeholder="Posta Kodu"
+  onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
+/>
+
+<input
+  type="text"
+  placeholder="Ülke"
+  onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
+/>
+
       <button
         style={{
           background: "#2563eb",
@@ -732,7 +799,110 @@ if (siparisBilgi.isCustom) {
         💾 Adresi Kaydet
       </button>
     </div>
+    
   )}
+  {/* Kart Seçim Alanı */}
+<div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
+  <h3 style={{ fontSize: 18, marginBottom: 8 }}>Ödeme Yöntemi</h3>
+
+  {cards.length > 0 ? (
+    <>
+      <select
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 6,
+          border: "1px solid #ccc",
+          marginBottom: 10,
+        }}
+        onChange={(e) => setSelectedCardId(e.target.value)}
+        value={selectedCardId}
+      >
+        <option value="">Kart Seçiniz</option>
+        {cards.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.title} •••• {c.card_number.slice(-4)}
+          </option>
+        ))}
+      </select>
+      <button
+        style={{
+          background: "#f1f5f9",
+          padding: "6px 10px",
+          borderRadius: 6,
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          fontSize: 14,
+        }}
+        onClick={() => setShowNewCardForm(true)}
+      >
+        ➕ Yeni Kart Ekle
+      </button>
+    </>
+  ) : (
+    <div>
+      <p style={{ color: "#555" }}>Kayıtlı kartınız yok.</p>
+      <button
+        style={{
+          background: "#22c55e",
+          color: "#fff",
+          padding: "8px 12px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+        }}
+        onClick={() => setShowNewCardForm(true)}
+      >
+        ➕ Yeni Kart Oluştur
+      </button>
+    </div>
+  )}
+
+  {showNewCardForm && (
+    <div style={{ marginTop: 15 }}>
+      <input
+        type="text"
+        placeholder="Kart Üstündeki İsim"
+        onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="Kart Numarası"
+        onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="Son Kullanma (AA/YY)"
+        onChange={(e) => setNewCard({ ...newCard, expiry: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="CVV"
+        onChange={(e) => setNewCard({ ...newCard, cvv: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="Kart Başlığı"
+        onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
+      />
+
+      <button
+        style={{
+          background: "#2563eb",
+          color: "#fff",
+          padding: "8px 12px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+        }}
+        onClick={handleNewCardSave}
+      >
+        💾 Kartı Kaydet
+      </button>
+    </div>
+  )}
+</div>
+
 </div>
 
 
