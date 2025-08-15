@@ -179,9 +179,15 @@ export default function UrunDetay({
         .update({ adet: sepetteVar.adet + 1 })
         .eq("id", sepetteVar.id);
     } else {
-      await supabase
-        .from("cart")
-        .insert([{ user_id: userId, product_id: urun.id, adet: 1 }]);
+    await supabase
+  .from("cart")
+  .insert([{
+    user_id: userId,
+    product_id: urun.id,
+    adet: 1,
+    ozellikler: secilenOzellikler // seçilen özellikleri ekliyoruz
+  }]);
+
     }
     alert("Sepete eklendi!");
   };
@@ -221,7 +227,6 @@ export default function UrunDetay({
   return (
     <>
       {/* HEADER ve görsel yapılar buraya aynı şekilde geliyor */}
-        return (
     <div
       style={{
         minHeight: "100vh",

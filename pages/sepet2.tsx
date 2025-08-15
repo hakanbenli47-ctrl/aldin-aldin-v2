@@ -126,7 +126,7 @@ useEffect(() => {
       // 1) cart'tan satırları çek
       const { data: cart, error } = await supabase
         .from("cart")
-        .select("id, adet, product_id, user_id")
+        .select("id, adet, product_id, user_id, ozellikler")
         .eq("user_id", currentUser.id);
 
       if (error) throw error;
@@ -445,6 +445,51 @@ if (siparisBilgi.isCustom) {
                     >
                       {item.product?.title}
                     </h3>
+                    {/* Ürün Özellikleri Gösterimi */}
+                    {/* Ürün Özellikleri Düzenleme */}
+{item.ozellikler && Object.keys(item.ozellikler).length > 0 && (
+  <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>
+    {Object.entries(item.ozellikler as Record<string, string>).map(([ozellik, deger]) => (
+      <div key={ozellik} style={{ marginBottom: 4 }}>
+        <b>{ozellik}:</b>{" "}
+        <select
+          value={deger}
+          onChange={async (e) => {
+            const yeniDeger = e.target.value;
+            // 1️⃣ State güncelle
+            const yeniOzellikler = { ...item.ozellikler, [ozellik]: yeniDeger };
+
+            // 2️⃣ Supabase güncelle
+            await supabase
+              .from("cart")
+              .update({ ozellikler: yeniOzellikler })
+              .eq("id", item.id);
+
+            // 3️⃣ Sayfa state'ini yenile (cartItems içinde)
+            setCartItems((prev) =>
+              prev.map((urun) =>
+                urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
+              )
+            );
+          }}
+          style={{
+            marginLeft: 4,
+            padding: "2px 6px",
+            borderRadius: 4,
+            border: "1px solid #ccc",
+            fontSize: 12,
+          }}
+        >
+          {/* Seçenekleri buraya ürün sayfasındaki gibi dinamik olarak koyman lazım */}
+          <option value={deger}>{deger}</option>
+          {/* Örneğin Renk: Mavi, Kırmızı gibi diğer seçenekleri ekleyebilirsin */}
+        </select>
+      </div>
+    ))}
+  </div>
+)}
+
+
                     <div>
                       {indirimVar ? (
                         <>
