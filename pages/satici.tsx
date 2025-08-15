@@ -1032,26 +1032,27 @@ const { data: yeniOrders } = await supabase
                         <tr key={sip.id} style={{ borderBottom: "1.5px solid #e5e7eb" }}>
                           <td style={tdS}>{sip.id}</td>
                           <td style={tdS}>
-  {Array.isArray(sip.cart_items) ? (
-    sip.cart_items.map((u: any, i: number) => (
-      <div key={i} style={{ marginBottom: 6 }}>
-        <div>
-          {u.title} <span style={{ color: "#888" }}>x{u.adet}</span>
-        </div>
-        <OzellikEtiketleri item={u} />
-      </div>
-    ))
-  ) : typeof sip.cart_items === "object" && sip.cart_items !== null ? (
-    <div>
+ {Array.isArray(sip.custom_features) ? (
+  sip.custom_features.map((u: any, i: number) => (
+    <div key={i} style={{ marginBottom: 6 }}>
       <div>
-        {sip.cart_items.title}{" "}
-        <span style={{ color: "#888" }}>x{sip.cart_items.adet}</span>
+        {u.title} <span style={{ color: "#888" }}>x{u.adet}</span>
       </div>
-      <OzellikEtiketleri item={sip.cart_items} />
+      <OzellikEtiketleri item={u} />
     </div>
-  ) : (
-    "-"
-  )}
+  ))
+) : typeof sip.custom_features === "object" && sip.custom_features !== null ? (
+  <div>
+    <div>
+      {sip.custom_features.title}{" "}
+      <span style={{ color: "#888" }}>x{sip.custom_features.adet}</span>
+    </div>
+    <OzellikEtiketleri item={sip.custom_features} />
+  </div>
+) : (
+  "-"
+)}
+
 </td>
 
                           {/* Alıcı (Kullanıcı ID veya email) */}
