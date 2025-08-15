@@ -1071,9 +1071,9 @@ if (siparisBilgi.isCustom) {
     <input
   style={inputStyle}
   type="text"
-  placeholder="Kart Başlığı Giriniz"
-  value={newCard.name_on_card}
-  onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
+  placeholder="Kart Başlığı"
+  value={newCard.title}
+  onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
 />
 <input
   style={inputStyle}
