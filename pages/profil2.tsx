@@ -273,17 +273,15 @@ const allMobileTabs: MobileTab[] = [
         } else setFavoriIlanlar([]);
         setLoadingFavoriler(false);
         // Siparişler
-        const { data: ordersData } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
-// ✅ YENİ
-if (ordersData) {
-  setOrders(ordersData);
-} else {
-  setOrders([]);
-}
+        // Satıcı siparişleri
+const { data: ordersData } = await supabase
+  .from("seller_orders")
+  .select("*")
+  .eq("seller_id", userId) // seller_id olacak
+  .order("created_at", { ascending: false });
+
+setOrders(ordersData || []);
+
 
     }
   }
@@ -654,14 +652,15 @@ function handleEditCard(id: number) {
     }
     setIadeKargoKaydediliyor(prev => ({ ...prev, [orderId]: true }));
     const { error } = await supabase
-      .from("orders")
-      .update({ iade_kargo_takip_no: iadeKargoTakipNo[orderId] })
-      .eq("id", orderId);
+  .from("seller_orders")
+  .update({ iade_kargo_takip_no: iadeKargoTakipNo[orderId] })
+  .eq("id", orderId);
+
     setIadeKargoKaydediliyor(prev => ({ ...prev, [orderId]: false }));
     if (!error) {
       alert("Takip kodu kaydedildi!");
       const { data: ordersData } = await supabase
-        .from("orders")
+        .from("seller_orders")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -1055,7 +1054,7 @@ if (selectedMenu === "favoriIlanlar") {
           <button onClick={async () => {
             if (!iadeAciklamasi.trim()) return alert("Açıklama gerekli.");
             setIadeLoading(true);
-            await supabase.from("orders").update({
+            await supabase.from("seller_orders").update({
               iade_durumu: "Talep Edildi",
               iade_aciklamasi: iadeAciklamasi
             }).eq("id", showIadeModal!);
@@ -1063,7 +1062,7 @@ if (selectedMenu === "favoriIlanlar") {
             setShowIadeModal(null);
             setIadeAciklamasi("");
             const { data: ordersData } = await supabase
-              .from("orders")
+              .from("seller_orders")
               .select("*")
               .eq("user_id", user.id)
               .order("created_at", { ascending: false });
