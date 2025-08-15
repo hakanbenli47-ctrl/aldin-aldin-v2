@@ -451,11 +451,10 @@ if (siparisBilgi.isCustom) {
 {/* Ürün özellikleri - Sepette değiştirme */}
 {/* Eğer cart.ozellikler yoksa ama product.ozellikler varsa, onları seçilebilir şekilde göster */}
 {(
-  item.ozellikler && Object.keys(item.ozellikler).length > 0
-    ? Object.entries(item.ozellikler)
-    : item.product?.ozellikler
-      ? Object.entries(item.product.ozellikler).map(([ozellik, secenekler]) => [ozellik, ""])
-      : []
+  Object.entries(item.product?.ozellikler || {}).map(([ozellik, secenekler]) => {
+  const seciliDeger = item.ozellikler?.[ozellik] || "";
+  return [ozellik, seciliDeger];
+})
 ).map(([ozellik, deger]) => (
   <div key={ozellik} style={{ marginBottom: 4 }}>
     <b>{ozellik}:</b>{" "}
@@ -668,10 +667,13 @@ if (siparisBilgi.isCustom) {
       }}
     >
       <SiparisModal
-        addresses={addresses}
-        cards={cards}
-        onSiparisVer={handleSiparisVer}
-      />
+  addresses={addresses}
+  cards={cards}
+  onSiparisVer={handleSiparisVer}
+  toplamTutar={toplamFiyat} // ✅ toplam fiyatı prop olarak ekledik
+  toplamUrun={cartItems.length} // ✅ ürün sayısını da ekledik
+/>
+
     </div>
   </div>
 )}
@@ -681,7 +683,7 @@ if (siparisBilgi.isCustom) {
 }
 
 // ---- Sipariş Modalı
-function SiparisModal({ addresses, cards, onSiparisVer }: any) {
+function SiparisModal({ addresses, cards, onSiparisVer, toplamTutar, toplamUrun }: any) {
   const [useSaved, setUseSaved] = useState(true);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
   // Sepet2 içinde, state'lerin hemen altı:
@@ -1085,57 +1087,79 @@ const onlyDigits = (v: string) => v.replace(/\D+/g, "");
 
       {/* TEK BUTON */}
       <button
-       ref={confirmBtnRef} 
-        style={{
-          background: "#2563eb",
-          color: "#fff",
-          border: "none",
-          borderRadius: 8,
-          padding: "12px 0",
-          fontWeight: 700,
-          width: "100%",
-          fontSize: 16,
-          marginTop: 4,
-        }}
-        onClick={() => {
-          if (useSaved) {
-            if (!selectedAddressId || !selectedCardId) {
-              alert("Lütfen bir adres ve kart seçin.");
-              return;
-            }
-            onSiparisVer({
-              addressId: selectedAddressId,
-              cardId: selectedCardId,
-              isCustom: false,
-            });
-          } else {
-            if (
-              !customAddress.title ||
-              !customAddress.full_name ||
-              !customAddress.phone ||
-              !customAddress.address_line1 ||
-              !customAddress.district ||
-              !customAddress.city ||
-              !customAddress.postal_code ||
-              !customAddress.country ||
-              !customCard.card_holder_name ||
-              !customCard.card_number ||
-              !customCard.expiration_date ||
-              !customCard.cvv
-            ) {
-              alert("Lütfen tüm adres ve kart alanlarını doldurun.");
-              return;
-            }
-            onSiparisVer({
-              address: customAddress,
-              card: customCard,
-              isCustom: true,
-            });
-          }
-        }}
-      >
-        Siparişi Tamamla
-      </button>
+  style={{
+    background: "#fb8500",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    padding: "12px 0",
+    fontWeight: 700,
+    width: "100%",
+    fontSize: 16,
+    marginTop: 4,
+  }}
+  onClick={() => {
+    // Adres ve kart bilgisi kontrolü
+    if (useSaved) {
+      if (!selectedAddressId || !selectedCardId) {
+        alert("Lütfen bir adres ve kart seçin.");
+        return;
+      }
+    } else {
+      if (
+        !customAddress.title ||
+        !customAddress.full_name ||
+        !customAddress.phone ||
+        !customAddress.address_line1 ||
+        !customAddress.district ||
+        !customAddress.city ||
+        !customAddress.postal_code ||
+        !customAddress.country ||
+        !customCard.card_holder_name ||
+        !customCard.card_number ||
+        !customCard.expiration_date ||
+        !customCard.cvv
+      ) {
+        alert("Lütfen tüm adres ve kart alanlarını doldurun.");
+        return;
+      }
+    }
+
+    // Sipariş özeti modalı açılabilir
+  // Maskelenmiş kart numarası (son 4 hane)
+let kartSon4 = "";
+if (useSaved) {
+  const seciliKart = cards.find((c: any) => c.id === selectedCardId);
+  kartSon4 = seciliKart ? "**** **** **** " + seciliKart.card_number.slice(-4) : "";
+} else {
+  kartSon4 = "**** **** **** " + customCard.card_number.slice(-4);
+}
+
+// Adres bilgisi
+let adresMetin = "";
+if (useSaved) {
+  const seciliAdres = addresses.find((a: any) => a.id === selectedAddressId);
+  if (seciliAdres) {
+    adresMetin = `${seciliAdres.full_name}, ${seciliAdres.address} ${seciliAdres.city} ${seciliAdres.postal_code}`;
+  }
+} else {
+  adresMetin = `${customAddress.full_name}, ${customAddress.address_line1} ${customAddress.city} ${customAddress.postal_code}`;
+}
+
+// Sipariş özeti modalı açılabilir
+alert(
+  "📦 Sipariş Özeti\n\n" +
+  "Ürün sayısı: " + toplamUrun + "\n" +
+  "Toplam: " + toplamTutar + " ₺\n\n" +
+  "💳 Kart: " + kartSon4 + "\n" +
+  "🏠 Adres: " + adresMetin
+);
+
+  }}
+>
+  📦 Sipariş Özeti Göster
+</button>
+
     </div>
   );
 }
