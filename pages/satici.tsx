@@ -283,11 +283,17 @@ export default function SaticiPanel() {
 async function fetchSiparisler() {
   if (!user) return;
 
-  const { data: ordersData, error } = await supabase
+const { data: ordersData, error } = await supabase
   .from("seller_orders")
-  .select("*")
+  .select(`
+    id, seller_id, user_id, first_name, last_name, phone, address, city,
+    total_price, status, created_at, updated_at, cart_items,
+    kargo_firma, kargo_takip_no, iade_durumu, iade_aciklamasi
+  `)
   .eq("seller_id", user.id)
   .order("created_at", { ascending: false });
+
+
 
   if (error) {
     console.error(error);
@@ -1054,10 +1060,27 @@ const { data: yeniOrders } = await supabase
   )}
 </td>
 
-                          <td style={tdS}>{sip.user_id || "-"}</td>
-                          <td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
-                            {sip.total_price} ₺
-                          </td>
+                          {/* Alıcı (Kullanıcı ID veya email) */}
+<td style={tdS}>{sip.user_id || "-"}</td>
+
+{/* İsim Soyisim */}
+<td style={tdS}>
+  {`${sip.first_name || ""} ${sip.last_name || ""}`.trim() || "-"}
+</td>
+
+{/* Telefon */}
+<td style={tdS}>{sip.phone || "-"}</td>
+
+{/* Adres */}
+<td style={tdS}>
+  {`${sip.address || ""} ${sip.city || ""}`.trim() || "-"}
+</td>
+
+{/* Tutar */}
+<td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
+  {sip.total_price} ₺
+</td>
+
                           <td style={tdS}>
                             <span
                               style={{
