@@ -282,37 +282,11 @@ export default function SaticiPanel() {
 async function fetchSiparisler() {
   if (!user) return;
 
-const { data: ordersData, error } = await supabase
-  .from("orders")
-  .select(`
-    *,
-    user_addresses (
-      first_name,
-      last_name,
-      phone,
-      address,
-      city,
-      postal_code,
-      country
-    ),
-    ilan (
-      id,
-      title,
-      desc,
-      price,
-      resim_url,
-      kategori_id,
-      kampanyali,
-      indirimli_fiyat,
-      ozellikler
-    )
-  `)
-  .eq("seller_id", user.id)
-  .not("address_id", "is", null) // adresi boş olmayan
-  .not("ilan_id", "is", null)    // ilanı boş olmayan
-  .order("created_at", { ascending: false });
-
-
+  const { data: ordersData, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("seller_id", user.id) // <— ARTIK İLAN ID'YE GÖRE DEĞİL, SATICIYA GÖRE
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error(error);
@@ -1076,18 +1050,10 @@ const { data: ordersData, error } = await supabase
   )}
 </td>
 
-                         <td style={tdS}>
-  {sip.user_addresses?.first_name} {sip.user_addresses?.last_name}
-</td>
-<td style={tdS}>{sip.user_addresses?.phone}</td>
-<td style={tdS}>
-  {sip.user_addresses?.address}, {sip.user_addresses?.city}, 
-  {sip.user_addresses?.postal_code}, {sip.user_addresses?.country}
-</td>
-<td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
-  {sip.total_price} ₺
-</td>
-
+                          <td style={tdS}>{sip.user_id || "-"}</td>
+                          <td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
+                            {sip.total_price} ₺
+                          </td>
                           <td style={tdS}>
                             <span
                               style={{
