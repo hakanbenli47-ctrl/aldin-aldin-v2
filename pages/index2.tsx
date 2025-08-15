@@ -156,7 +156,7 @@ type Ilan = {
   views?: number;
   user_email: string;  // <-- BURAYA EKLE!
    ortalamaPuan?: number;
-
+    ozellikler?: Record<string, string[]>;
 };
 
 
@@ -310,31 +310,56 @@ useEffect(() => {
   fetchDopedIlanlar();
 }, []);
   const sepetteVarMi = (id: number) => cartItems.find((item) => item.product_id === id);
+// ✅ Özellikleri varsayılan olarak ayarla
+let defaultOzellikler: Record<string, string> = {};
 
-  const sepeteEkle = async (urun: Ilan) => {
-    if (!isLoggedIn || !user) {
-      alert("Lütfen giriş yapınız!");
-      window.location.href = "/giris";
-      return;
-    }
 
-    const sepette = sepetteVarMi(urun.id);
-    if (sepette) {
-      await supabase
-        .from("cart")
-        .update({ adet: sepette.adet + 1 })
-        .eq("id", sepette.id);
-    } else {
-      await supabase
-        .from("cart")
-        .insert([{ user_id: user.id, product_id: urun.id, adet: 1 }]);
-    }
-    const { data: cartData } = await supabase
+
+const sepeteEkle = async (urun: Ilan) => {
+  if (!isLoggedIn || !user) {
+    alert("Lütfen giriş yapınız!");
+    window.location.href = "/giris";
+    return;
+  }
+
+  // Varsayılan özellikler (boş obje)
+  const defaultOzellikler: Record<string, string> = {};
+
+  if (urun.ozellikler && typeof urun.ozellikler === "object") {
+    Object.entries(urun.ozellikler as Record<string, string[]>).forEach(([key, secenekler]) => {
+      if (Array.isArray(secenekler) && secenekler.length > 0) {
+        defaultOzellikler[key] = secenekler[0]; // ilk seçeneği otomatik seç
+      }
+    });
+  }
+
+  const sepette = sepetteVarMi(urun.id);
+
+  if (sepette) {
+    await supabase
       .from("cart")
-      .select("id, adet, product_id")
-      .eq("user_id", user.id);
-    setCartItems(cartData || []);
-  };
+      .update({ adet: sepette.adet + 1 })
+      .eq("id", sepette.id);
+  } else {
+    await supabase
+      .from("cart")
+      .insert([{
+        user_id: user.id,
+        product_id: urun.id,
+        adet: 1,
+        ozellikler: defaultOzellikler
+      }]);
+  }
+
+  const { data: cartData } = await supabase
+    .from("cart")
+    .select("id, adet, product_id, ozellikler")
+    .eq("user_id", user.id);
+
+  setCartItems(cartData || []);
+};
+
+
 
   const sepeteGit = () => {
     window.location.href = '/sepet2';

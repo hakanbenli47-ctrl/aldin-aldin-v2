@@ -447,6 +447,7 @@ if (siparisBilgi.isCustom) {
                     </h3>
                     {/* Ürün Özellikleri Gösterimi */}
                     {/* Ürün Özellikleri Düzenleme */}
+{/* Ürün özellikleri - Sepette değiştirme */}
 {item.ozellikler && Object.keys(item.ozellikler).length > 0 && (
   <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>
     {Object.entries(item.ozellikler as Record<string, string>).map(([ozellik, deger]) => (
@@ -456,16 +457,15 @@ if (siparisBilgi.isCustom) {
           value={deger}
           onChange={async (e) => {
             const yeniDeger = e.target.value;
-            // 1️⃣ State güncelle
             const yeniOzellikler = { ...item.ozellikler, [ozellik]: yeniDeger };
 
-            // 2️⃣ Supabase güncelle
+            // Supabase güncelle
             await supabase
               .from("cart")
               .update({ ozellikler: yeniOzellikler })
               .eq("id", item.id);
 
-            // 3️⃣ Sayfa state'ini yenile (cartItems içinde)
+            // State güncelle
             setCartItems((prev) =>
               prev.map((urun) =>
                 urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
@@ -480,14 +480,17 @@ if (siparisBilgi.isCustom) {
             fontSize: 12,
           }}
         >
-          {/* Seçenekleri buraya ürün sayfasındaki gibi dinamik olarak koyman lazım */}
-          <option value={deger}>{deger}</option>
-          {/* Örneğin Renk: Mavi, Kırmızı gibi diğer seçenekleri ekleyebilirsin */}
+          {(item.product?.ozellikler?.[ozellik] || [deger]).map((secenek: string) => (
+            <option key={secenek} value={secenek}>
+              {secenek}
+            </option>
+          ))}
         </select>
       </div>
     ))}
   </div>
 )}
+
 
 
                     <div>
