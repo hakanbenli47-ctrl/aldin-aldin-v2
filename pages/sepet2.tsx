@@ -138,9 +138,10 @@ useEffect(() => {
       // 2) ürünleri 'ilan' tablosundan topluca çek
       const productIds = Array.from(new Set(cart.map((c: any) => c.product_id).filter(Boolean)));
       const { data: ilanlar, error: perr } = await supabase
-        .from("ilan")
-        .select("id, title, price, indirimli_fiyat, resim_url, stok, user_email, user_id")
-        .in("id", productIds);
+  .from("ilan")
+  .select("id, title, price, indirimli_fiyat, resim_url, stok, user_email, user_id, ozellikler")
+  .in("id", productIds);
+
       if (perr) throw perr;
 
       const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
@@ -448,48 +449,52 @@ if (siparisBilgi.isCustom) {
                     {/* Ürün Özellikleri Gösterimi */}
                     {/* Ürün Özellikleri Düzenleme */}
 {/* Ürün özellikleri - Sepette değiştirme */}
-{item.ozellikler && Object.keys(item.ozellikler).length > 0 && (
-  <div style={{ fontSize: 13, color: "#555", marginBottom: 6 }}>
-    {Object.entries(item.ozellikler as Record<string, string>).map(([ozellik, deger]) => (
-      <div key={ozellik} style={{ marginBottom: 4 }}>
-        <b>{ozellik}:</b>{" "}
-        <select
-          value={deger}
-          onChange={async (e) => {
-            const yeniDeger = e.target.value;
-            const yeniOzellikler = { ...item.ozellikler, [ozellik]: yeniDeger };
+{/* Eğer cart.ozellikler yoksa ama product.ozellikler varsa, onları seçilebilir şekilde göster */}
+{(
+  item.ozellikler && Object.keys(item.ozellikler).length > 0
+    ? Object.entries(item.ozellikler)
+    : item.product?.ozellikler
+      ? Object.entries(item.product.ozellikler).map(([ozellik, secenekler]) => [ozellik, ""])
+      : []
+).map(([ozellik, deger]) => (
+  <div key={ozellik} style={{ marginBottom: 4 }}>
+    <b>{ozellik}:</b>{" "}
+    <select
+      value={deger as string}
+      onChange={async (e) => {
+        const yeniDeger = e.target.value;
 
-            // Supabase güncelle
-            await supabase
-              .from("cart")
-              .update({ ozellikler: yeniOzellikler })
-              .eq("id", item.id);
+        // Mevcut cart.ozellikler varsa onları al, yoksa boş nesne başlat
+        const mevcutOzellikler =
+          item.ozellikler && Object.keys(item.ozellikler).length > 0
+            ? item.ozellikler
+            : {};
 
-            // State güncelle
-            setCartItems((prev) =>
-              prev.map((urun) =>
-                urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
-              )
-            );
-          }}
-          style={{
-            marginLeft: 4,
-            padding: "2px 6px",
-            borderRadius: 4,
-            border: "1px solid #ccc",
-            fontSize: 12,
-          }}
-        >
-          {(item.product?.ozellikler?.[ozellik] || [deger]).map((secenek: string) => (
-            <option key={secenek} value={secenek}>
-              {secenek}
-            </option>
-          ))}
-        </select>
-      </div>
-    ))}
+        const yeniOzellikler = { ...mevcutOzellikler, [ozellik]: yeniDeger };
+
+        // Supabase cart tablosunu güncelle
+        await supabase
+          .from("cart")
+          .update({ ozellikler: yeniOzellikler })
+          .eq("id", item.id);
+
+        // Local state güncelle
+        setCartItems((prev) =>
+          prev.map((urun) =>
+            urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
+          )
+        );
+      }}
+    >
+      <option value="">Seçiniz</option>
+      {(item.product?.ozellikler?.[ozellik] || [deger]).map((secenek: string) => (
+        <option key={secenek} value={secenek}>
+          {secenek}
+        </option>
+      ))}
+    </select>
   </div>
-)}
+))}
 
 
 

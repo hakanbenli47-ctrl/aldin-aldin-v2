@@ -240,7 +240,7 @@ export default function UrunDetay({
       }}
     >
       <Head>
-        <title>{ilan.title} - Aldın Aldın</title>
+        <title>{ilan.title} </title>
         <meta name="description" content={ilan.desc?.slice(0, 120)} />
       </Head>
 
@@ -277,7 +277,7 @@ export default function UrunDetay({
             letterSpacing: 1,
           }}
         >
-          Aldın Aldın
+          
         </span>
       </div>
 

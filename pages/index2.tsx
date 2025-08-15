@@ -324,15 +324,6 @@ const sepeteEkle = async (urun: Ilan) => {
 
   // Varsayılan özellikler (boş obje)
   const defaultOzellikler: Record<string, string> = {};
-
-  if (urun.ozellikler && typeof urun.ozellikler === "object") {
-    Object.entries(urun.ozellikler as Record<string, string[]>).forEach(([key, secenekler]) => {
-      if (Array.isArray(secenekler) && secenekler.length > 0) {
-        defaultOzellikler[key] = secenekler[0]; // ilk seçeneği otomatik seç
-      }
-    });
-  }
-
   const sepette = sepetteVarMi(urun.id);
 
   if (sepette) {
