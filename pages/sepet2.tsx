@@ -147,27 +147,43 @@ if (!/^(05\d{9})$/.test(newAddress.phone)) {
   alert("Adres başarıyla kaydedildi ✅");
 }
 async function handleNewCardSave() {
-  if (!newCard.name_on_card || !newCard.card_number || !newCard.expiry || !newCard.cvv || !newCard.title) {
-    alert("Lütfen tüm kart alanlarını doldurun!");
+  if (!newCard.name_on_card) {
+    alert("Kart üzerindeki isim eksik!");
+    return;
+  }
+  if (!newCard.card_number) {
+    alert("Kart numarası girilmedi!");
+    return;
+  }
+  if (!newCard.expiry) {
+    alert("Son kullanma tarihi girilmedi!");
+    return;
+  }
+  if (!newCard.cvv) {
+    alert("CVV girilmedi!");
+    return;
+  }
+  if (!newCard.title) {
+    alert("Kart başlığı girilmedi!");
     return;
   }
 
   const cardDigits = newCard.card_number.replace(/\s/g, "");
   if (cardDigits.length !== 16) {
-    alert("Geçerli bir kart numarası girin!");
+    alert("Geçerli bir kart numarası girin! (16 haneli olmalı)");
     return;
   }
 
   if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(newCard.expiry)) {
-    alert("Son kullanma tarihi geçersiz!");
+    alert("Son kullanma tarihi geçersiz! (AA/YY formatında olmalı)");
     return;
   }
 
   if (!/^\d{3,4}$/.test(newCard.cvv)) {
-    alert("Geçerli bir CVV girin!");
+    alert("Geçerli bir CVV girin! (3 veya 4 haneli olmalı)");
     return;
   }
-
+  
   const { data, error } = await supabase
     .from("user_cards")
     .insert([
@@ -1064,8 +1080,11 @@ if (siparisBilgi.isCustom) {
 <input
   style={inputStyle}
   type="text"
+  inputMode="numeric"
+  pattern="\d*"
   placeholder="Kart Numarası"
   value={newCard.card_number}
+  maxLength={19}
   onChange={(e) =>
     setNewCard({ ...newCard, card_number: formatCardNumber(e.target.value) })
   }
@@ -1075,24 +1094,24 @@ if (siparisBilgi.isCustom) {
 <input
   style={inputStyle}
   type="text"
-  placeholder="Son Kullanma Tarihi (AA/YY)"
+  inputMode="numeric"
+  pattern="\d*"
+  placeholder="Son Kullanma (AA/YY)"
   value={newCard.expiry}
-  onChange={(e) => {
-    let val = e.target.value.replace(/\D/g, "");
-    if (val.length >= 3) val = val.slice(0, 2) + "/" + val.slice(2, 4);
-    setNewCard({ ...newCard, expiry: val });
-  }}
+  maxLength={5}
+  onChange={(e) => setNewCard({ ...newCard, expiry: formatExpiry(e.target.value) })}
 />
 
 {/* CVV */}
 <input
   style={inputStyle}
   type="text"
+  inputMode="numeric"
+  pattern="\d*"
   placeholder="CVV"
   value={newCard.cvv}
-  onChange={(e) =>
-    setNewCard({ ...newCard, cvv: e.target.value.replace(/\D/g, "").slice(0, 4) })
-  }
+  maxLength={4}
+  onChange={(e) => setNewCard({ ...newCard, cvv: formatCVV(e.target.value) })}
 />
 
     <button
