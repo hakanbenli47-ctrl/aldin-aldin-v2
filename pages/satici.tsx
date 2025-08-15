@@ -282,11 +282,33 @@ export default function SaticiPanel() {
 async function fetchSiparisler() {
   if (!user) return;
 
-  const { data: ordersData, error } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("seller_id", user.id) // <— ARTIK İLAN ID'YE GÖRE DEĞİL, SATICIYA GÖRE
-    .order("created_at", { ascending: false });
+const { data: ordersData, error } = await supabase
+  .from("orders")
+  .select(`
+    id,
+    created_at,
+    updated_at,
+    cart_items,
+    total_price,
+    status,
+    kargo_firma,
+    kargo_takip_no,
+    iade_durumu,
+    iade_aciklamasi,
+    fatura_url,
+    user_addresses (
+      first_name,
+      last_name,
+      phone,
+      address,
+      city,
+      postal_code,
+      country
+    )
+  `)
+  .eq("seller_id", user.id)
+  .order("created_at", { ascending: false });
+
 
   if (error) {
     console.error(error);
@@ -1004,7 +1026,10 @@ async function fetchSiparisler() {
                     <th style={thS}>Sipariş No</th>
                     <th style={thS}>Ürün(ler)</th>
                     <th style={thS}>Alıcı</th>
-                    <th style={thS}>Tutar</th>
+<th style={thS}>İsim Soyisim</th>
+<th style={thS}>Telefon</th>
+<th style={thS}>Adres</th>
+<th style={thS}>Tutar</th>
                     <th style={thS}>Durum</th>
                     <th style={thS}>Kargo Firma</th>
                     <th style={thS}>Kargo Takip No</th>
