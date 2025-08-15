@@ -1076,10 +1076,18 @@ const { data: ordersData, error } = await supabase
   )}
 </td>
 
-                          <td style={tdS}>{sip.user_id || "-"}</td>
-                          <td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
-                            {sip.total_price} ₺
-                          </td>
+                         <td style={tdS}>
+  {sip.user_addresses?.first_name} {sip.user_addresses?.last_name}
+</td>
+<td style={tdS}>{sip.user_addresses?.phone}</td>
+<td style={tdS}>
+  {sip.user_addresses?.address}, {sip.user_addresses?.city}, 
+  {sip.user_addresses?.postal_code}, {sip.user_addresses?.country}
+</td>
+<td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
+  {sip.total_price} ₺
+</td>
+
                           <td style={tdS}>
                             <span
                               style={{
