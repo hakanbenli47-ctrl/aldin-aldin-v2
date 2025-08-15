@@ -282,19 +282,31 @@ export default function SaticiPanel() {
 async function fetchSiparisler() {
   if (!user) return;
 
- const { data: ordersData, error } = await supabase
+  const { data: ordersData, error } = await supabase
   .from("orders")
   .select(`
-    *,
-    address:user_addresses (
-      first_name,
-      last_name,
-      address,
-      city,
-      country,
-      postal_code
-    )
-  `)
+  id,
+  created_at,
+  updated_at,
+  cart_items,
+  total_price,
+  status,
+  kargo_firma,
+  kargo_takip_no,
+  iade_durumu,
+  iade_aciklamasi,
+  fatura_url,
+  user_addresses (
+    first_name,
+    last_name,
+    phone,
+    address,
+    city,
+    postal_code,
+    country
+  )
+`)
+
   .eq("seller_id", user.id)
   .order("created_at", { ascending: false });
 
@@ -1011,18 +1023,21 @@ async function fetchSiparisler() {
                 style={{ width: "100%", borderCollapse: "collapse", marginTop: 6 }}
               >
                 <thead>
-                  <tr style={{ background: "#f6f7fb" }}>
-                    <th style={thS}>Sipariş No</th>
-                    <th style={thS}>Ürün(ler)</th>
-                    <th style={thS}>Alıcı</th>
-                    <th style={thS}>Tutar</th>
-                    <th style={thS}>Durum</th>
-                    <th style={thS}>Kargo Firma</th>
-                    <th style={thS}>Kargo Takip No</th>
-                    <th style={thS}>İade Talebi</th>
-                    <th style={thS}>İşlemler</th>
-                  </tr>
-                </thead>
+  <tr style={{ background: "#f6f7fb" }}>
+    <th style={thS}>Sipariş No</th>
+    <th style={thS}>Ürün(ler)</th>
+    <th style={thS}>Ad Soyad</th>
+    <th style={thS}>Telefon</th>
+    <th style={thS}>Adres</th>
+    <th style={thS}>Tutar</th>
+    <th style={thS}>Durum</th>
+    <th style={thS}>Kargo Firma</th>
+    <th style={thS}>Kargo Takip No</th>
+    <th style={thS}>İade Talebi</th>
+    <th style={thS}>İşlemler</th>
+  </tr>
+</thead>
+
                 <tbody>
                   {(siparisTab === "aktif" ? aktifSiparisler : gecmisSiparisler).map(
   (sip: any) => {
@@ -1059,15 +1074,13 @@ async function fetchSiparisler() {
 </td>
 
                           <td style={tdS}>
-  {sip.address ? (
-    <>
-      {sip.address.first_name} {sip.address.last_name} <br />
-      {sip.address.address}, {sip.address.city}, {sip.address.country} <br />
-      {sip.address.postal_code}
-    </>
-  ) : (
-    sip.user_id || "-"
-  )}
+  {sip.user_addresses?.first_name} {sip.user_addresses?.last_name}
+</td>
+<td style={tdS}>
+  {sip.user_addresses?.phone || "-"}
+</td>
+<td style={tdS}>
+  {sip.user_addresses?.address}, {sip.user_addresses?.city}, {sip.user_addresses?.country} {sip.user_addresses?.postal_code}
 </td>
 
                           <td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
