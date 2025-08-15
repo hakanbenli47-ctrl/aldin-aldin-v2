@@ -727,16 +727,20 @@ if (siparisBilgi.isCustom) {
   {addresses.length > 0 ? (
     <>
       <select
-        style={{
-          width: "100%",
-          padding: 10,
-          borderRadius: 6,
-          border: "1px solid #ccc",
-          marginBottom: 10,
-        }}
-        onChange={(e) => setSelectedAddressId(e.target.value)}
-        value={selectedAddressId}
-      >
+  style={{
+    width: "100%",
+    padding: 10,
+    borderRadius: 6,
+    border: "1px solid #ccc",
+    marginBottom: 10,
+  }}
+  onChange={(e) => {
+    setSelectedAddressId(e.target.value);
+    if (e.target.value) setShowNewAddressForm(false); // ✅ Seçim olunca form kapanır
+  }}
+  value={selectedAddressId}
+>
+
         <option value="">Adres Seçiniz</option>
         {addresses.map((adres) => (
          <option key={adres.id} value={adres.id}>
@@ -780,35 +784,96 @@ if (siparisBilgi.isCustom) {
 
   {showNewAddressForm && (
     <div style={{ marginTop: 15 }}>
-    <input
+   <input
   type="text"
   placeholder="Adres Başlığı"
+  style={{
+    width: "100%",
+    padding: "10px 14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "15px",
+    marginBottom: "10px",
+    outline: "none",
+    transition: "0.2s",
+  }}
+  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
+  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
   onChange={(e) => setNewAddress({ ...newAddress, title: e.target.value })}
 />
 
 <input
   type="text"
   placeholder="Açık Adres"
+  style={{
+    width: "100%",
+    padding: "10px 14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "15px",
+    marginBottom: "10px",
+    outline: "none",
+    transition: "0.2s",
+  }}
+  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
+  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
   onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
 />
 
 <input
   type="text"
   placeholder="Şehir"
+  style={{
+    width: "100%",
+    padding: "10px 14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "15px",
+    marginBottom: "10px",
+    outline: "none",
+    transition: "0.2s",
+  }}
+  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
+  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
   onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
 />
 
 <input
   type="text"
   placeholder="Posta Kodu"
+  style={{
+    width: "100%",
+    padding: "10px 14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "15px",
+    marginBottom: "10px",
+    outline: "none",
+    transition: "0.2s",
+  }}
+  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
+  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
   onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
 />
 
 <input
   type="text"
   placeholder="Ülke"
+  style={{
+    width: "100%",
+    padding: "10px 14px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    fontSize: "15px",
+    marginBottom: "10px",
+    outline: "none",
+    transition: "0.2s",
+  }}
+  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
+  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
   onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
 />
+
 
       <button
         style={{
@@ -853,7 +918,10 @@ if (siparisBilgi.isCustom) {
           border: "1px solid #ccc",
           marginBottom: 10,
         }}
-        onChange={(e) => setSelectedCardId(e.target.value)}
+        onChange={(e) => {
+  setSelectedCardId(e.target.value);
+  if (e.target.value) setShowNewCardForm(false); // ✅ Kart seçilince form kapanır
+}}
         value={selectedCardId}
       >
         <option value="">Kart Seçiniz</option>
@@ -897,48 +965,109 @@ if (siparisBilgi.isCustom) {
   )}
 
   {showNewCardForm && (
-    <div style={{ marginTop: 15 }}>
-      <input
-        type="text"
-        placeholder="Kart Üstündeki İsim"
-        onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="Kart Numarası"
-        onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="Son Kullanma (AA/YY)"
-        onChange={(e) => setNewCard({ ...newCard, expiry: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="CVV"
-        onChange={(e) => setNewCard({ ...newCard, cvv: e.target.value })}
-      />
-      <input
-        type="text"
-        placeholder="Kart Başlığı"
-        onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
-      />
+  <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: "10px" }}>
+    <input
+      type="text"
+      placeholder="Kart Üstündeki İsim"
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid #d1d5db",
+        backgroundColor: "#f9fafb",
+        fontSize: "14px",
+        transition: "all 0.2s ease",
+      }}
+      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
+      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
+      onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
+    />
+    <input
+      type="text"
+      placeholder="Kart Numarası"
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid #d1d5db",
+        backgroundColor: "#f9fafb",
+        fontSize: "14px",
+        transition: "all 0.2s ease",
+      }}
+      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
+      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
+      onChange={(e) => setNewCard({ ...newCard, card_number: e.target.value })}
+    />
+    <input
+      type="text"
+      placeholder="Son Kullanma (AA/YY)"
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid #d1d5db",
+        backgroundColor: "#f9fafb",
+        fontSize: "14px",
+        transition: "all 0.2s ease",
+      }}
+      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
+      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
+      onChange={(e) => setNewCard({ ...newCard, expiry: e.target.value })}
+    />
+    <input
+      type="text"
+      placeholder="CVV"
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid #d1d5db",
+        backgroundColor: "#f9fafb",
+        fontSize: "14px",
+        transition: "all 0.2s ease",
+      }}
+      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
+      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
+      onChange={(e) => setNewCard({ ...newCard, cvv: e.target.value })}
+    />
+    <input
+      type="text"
+      placeholder="Kart Başlığı"
+      style={{
+        width: "100%",
+        padding: "10px 12px",
+        borderRadius: "8px",
+        border: "1px solid #d1d5db",
+        backgroundColor: "#f9fafb",
+        fontSize: "14px",
+        transition: "all 0.2s ease",
+      }}
+      onFocus={(e) => (e.target.style.border = "1px solid #3b82f6")}
+      onBlur={(e) => (e.target.style.border = "1px solid #d1d5db")}
+      onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
+    />
 
-      <button
-        style={{
-          background: "#2563eb",
-          color: "#fff",
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
-        }}
-        onClick={handleNewCardSave}
-      >
-        💾 Kartı Kaydet
-      </button>
-    </div>
-  )}
+    <button
+      style={{
+        background: "#2563eb",
+        color: "#fff",
+        padding: "10px 14px",
+        borderRadius: "8px",
+        border: "none",
+        cursor: "pointer",
+        fontSize: "15px",
+        fontWeight: 600,
+        transition: "background 0.2s ease",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "#2563eb")}
+      onClick={handleNewCardSave}
+    >
+      💾 Kartı Kaydet
+    </button>
+  </div>
+)}
+
 </div>
 
 </div>
