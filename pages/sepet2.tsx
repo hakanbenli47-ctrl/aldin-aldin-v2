@@ -265,20 +265,33 @@ useEffect(() => {
   };
 
   const fetchAddressesAndCards = async () => {
-    const { data: addrData } = await supabase
-      .from("user_addresses")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .order("id", { ascending: true });
-    setAddresses(addrData || []);
+  const { data: addrData } = await supabase
+    .from("user_addresses")
+    .select("*")
+    .eq("user_id", currentUser.id)
+    .order("id", { ascending: true });
 
-    const { data: cardData } = await supabase
-      .from("user_cards")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .order("id", { ascending: true });
-    setCards(cardData || []);
-  };
+  setAddresses(addrData || []);
+
+  // 📌 Adres yoksa formu otomatik aç
+  if (!addrData || addrData.length === 0) {
+    setShowNewAddressForm(true);
+  }
+
+  const { data: cardData } = await supabase
+    .from("user_cards")
+    .select("*")
+    .eq("user_id", currentUser.id)
+    .order("id", { ascending: true });
+
+  setCards(cardData || []);
+
+  // 📌 Kart yoksa formu otomatik aç
+  if (!cardData || cardData.length === 0) {
+    setShowNewCardForm(true);
+  }
+};
+
 
   fetchCart();
   fetchAddressesAndCards();
@@ -697,7 +710,19 @@ if (siparisBilgi.isCustom) {
             </div>
      {/* Adres Seçim Alanı */}
 <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
-  <h3 style={{ fontSize: 18, marginBottom: 8 }}>Teslimat Adresi</h3>
+  <h3
+  style={{
+    fontSize: 19,
+    marginBottom: 10,
+    fontWeight: 700,
+    color: "#1e293b",
+    padding: "6px 0",
+    borderBottom: "2px solid #22c55e",
+    display: "inline-block",
+  }}
+>
+  📍 Teslimat Adresi
+</h3>
 
   {addresses.length > 0 ? (
     <>
@@ -803,7 +828,20 @@ if (siparisBilgi.isCustom) {
   )}
   {/* Kart Seçim Alanı */}
 <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
-  <h3 style={{ fontSize: 18, marginBottom: 8 }}>Ödeme Yöntemi</h3>
+  <h3
+  style={{
+    fontSize: 19,
+    marginBottom: 10,
+    fontWeight: 700,
+    color: "#1e293b",
+    padding: "6px 0",
+    borderBottom: "2px solid #3b82f6",
+    display: "inline-block",
+  }}
+>
+  💳 Ödeme Yöntemi
+</h3>
+
 
   {cards.length > 0 ? (
     <>
