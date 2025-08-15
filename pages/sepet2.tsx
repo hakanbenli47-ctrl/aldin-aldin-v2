@@ -856,6 +856,19 @@ if (siparisBilgi.isCustom) {
   style={inputStyle}
   onChange={(e) => setNewAddress({ ...newAddress, first_name: e.target.value })}
 />
+<input
+  type="text"
+  placeholder="Soy İsim"
+  style={inputStyle}
+  onChange={(e) => setNewAddress({ ...newAddress, last_name: e.target.value })}
+/>
+
+<input
+  type="text"
+  placeholder="Telefon (05XXXXXXXXX)"
+  style={inputStyle}
+  onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+/>
    <input
   type="text"
   placeholder="Adres Başlığı"
