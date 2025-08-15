@@ -172,10 +172,11 @@ const durumGuncelle = async (
   yeniDurum: OrderStatus,
   aliciEmail?: string
 ): Promise<void> => {
-  const { error } = await supabase
-    .from("orders")
-    .update({ status: yeniDurum }) // <- 'durum' değil 'status'
-    .eq("id", siparisId);
+const { error } = await supabase
+  .from("seller_orders")
+  .update({ status: yeniDurum })
+  .eq("id", siparisId);
+
 
   if (!error) {
     await fetch("/api/send-mail", {
@@ -283,10 +284,10 @@ async function fetchSiparisler() {
   if (!user) return;
 
   const { data: ordersData, error } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("seller_id", user.id) // <— ARTIK İLAN ID'YE GÖRE DEĞİL, SATICIYA GÖRE
-    .order("created_at", { ascending: false });
+  .from("seller_orders")
+  .select("*")
+  .eq("seller_id", user.id)
+  .order("created_at", { ascending: false });
 
   if (error) {
     console.error(error);
@@ -319,14 +320,14 @@ async function fetchSiparisler() {
 
     if (silinecekSiparisler.length) {
       const ids = silinecekSiparisler.map((s) => s.id);
-      await supabase.from("orders").delete().in("id", ids);
+     await supabase.from("seller_orders").delete().in("id", ids);
 
-      // tekrar çek
-      const { data: yeniOrders } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("seller_id", user.id)
-        .order("created_at", { ascending: false });
+const { data: yeniOrders } = await supabase
+  .from("seller_orders")
+  .select("*")
+  .eq("seller_id", user.id)
+  .order("created_at", { ascending: false });
+
 
       setSiparisler(yeniOrders || []);
     }
@@ -395,7 +396,8 @@ async function fetchSiparisler() {
     router.push("/ilan-ver");
   }
   async function handleSiparisOnayla(id: number) {
-    await supabase.from("orders").update({ status: "Onaylandı" }).eq("id", id);
+    await supabase.from("seller_orders").update({ status: "Onaylandı" }).eq("id", id);
+
     setSiparisEdits((prev) => ({
       ...prev,
       [id]: { kargoNo: "", kargoFirma: "", editing: true },
@@ -424,14 +426,15 @@ async function fetchSiparisler() {
       alert("Kargo firmasını seçin ve geçerli takip numarası girin!");
       return;
     }
-    await supabase
-      .from("orders")
-      .update({
-        kargo_takip_no: kod,
-        kargo_firma: firma,
-        status: "Kargoya Verildi",
-      })
-      .eq("id", id);
+   await supabase
+  .from("seller_orders")
+  .update({
+    kargo_takip_no: kod,
+    kargo_firma: firma,
+    status: "Kargoya Verildi",
+  })
+  .eq("id", id);
+
     setSiparisler((prev) =>
       prev.map((sip) =>
         sip.id === id
@@ -451,7 +454,7 @@ async function fetchSiparisler() {
   }
   async function handleSiparisIptal(id: number) {
     if (!window.confirm("Siparişi iptal etmek istediğine emin misin?")) return;
-    await supabase.from("orders").update({ status: "İptal" }).eq("id", id);
+   await supabase.from("seller_orders").update({ status: "İptal" }).eq("id", id);
     fetchSiparisler();
   }
   function handleFaturaYazdir(siparis: any) {
@@ -1008,6 +1011,7 @@ async function fetchSiparisler() {
 <th style={thS}>Telefon</th>
 <th style={thS}>Adres</th>
 <th style={thS}>Tutar</th>
+
                     <th style={thS}>Durum</th>
                     <th style={thS}>Kargo Firma</th>
                     <th style={thS}>Kargo Takip No</th>
@@ -1255,9 +1259,10 @@ async function fetchSiparisler() {
                                     }}
                                     onClick={async () => {
                                       await supabase
-                                        .from("orders")
-                                        .update({ iade_durumu: "Onaylandı" })
-                                        .eq("id", sip.id);
+  .from("seller_orders")
+  .update({ iade_durumu: "Onaylandı" })
+  .eq("id", sip.id);
+
                                       fetchSiparisler();
                                     }}
                                   >
@@ -1275,12 +1280,13 @@ async function fetchSiparisler() {
                                       const reason = prompt("Red sebebini yazınız:");
                                       if (!reason) return;
                                       await supabase
-                                        .from("orders")
-                                        .update({
-                                          iade_durumu: "Reddedildi",
-                                          iade_aciklamasi: reason,
-                                        })
-                                        .eq("id", sip.id);
+  .from("seller_orders")
+  .update({
+    iade_durumu: "Reddedildi",
+    iade_aciklamasi: reason,
+  })
+  .eq("id", sip.id);
+
                                       fetchSiparisler();
                                     }}
                                   >
@@ -1370,10 +1376,11 @@ async function fetchSiparisler() {
     onClick={async () => {
       if (!confirm("Bu ürünü iptal etmek istediğinize emin misiniz?")) return;
 
-      const { error } = await supabase
-        .from("orders")
-        .update({ status: "İptal" })
-        .eq("id", sip.id);
+     const { error } = await supabase
+  .from("seller_orders")
+  .update({ status: "İptal" })
+  .eq("id", sip.id);
+
 
       if (error) {
         alert("Sipariş iptal edilemedi ❌");
@@ -1502,10 +1509,11 @@ function FaturaYukleButton({
       const publicUrl = publicUrlData.publicUrl;
 
       // 3) Order güncelle
-      const { error: updErr } = await supabase
-        .from("orders")
-        .update({ fatura_url: publicUrl })
-        .eq("id", siparis.id);
+   const { error: updErr } = await supabase
+  .from("seller_orders")
+  .update({ fatura_url: publicUrl })
+  .eq("id", siparis.id);
+
       if (updErr) throw updErr;
 
       setFaturaUrl(publicUrl);
