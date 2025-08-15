@@ -1169,7 +1169,11 @@ async function handleSiparisVer(siparisBilgi: any) {
 
 </div>
 <button 
-  onClick={handleSiparisVer}
+  onClick={() => handleSiparisVer({
+    addressId: parseInt(selectedAddressId),  // string → integer dönüşümü
+    cardId: parseInt(selectedCardId),
+    isCustom: false
+  })}
   style={{
     width: "100%",
     padding: "12px 16px",
@@ -1184,6 +1188,7 @@ async function handleSiparisVer(siparisBilgi: any) {
 >
   ✅ Sipariş Ver
 </button>
+
 
 </div>
 
