@@ -1084,6 +1084,39 @@ const onlyDigits = (v: string) => v.replace(/\D+/g, "");
           </label>
         </>
       )}
+{/* Sipariş Özeti Kutusu */}
+<div
+  style={{
+    marginTop: "20px",
+    padding: "15px",
+    background: "#f9fafb",
+    borderRadius: "10px",
+    border: "1px solid #e5e7eb",
+    fontSize: "14px",
+    lineHeight: "1.5",
+  }}
+>
+  <strong>📦 Sipariş Özeti</strong>
+  <div>Ürün sayısı: {toplamUrun}</div>
+  <div>Toplam: {toplamTutar} ₺</div>
+  <div>
+    💳 Kart: {useSaved
+      ? "**** **** **** " + cards.find((c: any) => c.id === selectedCardId)?.card_number.slice(-4)
+      : "**** **** **** " + customCard.card_number.slice(-4)
+    }
+  </div>
+  <div>
+    🏠 Adres: {useSaved
+      ? (() => {
+          const seciliAdres = addresses.find((a: any) => a.id === selectedAddressId);
+          return seciliAdres
+            ? `${seciliAdres.full_name}, ${seciliAdres.address} ${seciliAdres.city} ${seciliAdres.postal_code}`
+            : "";
+        })()
+      : `${customAddress.full_name}, ${customAddress.address_line1} ${customAddress.city} ${customAddress.postal_code}`
+    }
+  </div>
+</div>
 
       {/* TEK BUTON */}
       <button
@@ -1147,13 +1180,6 @@ if (useSaved) {
 }
 
 // Sipariş özeti modalı açılabilir
-alert(
-  "📦 Sipariş Özeti\n\n" +
-  "Ürün sayısı: " + toplamUrun + "\n" +
-  "Toplam: " + toplamTutar + " ₺\n\n" +
-  "💳 Kart: " + kartSon4 + "\n" +
-  "🏠 Adres: " + adresMetin
-);
 
   }}
 >
