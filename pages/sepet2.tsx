@@ -46,6 +46,35 @@ export default function Sepet2() {
   const [loading, setLoading] = useState(true);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [cards, setCards] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [newAddress, setNewAddress] = useState<any>({
+    baslik: "",
+    il: "",
+    ilce: "",
+    acik_adres: ""
+  });
+
+  async function handleNewAddressSave() {
+    if (!newAddress.baslik || !newAddress.il || !newAddress.ilce || !newAddress.acik_adres) {
+      alert("Lütfen tüm adres alanlarını doldurun!");
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("user_addresses")
+      .insert([{ ...newAddress, user_id: currentUser.id }])
+      .select();
+
+    if (error) {
+      alert("Adres kaydedilemedi!");
+      return;
+    }
+
+    setAddresses((prev) => [...prev, data[0]]);
+    setShowNewAddressForm(false);
+    setSelectedAddressId(data[0].id);
+  }
 
 // Mobil odak için:
 const emptyStateRef = useRef<HTMLDivElement>(null);
@@ -594,6 +623,7 @@ if (siparisBilgi.isCustom) {
                 </div>
               );
             })}
+            
             <div
               style={{
                 textAlign: "right",
@@ -606,7 +636,105 @@ if (siparisBilgi.isCustom) {
               Toplam:{" "}
               {toplamFiyat.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
             </div>
-     
+     {/* Adres Seçim Alanı */}
+<div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
+  <h3 style={{ fontSize: 18, marginBottom: 8 }}>Teslimat Adresi</h3>
+
+  {addresses.length > 0 ? (
+    <>
+      <select
+        style={{
+          width: "100%",
+          padding: 10,
+          borderRadius: 6,
+          border: "1px solid #ccc",
+          marginBottom: 10,
+        }}
+        onChange={(e) => setSelectedAddressId(e.target.value)}
+        value={selectedAddressId}
+      >
+        <option value="">Adres Seçiniz</option>
+        {addresses.map((adres) => (
+          <option key={adres.id} value={adres.id}>
+            {adres.baslik} - {adres.il}, {adres.ilce}
+          </option>
+        ))}
+      </select>
+      <button
+        style={{
+          background: "#f1f5f9",
+          padding: "6px 10px",
+          borderRadius: 6,
+          border: "1px solid #ccc",
+          cursor: "pointer",
+          fontSize: 14,
+        }}
+        onClick={() => setShowNewAddressForm(true)}
+      >
+        ➕ Yeni Adres Ekle
+      </button>
+    </>
+  ) : (
+    <div>
+      <p style={{ color: "#555" }}>Kayıtlı adresiniz bulunmuyor.</p>
+      <button
+        style={{
+          background: "#22c55e",
+          color: "#fff",
+          padding: "8px 12px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+        }}
+        onClick={() => setShowNewAddressForm(true)}
+      >
+        ➕ Yeni Adres Oluştur
+      </button>
+    </div>
+  )}
+
+  {showNewAddressForm && (
+    <div style={{ marginTop: 15 }}>
+      <input
+        type="text"
+        placeholder="Adres Başlığı"
+        style={{ width: "100%", padding: 8, marginBottom: 6 }}
+        onChange={(e) => setNewAddress({ ...newAddress, baslik: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="İl"
+        style={{ width: "100%", padding: 8, marginBottom: 6 }}
+        onChange={(e) => setNewAddress({ ...newAddress, il: e.target.value })}
+      />
+      <input
+        type="text"
+        placeholder="İlçe"
+        style={{ width: "100%", padding: 8, marginBottom: 6 }}
+        onChange={(e) => setNewAddress({ ...newAddress, ilce: e.target.value })}
+      />
+      <textarea
+        placeholder="Açık Adres"
+        style={{ width: "100%", padding: 8, marginBottom: 6 }}
+        onChange={(e) => setNewAddress({ ...newAddress, acik_adres: e.target.value })}
+      />
+      <button
+        style={{
+          background: "#2563eb",
+          color: "#fff",
+          padding: "8px 12px",
+          borderRadius: 6,
+          border: "none",
+          cursor: "pointer",
+        }}
+        onClick={handleNewAddressSave}
+      >
+        💾 Adresi Kaydet
+      </button>
+    </div>
+  )}
+</div>
+
 
           </>
         )}
