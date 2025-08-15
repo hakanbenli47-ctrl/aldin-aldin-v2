@@ -285,17 +285,7 @@ async function fetchSiparisler() {
 const { data: ordersData, error } = await supabase
   .from("orders")
   .select(`
-    id,
-    created_at,
-    updated_at,
-    cart_items,
-    total_price,
-    status,
-    kargo_firma,
-    kargo_takip_no,
-    iade_durumu,
-    iade_aciklamasi,
-    fatura_url,
+    *,
     user_addresses (
       first_name,
       last_name,
@@ -304,10 +294,24 @@ const { data: ordersData, error } = await supabase
       city,
       postal_code,
       country
+    ),
+    ilan (
+      id,
+      title,
+      desc,
+      price,
+      resim_url,
+      kategori_id,
+      kampanyali,
+      indirimli_fiyat,
+      ozellikler
     )
   `)
   .eq("seller_id", user.id)
+  .not("address_id", "is", null) // adresi boş olmayan
+  .not("ilan_id", "is", null)    // ilanı boş olmayan
   .order("created_at", { ascending: false });
+
 
 
   if (error) {
