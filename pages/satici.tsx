@@ -1031,29 +1031,44 @@ const { data: yeniOrders } = await supabase
                       return (
                         <tr key={sip.id} style={{ borderBottom: "1.5px solid #e5e7eb" }}>
                           <td style={tdS}>{sip.id}</td>
-                          <td style={tdS}>
- {Array.isArray(sip.custom_features) ? (
-  sip.custom_features.map((u: any, i: number) => (
-    <div key={i} style={{ marginBottom: 6 }}>
-      <div>
-        {u.title} <span style={{ color: "#888" }}>x{u.adet}</span>
-      </div>
-      <OzellikEtiketleri item={u} />
-    </div>
-  ))
-) : typeof sip.custom_features === "object" && sip.custom_features !== null ? (
-  <div>
-    <div>
-      {sip.custom_features.title}{" "}
-      <span style={{ color: "#888" }}>x{sip.custom_features.adet}</span>
-    </div>
-    <OzellikEtiketleri item={sip.custom_features} />
-  </div>
-) : (
-  "-"
-)}
+                       <td style={tdS}>
+  {Array.isArray(sip.custom_features) ? (
+    sip.custom_features.map((u: any, i: number) => (
+      <div key={i} style={{ marginBottom: 6 }}>
+        <div>
+          {u.title} <span style={{ color: "#888" }}>x{u.adet}</span>
+        </div>
 
+        {/* Özellikler */}
+        {u.ozellikler &&
+  Object.entries(u.ozellikler).map(([key, value], idx) => (
+    <div key={idx} style={{ fontSize: 12, color: "#666" }}>
+      {key}: {String(value)}
+    </div>
+  ))}
+
+      </div>
+    ))
+  ) : typeof sip.custom_features === "object" && sip.custom_features !== null ? (
+    <div>
+      <div>
+        {sip.custom_features.title}{" "}
+        <span style={{ color: "#888" }}>x{sip.custom_features.adet}</span>
+      </div>
+
+      {sip.custom_features.ozellikler &&
+  Object.entries(sip.custom_features.ozellikler).map(([key, value], idx) => (
+    <div key={idx} style={{ fontSize: 12, color: "#666" }}>
+      {key}: {String(value)}
+    </div>
+  ))}
+
+    </div>
+  ) : (
+    "-"
+  )}
 </td>
+
 
                           {/* Alıcı (Kullanıcı ID veya email) */}
 <td style={tdS}>{sip.user_id || "-"}</td>
