@@ -282,11 +282,22 @@ export default function SaticiPanel() {
 async function fetchSiparisler() {
   if (!user) return;
 
-  const { data: ordersData, error } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("seller_id", user.id) // <— ARTIK İLAN ID'YE GÖRE DEĞİL, SATICIYA GÖRE
-    .order("created_at", { ascending: false });
+ const { data: ordersData, error } = await supabase
+  .from("orders")
+  .select(`
+    *,
+    address:user_addresses (
+      first_name,
+      last_name,
+      address,
+      city,
+      country,
+      postal_code
+    )
+  `)
+  .eq("seller_id", user.id)
+  .order("created_at", { ascending: false });
+
 
   if (error) {
     console.error(error);
@@ -1047,7 +1058,18 @@ async function fetchSiparisler() {
   )}
 </td>
 
-                          <td style={tdS}>{sip.user_id || "-"}</td>
+                          <td style={tdS}>
+  {sip.address ? (
+    <>
+      {sip.address.first_name} {sip.address.last_name} <br />
+      {sip.address.address}, {sip.address.city}, {sip.address.country} <br />
+      {sip.address.postal_code}
+    </>
+  ) : (
+    sip.user_id || "-"
+  )}
+</td>
+
                           <td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
                             {sip.total_price} ₺
                           </td>
