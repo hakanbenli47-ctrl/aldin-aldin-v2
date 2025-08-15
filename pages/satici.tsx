@@ -283,17 +283,11 @@ export default function SaticiPanel() {
 async function fetchSiparisler() {
   if (!user) return;
 
-const { data: ordersData, error } = await supabase
+  const { data: ordersData, error } = await supabase
   .from("seller_orders")
-  .select(`
-    id, seller_id, user_id, first_name, last_name, phone, address, city,
-    total_price, status, created_at, updated_at, cart_items,
-    kargo_firma, kargo_takip_no, iade_durumu, iade_aciklamasi
-  `)
+  .select("*")
   .eq("seller_id", user.id)
   .order("created_at", { ascending: false });
-
-
 
   if (error) {
     console.error(error);
