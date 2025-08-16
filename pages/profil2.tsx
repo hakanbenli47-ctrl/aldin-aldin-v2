@@ -113,6 +113,7 @@ export default function Profil2() {
   const [showAddCard, setShowAddCard] = useState(false);
   const [editCardId, setEditCardId] = useState<number | null>(null);
   const [cardForm, setCardForm] = useState({ title: "", card_number: "", expiry: "", cvv: "", name_on_card: "" });
+const [profileDeleting, setProfileDeleting] = useState(false);
 
  async function reloadFavoriler() {
   if (!user) return;
@@ -136,6 +137,31 @@ export default function Profil2() {
 
   setLoadingFavoriler(false);
 }
+const handleProfileDelete = async () => {
+  if (!user) return;
+  const ok = window.confirm("Profil bilgilerini silmek istediğine emin misin?");
+  if (!ok) return;
+
+  try {
+    setProfileDeleting(true);
+    const { error } = await supabase
+      .from("user_profiles")
+      .delete()
+      .eq("user_id", user.id);
+
+    if (error) throw error;
+
+    // UI’yı temizle ve formu aç
+    setProfile(null);
+    setProfileForm({ first_name: "", last_name: "", phone: "" });
+    setShowProfileForm(true);
+    alert("Profil silindi.");
+  } catch (e: any) {
+    alert("Profil silinemedi: " + (e?.message || "bilinmeyen hata"));
+  } finally {
+    setProfileDeleting(false);
+  }
+};
 
 
   // --- Siparişleri yeniden yükleme helper'ı ---
@@ -241,12 +267,13 @@ export default function Profil2() {
       if (userData?.user) {
         const userId = userData.user.id;
         // Profil
-        const { data: profData } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("user_id", userId)
-          .single();
-        setProfile(profData as UserProfile);
+      const { data: profData } = await supabase
+  .from("user_profiles")
+  .select("*")
+  .eq("user_id", userId)
+  .maybeSingle();
+setProfile((profData ?? null) as UserProfile | null);
+
         setProfileForm({
           first_name: profData?.first_name || "",
           last_name: profData?.last_name || "",
@@ -685,10 +712,27 @@ export default function Profil2() {
               onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
               style={{ width: "100%", padding: "12px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", marginTop: 3, color: "#222e3a" }} />
           </label>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button type="submit" style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "14px 0", fontWeight: 700, fontSize: 16, flex: 1, cursor: "pointer" }}>Kaydet</button>
-            {profile && <button type="button" onClick={() => setShowProfileForm(false)} style={{ background: "#fff", color: "#223555", border: "1.5px solid #c7dbe8", borderRadius: 8, padding: "14px 0", fontWeight: 600, fontSize: 16, flex: 1, cursor: "pointer" }}>Vazgeç</button>}
-          </div>
+         <div style={{ display: "flex", gap: 10 }}>
+  <button type="submit" style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "14px 0", fontWeight: 700, fontSize: 16, flex: 1, cursor: "pointer" }}>
+    Kaydet
+  </button>
+
+  {profile && (
+    <button type="button" onClick={() => setShowProfileForm(false)}
+      style={{ background: "#fff", color: "#223555", border: "1.5px solid #c7dbe8", borderRadius: 8, padding: "14px 0", fontWeight: 600, fontSize: 16, flex: 1, cursor: "pointer" }}>
+      Vazgeç
+    </button>
+  )}
+
+  {profile && (
+    <button type="button" onClick={handleProfileDelete}
+      disabled={profileDeleting}
+      style={{ background: "#fff0f0", color: "#e11d48", border: "1.5px solid #fca5a5", borderRadius: 8, padding: "14px 0", fontWeight: 700, fontSize: 16, flex: 1, cursor: "pointer", opacity: profileDeleting ? 0.7 : 1 }}>
+      {profileDeleting ? "Siliniyor..." : "Profili Sil"}
+    </button>
+  )}
+</div>
+
         </form>
       );
     }
@@ -698,7 +742,18 @@ export default function Profil2() {
         <div style={{ fontSize: 16, marginBottom: 9 }}><b>İsim:</b> {profile?.first_name}</div>
         <div style={{ fontSize: 16, marginBottom: 9 }}><b>Soyisim:</b> {profile?.last_name}</div>
         <div style={{ fontSize: 16, marginBottom: 22 }}><b>Telefon:</b> {profile?.phone}</div>
-        <button onClick={() => setShowProfileForm(true)} style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "13px 0", fontWeight: 700, width: "100%", fontSize: 16, cursor: "pointer" }}>Düzenle</button>
+     <div style={{ display: "flex", gap: 10 }}>
+  <button onClick={() => setShowProfileForm(true)}
+    style={{ flex: 1, background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "13px 0", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
+    Düzenle
+  </button>
+  <button onClick={handleProfileDelete}
+    disabled={profileDeleting}
+    style={{ flex: 1, background: "#fff0f0", color: "#e11d48", border: "1.5px solid #fca5a5", borderRadius: 8, padding: "13px 0", fontWeight: 700, fontSize: 16, cursor: "pointer", opacity: profileDeleting ? 0.7 : 1 }}>
+    {profileDeleting ? "Siliniyor..." : "Sil"}
+  </button>
+</div>
+
       </div>
 
     );
@@ -980,38 +1035,54 @@ export default function Profil2() {
 
     if (selectedMenu === "profilim") return renderProfileBox();
 
-    if (profile) {
-      if (selectedMenu === "siparislerim") {
-        if (activeOrders.length === 0) {
-          return <p style={{ color: "#64748b" }}>Aktif siparişiniz yok.</p>;
-        }
-        return (
-          <div>
-            <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Aktif Siparişler</h2>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {activeOrders.map((o: Order) => renderOrderCard(o, false))}
-            </ul>
-            <div style={{ color: "#888", fontSize: 14, marginTop: 18 }}>
-              Not: Sipariş durumu admin tarafından güncellendikçe buraya yansır.
-            </div>
-          </div>
-        );
-      }
-      if (selectedMenu === "tekrarSatinAl") {
-        if (historyOrders.length === 0) {
-          return <p style={{ color: "#64748b" }}>Geçmiş siparişiniz yok.</p>;
-        }
-        return (
-          <div>
-            <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Geçmiş Siparişler</h2>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {historyOrders.map((o: Order) => renderOrderCard(o, true))}
-            </ul>
-          </div>
-        );
-      }
-    }
-    return <p style={{ color: "#64748b" }}>Profil verisi bulunamadı.</p>;
+if (selectedMenu === "siparislerim") {
+  if (!profile) {
+    return (
+      <div style={{color:"#64748b"}}>
+        Siparişleri görebilmek için profil bilgini tamamla.
+        <div style={{marginTop:10}}>
+          <button
+            onClick={() => { setSelectedMenu("profilim"); setShowProfileForm(true); }}
+            style={{background:"#2563eb",color:"#fff",border:"none",borderRadius:8,padding:"10px 16px",fontWeight:700}}
+          >
+            Profilimi Tamamla
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (activeOrders.length === 0) {
+    return <p style={{ color:"#64748b" }}>Aktif siparişiniz yok.</p>;
+  }
+  return (
+    <div>
+      <h2 style={{ color:"#223555", marginBottom:18, fontWeight:700 }}>Aktif Siparişler</h2>
+      <ul style={{ listStyle:"none", padding:0, margin:0 }}>
+        {activeOrders.map((o: Order) => renderOrderCard(o, false))}
+      </ul>
+    </div>
+  );
+}
+
+if (selectedMenu === "tekrarSatinAl") {
+  if (!profile) {
+    return <p style={{color:"#64748b"}}>Geçmiş siparişleri görmek için profil bilgini tamamla.</p>;
+  }
+  if (historyOrders.length === 0) {
+    return <p style={{ color:"#64748b" }}>Geçmiş siparişiniz yok.</p>;
+  }
+  return (
+    <div>
+      <h2 style={{ color:"#223555", marginBottom:18, fontWeight:700 }}>Geçmiş Siparişler</h2>
+      <ul style={{ listStyle:"none", padding:0, margin:0 }}>
+        {historyOrders.map((o: Order) => renderOrderCard(o, true))}
+      </ul>
+    </div>
+  );
+}
+
+return <p style={{ color:"#64748b" }}>Bir menü seçin.</p>;
+
   };
 
   // --- İADE MODAL ---
