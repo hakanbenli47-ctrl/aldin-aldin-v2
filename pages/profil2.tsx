@@ -274,13 +274,50 @@ const allMobileTabs: MobileTab[] = [
         setLoadingFavoriler(false);
         // Siparişler
         // Satıcı siparişleri
+// Alıcının verdiği siparişleri çekiyoruz (orders tablosu)
+// Alıcının siparişlerini orders tablosundan al
 const { data: ordersData } = await supabase
   .from("orders")
   .select("*")
-  .eq("user_id", userId) // seller_id olacak
+  .eq("user_id", userId)
   .order("created_at", { ascending: false });
 
-setOrders(ordersData || []);
+if (!ordersData) {
+  setOrders([]);
+  return;
+}
+
+// Her sipariş için seller_orders tablosundan iade bilgilerini al
+const orderIds = ordersData.map(o => o.id);
+
+// seller_orders verilerini topluca çek
+const { data: sellerData } = await supabase
+  .from("seller_orders")
+  .select("order_id, iade_durumu, iade_aciklamasi, iade_kargo_takip_no")
+  .in("order_id", orderIds);
+
+// seller_orders verisini map'e çevir
+const sellerMap = new Map();
+(sellerData || []).forEach(s => {
+  sellerMap.set(s.order_id, {
+    iade_durumu: s.iade_durumu,
+    iade_aciklamasi: s.iade_aciklamasi,
+    iade_kargo_takip_no: s.iade_kargo_takip_no
+  });
+});
+
+// orders ile birleştir
+const mergedOrders = ordersData.map(order => {
+  const sellerInfo = sellerMap.get(order.id);
+  return {
+    ...order,
+    ...(sellerInfo || {})
+  };
+});
+
+setOrders(mergedOrders);
+
+
 
 
     }
