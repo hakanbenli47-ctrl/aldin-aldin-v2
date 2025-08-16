@@ -185,21 +185,25 @@ export default function Sepet2() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("user_cards")
-      .insert([
-        {
-          user_id: currentUser.id,
-          name_on_card: newCard.name_on_card,
-          card_number: cardDigits,
-          expiry: newCard.expiry,
-          cvv: newCard.cvv,
-          title: newCard.title,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ])
-      .select();
+  const maskedCard = cardDigits.slice(-4); // ✅ sadece son 4 hane
+const maskedCVV = "*".repeat(newCard.cvv.length - 1) + newCard.cvv.slice(-1); // ✅ yıldızlı cvv
+
+const { data, error } = await supabase
+  .from("user_cards")
+  .insert([
+    {
+      user_id: currentUser.id,
+      name_on_card: newCard.name_on_card,
+      card_number: maskedCard,   // ✅ artık maskeli
+      expiry: newCard.expiry,
+      cvv: maskedCVV,            // ✅ artık maskeli
+      title: newCard.title,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ])
+  .select();
+
 
     if (error) {
       console.error("Kart ekleme hatası:", error);
