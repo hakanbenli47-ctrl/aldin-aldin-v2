@@ -120,7 +120,7 @@ export default function Profil2() {
     const { data: favoriData, error } = await supabase
       .from("favoriler")
       .select("ilan_id")
-      .eq("user_id", user.id);
+      .eq("user_email", user.email);
 
     if (!error && favoriData?.length) {
       const ilanIds = favoriData.map((f: any) => f.ilan_id);
