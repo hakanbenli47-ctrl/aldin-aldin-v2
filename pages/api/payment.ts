@@ -41,6 +41,7 @@ function normalizeCardAssociation(assoc?: string): string {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // sadece POST izin ver
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, message: "Method not allowed" });
   }
@@ -48,9 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const action = (req.query.action as string) || req.body?.action;
 
   try {
-    // =========================================================
-    // 1) KART KAYDET (TOKEN OLUŞTUR)
-    // =========================================================
+    // 1) Kart Kaydet
     if (action === "registerCard") {
       const { user_id, card } = req.body || {};
       if (!user_id) return res.status(400).json({ success: false, message: "user_id gerekli" });
@@ -74,16 +73,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       if (cardReg?.status === "success") {
-        await supabase.from("payments").insert([
-          {
-            user_id,
-            amount: 0,
-            status: "card_registered",
-            card_token: cardReg.cardToken,
-            card_user_key: cardReg.cardUserKey,
-            raw_response: cardReg,
-          },
-        ]);
+        await supabase.from("payments").insert([{
+          user_id,
+          amount: 0,
+          status: "card_registered",
+          card_token: cardReg.cardToken,
+          card_user_key: cardReg.cardUserKey,
+          raw_response: cardReg,
+        }]);
       }
 
       const meta = {
@@ -96,19 +93,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.status(200).json({
         success: cardReg?.status === "success",
-        message:
-          cardReg?.status === "success"
-            ? "Kart kaydedildi"
-            : cardReg?.errorMessage || "Kart kaydedilemedi",
+        message: cardReg?.status === "success" ? "Kart kaydedildi" : cardReg?.errorMessage || "Kart kaydedilemedi",
         tokens: { card_token: cardReg?.cardToken, card_user_key: cardReg?.cardUserKey },
         cardMeta: meta,
         raw: cardReg,
       });
     }
 
-    // =========================================================
-    // 2) KAYITLI KARTLA ÖDEME
-    // =========================================================
+    // 2) Kayıtlı Kart ile Ödeme
     if (action === "payWithToken") {
       const { user_id, amount, card } = req.body || {};
       if (!user_id) return res.status(400).json({ success: false, message: "user_id gerekli" });
@@ -140,35 +132,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           city: "Istanbul",
           country: "Turkey",
         },
-        basketItems: [
-          {
-            id: "BI101",
-            name: "Sepet Ödemesi",
-            category1: "Genel",
-            itemType: Iyzipay.BASKET_ITEM_TYPE.PHYSICAL,
-            price: moneyString(amount),
-          },
-        ],
+        basketItems: [{
+          id: "BI101",
+          name: "Sepet Ödemesi",
+          category1: "Genel",
+          itemType: Iyzipay.BASKET_ITEM_TYPE.PHYSICAL,
+          price: moneyString(amount),
+        }],
       });
 
       if (payment?.status === "success") {
-        await supabase.from("payments").insert([
-          {
-            user_id,
-            amount,
-            status: payment.status,
-            iyz_payment_id: payment.paymentId,
-            raw_response: payment,
-          },
-        ]);
+        await supabase.from("payments").insert([{
+          user_id,
+          amount,
+          status: payment.status,
+          iyz_payment_id: payment.paymentId,
+          raw_response: payment,
+        }]);
       }
 
       return res.status(200).json({ success: payment?.status === "success", payment });
     }
 
-    // =========================================================
-    // 3) YENİ KARTLA ANLIK ÖDEME
-    // =========================================================
+    // 3) Yeni Kart ile Anlık Ödeme
     if (action === "payWithNewCard") {
       const { user_id, amount, card } = req.body || {};
       if (!user_id) return res.status(400).json({ success: false, message: "user_id gerekli" });
@@ -207,35 +193,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           city: "Istanbul",
           country: "Turkey",
         },
-        basketItems: [
-          {
-            id: "BI101",
-            name: "Sepet Ödemesi",
-            category1: "Genel",
-            itemType: Iyzipay.BASKET_ITEM_TYPE.PHYSICAL,
-            price: moneyString(amount),
-          },
-        ],
+        basketItems: [{
+          id: "BI101",
+          name: "Sepet Ödemesi",
+          category1: "Genel",
+          itemType: Iyzipay.BASKET_ITEM_TYPE.PHYSICAL,
+          price: moneyString(amount),
+        }],
       });
 
       if (payment?.status === "success") {
-        await supabase.from("payments").insert([
-          {
-            user_id,
-            amount,
-            status: payment.status,
-            iyz_payment_id: payment.paymentId,
-            raw_response: payment,
-          },
-        ]);
+        await supabase.from("payments").insert([{
+          user_id,
+          amount,
+          status: payment.status,
+          iyz_payment_id: payment.paymentId,
+          raw_response: payment,
+        }]);
       }
 
       return res.status(200).json({ success: payment?.status === "success", payment });
     }
 
-    // =========================================================
-    // 4) FRONTEND'DEN GELEN RAW KART BİLGİLERİYLE ÖDEME
-    // =========================================================
+    // 4) Frontend’den gelen Raw Kart Bilgileriyle Ödeme
     if (action === "payRaw") {
       const { amount, card, buyer, address, basketItems } = req.body || {};
       if (!amount) return res.status(400).json({ success: false, message: "amount gerekli" });
@@ -273,13 +253,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           country: address?.country || "Turkey",
         },
         shippingAddress: {
-          contactName: buyer?.name + " " + buyer?.surname,
+          contactName: (buyer?.name || "User") + " " + (buyer?.surname || "User"),
           city: address?.city || "Istanbul",
           country: address?.country || "Turkey",
           address: address?.address || "Adres",
         },
         billingAddress: {
-          contactName: buyer?.name + " " + buyer?.surname,
+          contactName: (buyer?.name || "User") + " " + (buyer?.surname || "User"),
           city: address?.city || "Istanbul",
           country: address?.country || "Turkey",
           address: address?.address || "Adres",
@@ -294,26 +274,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       if (payment?.status === "success") {
-        await supabase.from("payments").insert([
-          {
-            user_id: buyer?.id || null,
-            amount,
-            status: payment.status,
-            iyz_payment_id: payment.paymentId,
-            raw_response: payment,
-          },
-        ]);
+        await supabase.from("payments").insert([{
+          user_id: buyer?.id || null,
+          amount,
+          status: payment.status,
+          iyz_payment_id: payment.paymentId,
+          raw_response: payment,
+        }]);
       }
 
       return res.status(200).json({ success: payment?.status === "success", payment });
     }
 
-    // =========================================================
-    // DEFAULT CASE
-    // =========================================================
-    return res
-      .status(400)
-      .json({ success: false, message: "Geçersiz istek. action parametresini kontrol et." });
+    // Eğer action eşleşmezse
+    return res.status(400).json({ success: false, message: "Geçersiz istek. action parametresini kontrol et." });
+
   } catch (err: any) {
     console.error("Payment error:", err);
     return res.status(500).json({ success: false, message: err?.message || "Server error" });
