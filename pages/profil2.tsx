@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
+
 type MobileTab = { id: string; label: string };
 type Order = {
   id: number;
@@ -113,28 +114,29 @@ export default function Profil2() {
   const [editCardId, setEditCardId] = useState<number | null>(null);
   const [cardForm, setCardForm] = useState({ title: "", card_number: "", expiry: "", cvv: "", name_on_card: "" });
 
-  async function reloadFavoriler() {
-    if (!user) return;
-    setLoadingFavoriler(true);
+ async function reloadFavoriler() {
+  if (!user) return;
+  setLoadingFavoriler(true);
 
-    const { data: favoriData, error } = await supabase
-      .from("favoriler")
-      .select("ilan_id")
-      .eq("user_email", user.email);
+  const { data: favoriData, error } = await supabase
+    .from("favoriler")
+    .select("ilan_id")
+    .eq("user_id", user.id);   // ← session değil, user.id
 
-    if (!error && favoriData?.length) {
-      const ilanIds = favoriData.map((f: any) => f.ilan_id);
-      const { data: ilanlarData } = await supabase
-        .from("ilan")
-        .select("*")
-        .in("id", ilanIds);
-      setFavoriIlanlar(ilanlarData || []);
-    } else {
-      setFavoriIlanlar([]);
-    }
-
-    setLoadingFavoriler(false);
+  if (!error && favoriData?.length) {
+    const ilanIds = favoriData.map((f: any) => f.ilan_id);
+    const { data: ilanlarData } = await supabase
+      .from("ilan")
+      .select("*")
+      .in("id", ilanIds);
+    setFavoriIlanlar(ilanlarData || []);
+  } else {
+    setFavoriIlanlar([]);
   }
+
+  setLoadingFavoriler(false);
+}
+
 
   // --- Siparişleri yeniden yükleme helper'ı ---
   async function reloadOrders(userId: string) {
