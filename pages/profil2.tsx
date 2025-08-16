@@ -275,9 +275,9 @@ const allMobileTabs: MobileTab[] = [
         // Siparişler
         // Satıcı siparişleri
 const { data: ordersData } = await supabase
-  .from("seller_orders")
+  .from("orders")
   .select("*")
-  .eq("seller_id", userId) // seller_id olacak
+  .eq("user_id", userId) // seller_id olacak
   .order("created_at", { ascending: false });
 
 setOrders(ordersData || []);
@@ -660,7 +660,7 @@ function handleEditCard(id: number) {
     if (!error) {
       alert("Takip kodu kaydedildi!");
       const { data: ordersData } = await supabase
-        .from("seller_orders")
+        .from("orders")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -1062,7 +1062,7 @@ if (selectedMenu === "favoriIlanlar") {
             setShowIadeModal(null);
             setIadeAciklamasi("");
             const { data: ordersData } = await supabase
-              .from("seller_orders")
+              .from("orders")
               .select("*")
               .eq("user_id", user.id)
               .order("created_at", { ascending: false });

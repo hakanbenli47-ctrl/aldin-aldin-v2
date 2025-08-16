@@ -830,7 +830,7 @@ if (giyimMi) {
           borderTopRightRadius: 16,
         }}
       >
-        © {new Date().getFullYear()} Aldın Aldın | Geleceğin Alışverişi Burada!
+        © {new Date().getFullYear()} 80bir | Geleceğin Alışverişi Burada!
       </footer>
 
       <style jsx global>{`
