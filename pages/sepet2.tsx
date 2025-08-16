@@ -1172,11 +1172,31 @@ const sellerPayload: any = {
 
 </div>
 <button 
-  onClick={() => handleSiparisVer({
-    addressId: parseInt(selectedAddressId),  // string → integer dönüşümü
-    cardId: parseInt(selectedCardId),
-    isCustom: false
-  })}
+  onClick={async () => {
+    // 1. Ödeme isteğini yap
+    const paymentRes = await fetch("/api/payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: toplamFiyat,   // toplam sepet tutarı
+        card: cards.find(c => c.id === parseInt(selectedCardId)) // seçilen kartın bilgisi
+      }),
+    });
+
+    const paymentData = await paymentRes.json();
+
+    if (!paymentData.success) {
+      alert("💳 Ödeme başarısız: " + paymentData.message);
+      return;
+    }
+
+    // 2. Ödeme başarılı → siparişi kaydet
+    await handleSiparisVer({
+      addressId: parseInt(selectedAddressId),
+      cardId: parseInt(selectedCardId),
+      isCustom: false
+    });
+  }}
   style={{
     width: "100%",
     padding: "12px 16px",

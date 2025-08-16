@@ -14,6 +14,7 @@
     "@sendgrid/mail": "^8.1.5",
     "@supabase/supabase-js": "^2.52.1",
     "browser-image-compression": "^2.0.2",
+    "iyzipay": "^2.0.64",
     "next": "^15.4.5",
     "nodemailer": "^7.0.5",
     "papaparse": "^5.5.3",
