@@ -96,7 +96,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return res.status(200).json({
         success: cardReg?.status === "success",
-        message: cardReg?.status === "success" ? "Kart kaydedildi" : (cardReg?.errorMessage || "Kart kaydedilemedi"),
+        message:
+          cardReg?.status === "success"
+            ? "Kart kaydedildi"
+            : cardReg?.errorMessage || "Kart kaydedilemedi",
         tokens: { card_token: cardReg?.cardToken, card_user_key: cardReg?.cardUserKey },
         cardMeta: meta,
         raw: cardReg,
@@ -230,7 +233,87 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ success: payment?.status === "success", payment });
     }
 
-    return res.status(400).json({ success: false, message: "Geçersiz istek. action parametresini kontrol et." });
+    // =========================================================
+    // 4) FRONTEND'DEN GELEN RAW KART BİLGİLERİYLE ÖDEME
+    // =========================================================
+    if (action === "payRaw") {
+      const { amount, card, buyer, address, basketItems } = req.body || {};
+      if (!amount) return res.status(400).json({ success: false, message: "amount gerekli" });
+      if (!card?.card_number || !card?.expiry || !card?.cvv || !card?.name_on_card) {
+        return res.status(400).json({ success: false, message: "Kart bilgileri eksik" });
+      }
+
+      const { month, year } = parseExpiry(card.expiry);
+
+      const payment: any = await iyzRequest(iyzipay.payment.create, {
+        locale: "tr",
+        conversationId: "payraw-" + Date.now(),
+        price: moneyString(amount),
+        paidPrice: moneyString(amount),
+        currency: "TRY",
+        installment: "1",
+        paymentCard: {
+          cardHolderName: card.name_on_card,
+          cardNumber: card.card_number,
+          expireMonth: month,
+          expireYear: year,
+          cvc: card.cvv,
+          registerCard: "0",
+        },
+        buyer: {
+          id: buyer?.id || "user-raw",
+          name: buyer?.name || "User",
+          surname: buyer?.surname || "User",
+          gsmNumber: buyer?.gsmNumber || "+905555555555",
+          email: buyer?.email || "test@example.com",
+          identityNumber: "11111111111",
+          registrationAddress: address?.address || "Adres",
+          ip: req.socket.remoteAddress || "127.0.0.1",
+          city: address?.city || "Istanbul",
+          country: address?.country || "Turkey",
+        },
+        shippingAddress: {
+          contactName: buyer?.name + " " + buyer?.surname,
+          city: address?.city || "Istanbul",
+          country: address?.country || "Turkey",
+          address: address?.address || "Adres",
+        },
+        billingAddress: {
+          contactName: buyer?.name + " " + buyer?.surname,
+          city: address?.city || "Istanbul",
+          country: address?.country || "Turkey",
+          address: address?.address || "Adres",
+        },
+        basketItems: (basketItems || []).map((it: any, idx: number) => ({
+          id: it.id?.toString() || "BI" + idx,
+          name: it.name || "Ürün",
+          category1: it.category1 || "Genel",
+          itemType: Iyzipay.BASKET_ITEM_TYPE.PHYSICAL,
+          price: moneyString(it.price || 0),
+        })),
+      });
+
+      if (payment?.status === "success") {
+        await supabase.from("payments").insert([
+          {
+            user_id: buyer?.id || null,
+            amount,
+            status: payment.status,
+            iyz_payment_id: payment.paymentId,
+            raw_response: payment,
+          },
+        ]);
+      }
+
+      return res.status(200).json({ success: payment?.status === "success", payment });
+    }
+
+    // =========================================================
+    // DEFAULT CASE
+    // =========================================================
+    return res
+      .status(400)
+      .json({ success: false, message: "Geçersiz istek. action parametresini kontrol et." });
   } catch (err: any) {
     console.error("Payment error:", err);
     return res.status(500).json({ success: false, message: err?.message || "Server error" });
