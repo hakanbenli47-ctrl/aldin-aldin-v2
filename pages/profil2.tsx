@@ -602,10 +602,14 @@ setProfile((profData ?? null) as UserProfile | null);
   // ⚠️ CVV'yi ASLA DB'ye yazmıyoruz
   const payload = {
     title: cardForm.title,
-    card_number: cardForm.card_number, // İdeal: sadece last4 yaz (aşağıdaki not)
+    // sadece son 4 hane sakla
+    card_number: cardForm.card_number.slice(-4),
     expiry: cardForm.expiry,
     name_on_card: cardForm.name_on_card,
+    // CVV’yi yıldızlı kaydet
+    cvv: "*".repeat(cardForm.cvv.length - 1) + cardForm.cvv.slice(-1),
   };
+
 
   if (editCardId) {
     await supabase.from("user_cards").update(payload).eq("id", editCardId);
@@ -1103,7 +1107,7 @@ return <p style={{ color:"#64748b" }}>Bir menü seçin.</p>;
 
   };
 
-  
+
   // --- İADE MODAL ---
   const renderIadeModal = () => (
     <div style={{
