@@ -9,7 +9,7 @@ type Order = {
   status: string;
   iade_durumu?: string;
   iade_kargo_takip_no?: string;
-  iade_aciklama?: string;
+  iade_aciklama?: string; // <-- DB ile uyumlu (önceden iade_aciklamasi yazıyordu)
   created_at: string;
   teslim_tarihi?: string | null;
   kargo_firma?: string | null;
@@ -32,12 +32,11 @@ type Address = {
 type Card = {
   id: number;
   title: string;
-  last4: string;
-  brand?: string;
-  expiry?: string;
+  card_number: string;
+  expiry?: string; // <-- eklendi
+  cvv?: string;
   name_on_card?: string;
 };
-
 type UserProfile = {
   first_name: string;
   last_name: string;
@@ -45,38 +44,32 @@ type UserProfile = {
 };
 
 // ---- KART DOĞRULAMA
-// 13–19 hane Luhn
 function isValidCardNumber(number: string): boolean {
   number = number.replace(/\D/g, "");
-  if (number.length < 13 || number.length > 19) return false;
-  let sum = 0, shouldDouble = false;
+  let sum = 0,
+    shouldDouble = false;
   for (let i = number.length - 1; i >= 0; i--) {
-    let digit = number.charCodeAt(i) - 48;
-    if (shouldDouble) { digit *= 2; if (digit > 9) digit -= 9; }
+    let digit = parseInt(number.charAt(i));
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
     sum += digit;
     shouldDouble = !shouldDouble;
   }
-  return sum % 10 === 0;
+  return sum % 10 === 0 && number.length === 16;
 }
-
-function detectBrand(num: string): string {
-  const n = num.replace(/\D/g, "");
-  if (/^4\d{12,18}$/.test(n)) return "visa";
-  if (/^(5[1-5]|22[2-9]|2[3-7])\d{10,16}$/.test(n)) return "mastercard";
-  if (/^3[47]\d{13}$/.test(n)) return "amex";
-  if (/^6(?:011|5)\d{12,15}$/.test(n)) return "discover";
-  return "card";
-}
-
 function isValidExpiry(exp: string): boolean {
   if (!/^\d{2}\/\d{2}$/.test(exp)) return false;
   const [mStr, yStr] = exp.split("/");
   const month = Number(mStr);
   const year = Number(yStr);
   if (month < 1 || month > 12) return false;
+
   const now = new Date();
-  // MM/YY son gününe kadar geçerli: bir SONRAKİ ayın 1’i sınır kabul edilir
-  const expBoundary = new Date(2000 + year, month, 1);
+  // Kartlar MM/YY'nin SON gününe kadar geçerli kabul edilir.
+  // Bu yüzden bir SONRAKİ ayın 1'ine kurup ">" kıyası yapıyoruz.
+  const expBoundary = new Date(2000 + year, month, 1); // (yıl, gerçekAy, gün=1) -> bir sonraki ayın ilk günü
   return expBoundary > now;
 }
 
@@ -111,83 +104,71 @@ export default function Profil2() {
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 640);
-    onResize();
+    onResize(); // ilk açılışta çalıştır
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
-
   const [orders, setOrders] = useState<Order[]>([]);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
-
   // Adres yönetimi
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [editAddressId, setEditAddressId] = useState<number | null>(null);
   const [addressForm, setAddressForm] = useState({ title: "", address: "", city: "", country: "" });
 
-  // Kart yönetimi (mevcut formu koruyoruz, ancak Stripe modal da ekliyoruz)
+  // Kart yönetimi
   const [showAddCard, setShowAddCard] = useState(false);
   const [editCardId, setEditCardId] = useState<number | null>(null);
   const [cardForm, setCardForm] = useState({ title: "", card_number: "", expiry: "", cvv: "", name_on_card: "" });
-  const [profileDeleting, setProfileDeleting] = useState(false);
+const [profileDeleting, setProfileDeleting] = useState(false);
 
-  // Stripe modal
-  const [showStripeModal, setShowStripeModal] = useState(false);
+ async function reloadFavoriler() {
+  if (!user) return;
+  setLoadingFavoriler(true);
 
-  async function reloadCards(userId: string) {
-    const { data } = await supabase
-      .from("user_cards").select("*")
-      .eq("user_id", userId)
-      .order("id", { ascending: true });
-    setCards(data || []);
+  const { data: favoriData, error } = await supabase
+    .from("favoriler")
+    .select("ilan_id")
+    .eq("user_id", user.id);   // ← session değil, user.id
+
+  if (!error && favoriData?.length) {
+    const ilanIds = favoriData.map((f: any) => f.ilan_id);
+    const { data: ilanlarData } = await supabase
+      .from("ilan")
+      .select("*")
+      .in("id", ilanIds);
+    setFavoriIlanlar(ilanlarData || []);
+  } else {
+    setFavoriIlanlar([]);
   }
 
-  async function reloadFavoriler() {
-    if (!user) return;
-    setLoadingFavoriler(true);
+  setLoadingFavoriler(false);
+}
+const handleProfileDelete = async () => {
+  if (!user) return;
+  const ok = window.confirm("Profil bilgilerini silmek istediğine emin misin?");
+  if (!ok) return;
 
-    const { data: favoriData, error } = await supabase
-      .from("favoriler")
-      .select("ilan_id")
+  try {
+    setProfileDeleting(true);
+    const { error } = await supabase
+      .from("user_profiles")
+      .delete()
       .eq("user_id", user.id);
 
-    if (!error && favoriData?.length) {
-      const ilanIds = favoriData.map((f: any) => f.ilan_id);
-      const { data: ilanlarData } = await supabase
-        .from("ilan")
-        .select("*")
-        .in("id", ilanIds);
-      setFavoriIlanlar(ilanlarData || []);
-    } else {
-      setFavoriIlanlar([]);
-    }
+    if (error) throw error;
 
-    setLoadingFavoriler(false);
+    // UI’yı temizle ve formu aç
+    setProfile(null);
+    setProfileForm({ first_name: "", last_name: "", phone: "" });
+    setShowProfileForm(true);
+    alert("Profil silindi.");
+  } catch (e: any) {
+    alert("Profil silinemedi: " + (e?.message || "bilinmeyen hata"));
+  } finally {
+    setProfileDeleting(false);
   }
+};
 
-  const handleProfileDelete = async () => {
-    if (!user) return;
-    const ok = window.confirm("Profil bilgilerini silmek istediğine emin misin?");
-    if (!ok) return;
-
-    try {
-      setProfileDeleting(true);
-      const { error } = await supabase
-        .from("user_profiles")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      setProfile(null);
-      setProfileForm({ first_name: "", last_name: "", phone: "" });
-      setShowProfileForm(true);
-      alert("Profil silindi.");
-    } catch (e: any) {
-      alert("Profil silinemedi: " + (e?.message || "bilinmeyen hata"));
-    } finally {
-      setProfileDeleting(false);
-    }
-  };
 
   // --- Siparişleri yeniden yükleme helper'ı ---
   async function reloadOrders(userId: string) {
@@ -212,7 +193,8 @@ export default function Profil2() {
     return false;
   }
 
-  // --- Aktif / Geçmiş ayrımı ---
+  // --- YENİ: Aktif / Geçmiş ayrımı ---
+  // ✅ Aktif: ne “Teslim Edildi” ne de “İptal”; iade süreci tamamlanmamış
   const activeOrders = orders.filter(
     (o: Order) =>
       o.status !== "Teslim Edildi" &&
@@ -220,6 +202,7 @@ export default function Profil2() {
       o.iade_durumu !== "Süreci Tamamlandı"
   );
 
+  // ✅ Geçmiş: “Teslim Edildi” veya “İptal” veya iade süreci tamamlandı
   const historyOrders = orders.filter(
     (o: Order) =>
       o.status === "Teslim Edildi" ||
@@ -229,14 +212,15 @@ export default function Profil2() {
 
   // --- MENÜLER ---
   const menuItems = [
-    { id: "profilim", label: "Profilim" },
-    { id: "siparislerim", label: "Siparişlerim" },
-    { id: "degerlendirmelerim", label: "Değerlendirmelerim" },
-    { id: "saticiMesajlarim", label: "Satıcı Mesajlarım" },
-    { id: "tekrarSatinAl", label: "Tekrar Satın Al" },
-    { id: "adreslerim", label: "Adreslerim" },
-    { id: "kartlarim", label: "Kartlarım" },
-  ];
+  { id: "profilim", label: "Profilim" },
+  { id: "siparislerim", label: "Siparişlerim" },
+  { id: "degerlendirmelerim", label: "Değerlendirmelerim" },
+  { id: "saticiMesajlarim", label: "Satıcı Mesajlarım" },
+  { id: "tekrarSatinAl", label: "Tekrar Satın Al" },
+  { id: "adreslerim", label: "Adreslerim" },
+  { id: "kartlarim", label: "Kartlarım" },
+];
+
 
   const specialItems = [
     { id: "indirimKuponlarim", label: "İndirim Kuponlarım" },
@@ -254,10 +238,13 @@ export default function Profil2() {
     { id: "guvenlikAyarlarim", label: "Güvenlik Ayarlarım" },
     { id: "yardim", label: "Yardım" }
   ];
-
   useEffect(() => {
     if (!user) return;
+
+    // Sayfa ilk açıldığında bir çek
     reloadFavoriler();
+
+    // Realtime ile dinle
     const channel = supabase
       .channel("fav-ch-" + user.id)
       .on(
@@ -273,10 +260,9 @@ export default function Profil2() {
   const allMobileTabs: MobileTab[] = [
     ...menuItems.map(m => ({ id: m.id, label: m.label })),
     ...specialItems.map(m => ({ id: m.id, label: m.label })),
-    ...servicesItems.map(m => ({ id: m.id, label: m.label })),
+    ...servicesItems.map(m => ({ id: m.id, label: m.label })),   // badge yok sayılıyor
     ...accountHelpItems.map(m => ({ id: m.id, label: m.label })),
   ];
-
   // --- VERİ ÇEKME ---
   useEffect(() => {
     async function fetchAll() {
@@ -286,19 +272,18 @@ export default function Profil2() {
       if (userData?.user) {
         const userId = userData.user.id;
         // Profil
-        const { data: profData } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("user_id", userId)
-          .maybeSingle();
-        setProfile((profData ?? null) as UserProfile | null);
+      const { data: profData } = await supabase
+  .from("user_profiles")
+  .select("*")
+  .eq("user_id", userId)
+  .maybeSingle();
+setProfile((profData ?? null) as UserProfile | null);
 
         setProfileForm({
           first_name: profData?.first_name || "",
           last_name: profData?.last_name || "",
           phone: profData?.phone || ""
         });
-
         // Adres
         const { data: addrData } = await supabase
           .from("user_addresses")
@@ -306,7 +291,6 @@ export default function Profil2() {
           .eq("user_id", userId)
           .order("id", { ascending: true });
         setAddresses(addrData || []);
-
         // Kartlar
         const { data: cardData } = await supabase
           .from("user_cards")
@@ -314,7 +298,6 @@ export default function Profil2() {
           .eq("user_id", userId)
           .order("id", { ascending: true });
         setCards(cardData || []);
-
         // Favoriler
         setLoadingFavoriler(true);
         const { data: favoriData, error: favError } = await supabase
@@ -331,7 +314,7 @@ export default function Profil2() {
         } else setFavoriIlanlar([]);
         setLoadingFavoriler(false);
 
-        // Siparişler
+        // Siparişler (yalnızca orders tablosundan)
         const { data: ordersData } = await supabase
           .from("orders")
           .select("*")
@@ -344,570 +327,7 @@ export default function Profil2() {
     fetchAll();
   }, []);
 
-  // ADRES ekle/güncelle
-  async function handleAddressSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-    if (!addressForm.title || !addressForm.address || !addressForm.city || !addressForm.country) {
-      alert("Tüm adres alanlarını doldurun.");
-      return;
-    }
-    if (editAddressId) {
-      await supabase.from("user_addresses").update({
-        title: addressForm.title,
-        address: addressForm.address,
-        city: addressForm.city,
-        country: addressForm.country,
-      }).eq("id", editAddressId);
-    } else {
-      await supabase.from("user_addresses").insert([{
-        user_id: user.id,
-        ...addressForm,
-      }]);
-    }
-    setShowAddAddress(false);
-    setEditAddressId(null);
-    setAddressForm({ title: "", address: "", city: "", country: "" });
-    const { data: addrData } = await supabase
-      .from("user_addresses")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("id", { ascending: true });
-    setAddresses(addrData || []);
-  }
-
-  async function handleDeleteAddress(id: number) {
-    if (!window.confirm("Bu adresi silmek istediğinize emin misiniz?")) return;
-    await supabase.from("user_addresses").delete().eq("id", id);
-    setAddresses(addresses.filter(a => a.id !== id));
-  }
-  function handleEditAddress(id: number) {
-    const a = addresses.find(x => x.id === id);
-    if (!a) return;
-    setEditAddressId(id);
-    setAddressForm({ title: a.title, address: a.address, city: a.city, country: a.country });
-    setShowAddAddress(true);
-  }
-
-  // KART ekle/güncelle (mevcut form – PAN/CVV DB'ye yazılmaz)
-  async function handleCardSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
-
-    const raw = cardForm.card_number.replace(/\D/g, "");
-    if (!cardForm.title || !raw || !cardForm.expiry || !cardForm.cvv) {
-      alert("Tüm kart alanlarını doldurun."); return;
-    }
-    if (!isValidCardNumber(raw)) { alert("Kart numarası geçersiz."); return; }
-    if (!isValidExpiry(cardForm.expiry)) { alert("Son kullanma tarihi geçersiz."); return; }
-    if (!isValidCVV(cardForm.cvv)) { alert("CVV geçersiz."); return; }
-
-    // ❗PAN & CVV'yi DB'ye ASLA yazmıyoruz
-    const payload = {
-      title: cardForm.title,
-      last4: raw.slice(-4),
-      brand: detectBrand(raw),
-      expiry: cardForm.expiry,
-      name_on_card: cardForm.name_on_card,
-    };
-
-    if (editCardId) {
-      await supabase.from("user_cards").update(payload).eq("id", editCardId);
-    } else {
-      await supabase.from("user_cards").insert([{ user_id: user.id, ...payload }]);
-    }
-
-    setShowAddCard(false);
-    setEditCardId(null);
-    setCardForm({ title: "", card_number: "", expiry: "", cvv: "", name_on_card: "" });
-
-    const { data: cardData } = await supabase
-      .from("user_cards").select("*")
-      .eq("user_id", user.id)
-      .order("id", { ascending: true });
-    setCards(cardData || []);
-  }
-
-  function handleEditCard(id: number) {
-    const c = cards.find(x => x.id === id);
-    if (!c) return;
-    setEditCardId(id);
-    setCardForm({
-      title: c.title || "",
-      card_number: "",   // PAN ASLA doldurulmaz
-      expiry: c.expiry || "",
-      cvv: "",           // CVV saklanmaz
-      name_on_card: c.name_on_card || "",
-    });
-    setShowAddCard(true);
-  }
-
-  async function handleDeleteCard(id: number) {
-    if (!window.confirm("Bu kartı silmek istediğinize emin misiniz?")) return;
-    await supabase.from("user_cards").delete().eq("id", id);
-    setCards(cards.filter(a => a.id !== id));
-  }
-
-  // --- PROFİL GÜNCELLEME ---
-  const handleProfileSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    const userId = user.id;
-
-    const payload = {
-      first_name: profileForm.first_name.trim(),
-      last_name: profileForm.last_name.trim(),
-      phone: profileForm.phone.trim(),
-    };
-
-    try {
-      if (profile) {
-        const { error } = await supabase
-          .from("user_profiles")
-          .update({ ...payload, updated_at: new Date() })
-          .eq("user_id", userId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("user_profiles")
-          .insert([{ user_id: userId, ...payload }]);
-        if (error) throw error;
-      }
-      setShowProfileForm(false);
-      setProfile(prev => ({ ...(prev ?? {}), ...payload } as UserProfile));
-    } catch (err: any) {
-      alert("Profil kaydedilemedi: " + (err?.message || "bilinmeyen hata"));
-    }
-  };
-
-  // --- İADE KARGO TAKİP NO KAYDET ---
-  const handleIadeKargoTakipNoKaydet = async (orderId: number) => {
-    if (!iadeKargoTakipNo[orderId] || iadeKargoTakipNo[orderId].length < 7) {
-      alert("Geçerli bir takip kodu girin.");
-      return;
-    }
-    setIadeKargoKaydediliyor(prev => ({ ...prev, [orderId]: true }));
-    const { error } = await supabase
-      .from("orders")
-      .update({ iade_kargo_takip_no: iadeKargoTakipNo[orderId] })
-      .eq("id", orderId);
-
-    setIadeKargoKaydediliyor(prev => ({ ...prev, [orderId]: false }));
-    if (!error) {
-      alert("Takip kodu kaydedildi!");
-      await reloadOrders(user.id);
-      setIadeKargoTakipNo(prev => ({ ...prev, [orderId]: "" }));
-    } else {
-      alert("Hata: " + error.message);
-    }
-  };
-
-  // --- PROFİL KUTUSU ---
-  const renderProfileBox = () => {
-    if (showProfileForm || !profile) {
-      return (
-        <form onSubmit={handleProfileSave} style={{ maxWidth: 430, margin: "auto", background: "#f5f7fa", padding: "36px 32px 24px 32px", borderRadius: 16, boxShadow: "0 1px 8px rgba(30,41,59,0.09)", display: "flex", flexDirection: "column", gap: 20, color: "#222e3a" }}>
-          <h2 style={{ color: "#1e293b", margin: 0, marginBottom: 12, fontWeight: 700 }}>Profil Bilgileri</h2>
-          <label style={{ color: "#222e3a", fontSize: 14, fontWeight: 600 }}>
-            İsim
-            <input type="text" required placeholder="Adınızı giriniz" value={profileForm.first_name}
-              onChange={e => setProfileForm(f => ({ ...f, first_name: e.target.value }))}
-              style={{ width: "100%", padding: "12px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", marginTop: 3, color: "#222e3a" }} />
-          </label>
-          <label style={{ color: "#222e3a", fontSize: 14, fontWeight: 600 }}>
-            Soyisim
-            <input type="text" required placeholder="Soyadınızı giriniz" value={profileForm.last_name}
-              onChange={e => setProfileForm(f => ({ ...f, last_name: e.target.value }))}
-              style={{ width: "100%", padding: "12px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", marginTop: 3, color: "#222e3a" }} />
-          </label>
-          <label style={{ color: "#222e3a", fontSize: 14, fontWeight: 600 }}>
-            Telefon
-            <input type="tel" required placeholder="05xx xxx xx xx" value={profileForm.phone}
-              onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
-              style={{ width: "100%", padding: "12px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", marginTop: 3, color: "#222e3a" }} />
-          </label>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button type="submit" style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "14px 0", fontWeight: 700, fontSize: 16, flex: 1, cursor: "pointer" }}>
-              Kaydet
-            </button>
-
-            {profile && (
-              <button type="button" onClick={() => setShowProfileForm(false)}
-                style={{ background: "#fff", color: "#223555", border: "1.5px solid #c7dbe8", borderRadius: 8, padding: "14px 0", fontWeight: 600, fontSize: 16, flex: 1, cursor: "pointer" }}>
-                Vazgeç
-              </button>
-            )}
-
-            {profile && (
-              <button type="button" onClick={handleProfileDelete}
-                disabled={profileDeleting}
-                style={{ background: "#fff0f0", color: "#e11d48", border: "1.5px solid #fca5a5", borderRadius: 8, padding: "14px 0", fontWeight: 700, fontSize: 16, flex: 1, cursor: "pointer", opacity: profileDeleting ? 0.7 : 1 }}>
-                {profileDeleting ? "Siliniyor..." : "Profili Sil"}
-              </button>
-            )}
-          </div>
-
-        </form>
-      );
-    }
-    return (
-      <div style={{ maxWidth: 430, margin: "auto", background: "#f5f7fa", borderRadius: 16, boxShadow: "0 1px 8px rgba(30,41,59,0.09)", padding: "38px 32px", color: "#222e3a" }}>
-        <h2 style={{ color: "#1e293b", margin: 0, marginBottom: 18, fontWeight: 700 }}>Profil Bilgileri</h2>
-        <div style={{ fontSize: 16, marginBottom: 9 }}><b>İsim:</b> {profile?.first_name}</div>
-        <div style={{ fontSize: 16, marginBottom: 9 }}><b>Soyisim:</b> {profile?.last_name}</div>
-        <div style={{ fontSize: 16, marginBottom: 22 }}><b>Telefon:</b> {profile?.phone}</div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => setShowProfileForm(true)}
-            style={{ flex: 1, background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "13px 0", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
-            Düzenle
-          </button>
-          <button onClick={handleProfileDelete}
-            disabled={profileDeleting}
-            style={{ flex: 1, background: "#fff0f0", color: "#e11d48", border: "1.5px solid #fca5a5", borderRadius: 8, padding: "13px 0", fontWeight: 700, fontSize: 16, cursor: "pointer", opacity: profileDeleting ? 0.7 : 1 }}>
-            {profileDeleting ? "Siliniyor..." : "Sil"}
-          </button>
-        </div>
-
-      </div>
-
-    );
-
-  };
-
-  // --- SİPARİŞLER & İADE KARGOSU ---
-  const renderOrderCard = (order: Order, isHistory: boolean) => (
-    <li key={order.id} style={{ background: "#f5f7fa", borderRadius: 12, marginBottom: 17, boxShadow: "0 1px 7px #e5e7eb29", padding: "16px 20px", color: "#222e3a", transition: "box-shadow .2s" }}>
-      <div onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }} title="Siparişi detaylı görüntüle/gizle">
-        <div><b>Sipariş No:</b> #{order.id} <span style={{ color: "#0ea5e9", fontWeight: 600, marginLeft: 10 }}>{new Date(order.created_at).toLocaleString("tr-TR")}</span></div>
-        <span style={{ background: order.status === "Teslim Edildi" ? "#22c55e" : order.status === "İptal" ? "#ef4444" : "#eab308", color: "#fff", borderRadius: 9, padding: "4px 16px", fontSize: 14, fontWeight: 600, minWidth: 80, textAlign: "center", boxShadow: "0 1px 3px #aaa1" }}>{order.status || "Hazırlanıyor"}</span>
-      </div>
-      {expandedOrderId === order.id && (
-        <div style={{ marginTop: 16, borderTop: "1px solid #e5e7eb", paddingTop: 14 }}>
-          {/* Ürünler */}
-          <div style={{ fontWeight: 600, color: "#2563eb", marginBottom: 4 }}>Ürünler</div>
-          <ul style={{ margin: "0 0 8px 0", padding: 0 }}>
-            {Array.isArray(order.cart_items)
-              ? order.cart_items.map((item: any, i: number) => (
-                <li key={i} style={{ display: "flex", alignItems: "center", marginBottom: 7 }}>
-                  <img src={item.resim_url || "/placeholder.jpg"} width={38} height={38} style={{ borderRadius: 7, marginRight: 10, background: "#fff" }} alt="" />
-                  <span style={{ fontWeight: 600, color: "#223555", fontSize: 15 }}>{item.title}</span>
-                  <span style={{ marginLeft: 11, color: "#16a34a", fontWeight: 700 }}>{item.price} ₺</span>
-                  <span style={{ marginLeft: 10, color: "#64748b" }}>Adet: {item.adet}</span>
-                </li>
-              ))
-              : order.cart_items && typeof order.cart_items === "object"
-                ? (
-                  <li style={{ display: "flex", alignItems: "center", marginBottom: 7 }}>
-                    <img src={order.cart_items.resim_url || "/placeholder.jpg"} width={38} height={38} style={{ borderRadius: 7, marginRight: 10, background: "#fff" }} alt="" />
-                    <span style={{ fontWeight: 600, color: "#223555", fontSize: 15 }}>{order.cart_items.title}</span>
-                    <span style={{ marginLeft: 11, color: "#16a34a", fontWeight: 700 }}>{order.cart_items.price} ₺</span>
-                    <span style={{ marginLeft: 10, color: "#64748b" }}>Adet: {order.cart_items.adet}</span>
-                  </li>
-                )
-                : <li>Ürün bulunamadı</li>
-            }
-          </ul>
-          {/* Adres */}
-          <div style={{ marginTop: 9, fontSize: 15 }}>
-            <b style={{ color: "#0ea5e9" }}>Adres:</b>
-            <span style={{ marginLeft: 7, color: "#223555" }}>
-              {order.custom_address
-                ? `${order.custom_address.title} - ${order.custom_address.address}, ${order.custom_address.city} (${order.custom_address.country})`
-                : (() => {
-                  const addr = addresses.find(a => a.id === order.address_id);
-                  return addr
-                    ? `${addr.title} - ${addr.address}, ${addr.city} (${addr.country})`
-                    : "Adres bilgisi bulunamadı.";
-                })()
-              }
-            </span>
-          </div>
-          {/* Kart */}
-          <div style={{ marginTop: 4, fontSize: 15 }}>
-            <b style={{ color: "#0ea5e9" }}>Kart:</b>
-            <span style={{ marginLeft: 7, color: "#223555" }}>
-              {order.custom_card
-                ? `${order.custom_card.title || order.custom_card.name_on_card || "Kart"} - **** **** **** ${order.custom_card.last4 ?? ""}${order.custom_card.expiry ? " (" + order.custom_card.expiry + ")" : ""}`
-                : (() => {
-                  const card = cards.find(c => c.id === order.card_id);
-                  return card
-                    ? `${card.title} - **** **** **** ${card.last4}${card.expiry ? " (" + card.expiry + ")" : ""}`
-                    : "Kart bilgisi bulunamadı.";
-                })()
-              }
-            </span>
-          </div>
-          {/* Kargo */}
-          <div style={{ marginTop: 14 }}>
-            <b style={{ color: "#0ea5e9" }}>Kargo:</b>
-            {order.kargo_firma && order.kargo_takip_no ? (
-              <span style={{ marginLeft: 7, color: "#223555", background: "#f6f7fb", padding: "5px 15px", borderRadius: 8, display: "inline-block", fontWeight: 700, letterSpacing: "0.5px" }}>
-                {order.kargo_firma} — <span style={{ color: "#2563eb" }}>{order.kargo_takip_no}</span>
-              </span>
-            ) : (
-              <span style={{ marginLeft: 7, color: "#f59e42", fontWeight: 600 }}>Kargo bilgisi eklenmemiş.</span>
-            )}
-          </div>
-          {/* Toplam */}
-          <div style={{ marginTop: 10, fontWeight: 700, color: "#1bbd8a", fontSize: 17 }}>
-            Toplam Tutar: {order.total_price?.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
-          </div>
-          {/* İADE DURUMU */}
-          {order.iade_durumu === "Talep Edildi" && (
-            <div style={{ marginTop: 12, background: "#fef3c7", color: "#92400e", padding: 10, borderRadius: 8, fontWeight: 700 }}>
-              İade Talebi Gönderildi (Satıcı onayı bekleniyor)
-            </div>
-          )}
-          {order.iade_durumu === "Onaylandı" && (
-            <div style={{ marginTop: 12, background: "#d1fae5", color: "#065f46", padding: 10, borderRadius: 8, fontWeight: 700 }}>
-              İade Süreci Başladı. Kargo ile ürünü geri gönderebilirsiniz!
-            </div>
-          )}
-          {order.iade_durumu === "Süreci Tamamlandı" && (
-            <div style={{ marginTop: 12, background: "#dbeafe", color: "#1e40af", padding: 10, borderRadius: 8, fontWeight: 700 }}>
-              İade Süreci Tamamlandı
-            </div>
-          )}
-          {order.iade_durumu === "Reddedildi" && (
-            <div style={{ marginTop: 12, background: "#fee2e2", color: "#b91c1c", padding: 10, borderRadius: 8, fontWeight: 700 }}>
-              İade Talebiniz Reddedildi
-            </div>
-          )}
-          {/* İADE KARGO TAKİP NO GİRİŞ */}
-          {order.iade_durumu === "Onaylandı" && !order.iade_kargo_takip_no && (
-            <div style={{ marginTop: 18, background: "#f8fafc", borderRadius: 9, padding: 18 }}>
-              <div style={{ marginBottom: 8, fontWeight: 600, color: "#223555" }}>
-                Ürünü iade kargoya verdiniz mi? Takip kodunu buraya yazın:
-              </div>
-              <input type="text" placeholder="Kargo Takip Kodu" value={iadeKargoTakipNo[order.id] || ""}
-                onChange={e => setIadeKargoTakipNo(prev => ({ ...prev, [order.id]: e.target.value }))}
-                style={{ width: 180, padding: 9, borderRadius: 7, border: "1.5px solid #16a34a", fontSize: 16, marginRight: 10 }}
-                maxLength={40}
-              />
-              <button style={{ background: "#16a34a", color: "#fff", fontWeight: 700, borderRadius: 7, padding: "9px 18px", border: "none", cursor: "pointer" }}
-                disabled={iadeKargoKaydediliyor[order.id] || (iadeKargoTakipNo[order.id]?.length ?? 0) < 7}
-                onClick={() => handleIadeKargoTakipNoKaydet(order.id)}
-              >
-                {iadeKargoKaydediliyor[order.id] ? "Kaydediliyor..." : "Kaydet"}
-              </button>
-            </div>
-          )}
-          {/* İADE KARGO NO GÖSTER */}
-          {order.iade_kargo_takip_no && (
-            <div style={{ marginTop: 16, color: "#16a34a", fontWeight: 700 }}>
-              <span style={{ background: "#dcfce7", padding: "6px 15px", borderRadius: 8 }}>
-                İade Kargo Takip Kodu: {order.iade_kargo_takip_no}
-              </span>
-            </div>
-          )}
-          {/* İADE SÜRECİ */}
-          {order.iade_durumu !== "Talep Edildi" && iadeSuresiAktif(order) && !order.iade_durumu && (
-            <div style={{ marginTop: 18 }}>
-              <button
-                onClick={() => setShowIadeModal(order.id)}
-                style={{ background: "#e11d48", color: "#fff", border: "none", borderRadius: 8, padding: "10px 28px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
-                İade Talebi Aç
-              </button>
-              <span style={{ color: "#64748b", marginLeft: 16, fontSize: 13 }}>
-                {order.status === "Kargoya Verildi" && "Ürün kargoda, iade açabilirsiniz."}
-                {order.status === "Teslim Edildi" && order.teslim_tarihi &&
-                  `Teslimden itibaren 7 gün iade hakkınız var (${order.teslim_tarihi}).`}
-              </span>
-            </div>
-          )}
-          {/* TEKRAR SATIN AL */}
-          {isHistory && expandedOrderId === order.id && (
-            <button
-              onClick={() => {
-                if (order.ilan_id) router.push(`/urun/${order.ilan_id}`);
-                else alert("İlan bilgisi bulunamadı.");
-              }}
-              style={{ marginTop: 12, background: "#1bbd8a", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, cursor: "pointer" }}
-            >
-              Tekrar Satın Al
-            </button>
-          )}
-
-        </div>
-      )}
-    </li>
-  );
-
-  // --- İçerik ---
-  const renderContent = () => {
-    if (selectedMenu === "adreslerim") {
-      return (
-        <div>
-          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Adreslerim</h2>
-          <button onClick={() => { setShowAddAddress(true); setEditAddressId(null); setAddressForm({ title: "", address: "", city: "", country: "" }); }}
-            style={{ marginBottom: 20, background: "#1bbd8a", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
-          >+ Adres Ekle</button>
-          {showAddAddress && renderAddressForm()}
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {addresses.map(addr => (
-              <li key={addr.id} style={{ background: "#f5f7fa", borderRadius: 9, marginBottom: 13, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <b>{addr.title}</b> — {addr.address}, {addr.city} ({addr.country})
-                </div>
-                <div>
-                  <button onClick={() => handleEditAddress(addr.id)} style={{ marginRight: 10, background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Düzenle</button>
-                  <button onClick={() => handleDeleteAddress(addr.id)} style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Sil</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      );
-    }
-
-    if (selectedMenu === "kartlarim") {
-      return (
-        <div>
-          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Kartlarım</h2>
-
-          {/* Görseli ve akışı bozmadan: aynı buton, Stripe modal açar */}
-          <button
-            onClick={() => setShowStripeModal(true)}
-            style={{ marginBottom: 20, background: "#1bbd8a", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
-          >
-            + Kart Ekle
-          </button>
-
-          {/* İstersen mevcut manuel formu da koru (açmak için aşağıdaki satırı bırakabilirsin) */}
-          {showAddCard && renderCardForm()}
-
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {cards.map(card => (
-              <li key={card.id} style={{ background: "#f5f7fa", borderRadius: 9, marginBottom: 13, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <b>{card.title}</b> — **** **** **** {card.last4}
-                </div>
-                <div>
-                  <button onClick={() => handleEditCard(card.id)} style={{ marginRight: 10, background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Düzenle</button>
-                  <button onClick={() => handleDeleteCard(card.id)} style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Sil</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      );
-    }
-
-    if (selectedMenu === "favoriIlanlar") {
-      return (
-        <div>
-          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Favori İlanlarım</h2>
-
-          {loadingFavoriler ? (
-            <p style={{ color: "#64748b" }}>Yükleniyor...</p>
-          ) : favoriIlanlar.length === 0 ? (
-            <p style={{ color: "#64748b" }}>Henüz favoriniz yok.</p>
-          ) : (
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(235px, 1fr))",
-              gap: 16
-            }}>
-              {favoriIlanlar.map((p: any) => (
-                <div key={p.id} style={{
-                  background: "#fff",
-                  borderRadius: 12,
-                  padding: 14,
-                  border: "1.5px solid #e4e9ef",
-                  boxShadow: "0 2px 10px #0000000d"
-                }}>
-                  <img
-                    src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
-                    alt={p.title}
-                    style={{ width: "100%", height: 130, objectFit: "cover", borderRadius: 8, marginBottom: 8, border: "1px solid #e5e7eb" }}
-                  />
-                  <div style={{ fontWeight: 700, color: "#223555", marginBottom: 6 }}>{p.title}</div>
-                  <div style={{ fontWeight: 700, color: p.indirimli_fiyat && p.indirimli_fiyat !== p.price ? "#ef4444" : "#16a34a" }}>
-                    {p.indirimli_fiyat && p.indirimli_fiyat !== p.price ? (
-                      <>
-                        <span style={{ textDecoration: "line-through", color: "#94a3b8", fontWeight: 600, marginRight: 6 }}>{p.price} ₺</span>
-                        <span>{p.indirimli_fiyat} ₺</span>
-                      </>
-                    ) : `${p.price} ₺`}
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                    <button
-                      onClick={() => router.push(`/urun/${p.id}`)}
-                      style={{ flex: 1, background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontWeight: 700, cursor: "pointer" }}
-                    >
-                      Gör
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!user) return;
-                        await supabase.from("favoriler").delete().eq("user_id", user.id).eq("ilan_id", p.id);
-                        await reloadFavoriler();
-                      }}
-                      style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 700, cursor: "pointer" }}
-                      title="Favorilerden çıkar"
-                    >
-                      ❌
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    if (selectedMenu === "profilim") return renderProfileBox();
-
-    if (selectedMenu === "siparislerim") {
-      if (!profile) {
-        return (
-          <div style={{ color: "#64748b" }}>
-            Siparişleri görebilmek için profil bilgini tamamla.
-            <div style={{ marginTop: 10 }}>
-              <button
-                onClick={() => { setSelectedMenu("profilim"); setShowProfileForm(true); }}
-                style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 700 }}
-              >
-                Profilimi Tamamla
-              </button>
-            </div>
-          </div>
-        );
-      }
-      if (activeOrders.length === 0) {
-        return <p style={{ color: "#64748b" }}>Aktif siparişiniz yok.</p>;
-      }
-      return (
-        <div>
-          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Aktif Siparişler</h2>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {activeOrders.map((o: Order) => renderOrderCard(o, false))}
-          </ul>
-        </div>
-      );
-    }
-
-    if (selectedMenu === "tekrarSatinAl") {
-      if (!profile) {
-        return <p style={{ color: "#64748b" }}>Geçmiş siparişleri görmek için profil bilgini tamamla.</p>;
-      }
-      if (historyOrders.length === 0) {
-        return <p style={{ color: "#64748b" }}>Geçmiş siparişiniz yok.</p>;
-      }
-      return (
-        <div>
-          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Geçmiş Siparişler</h2>
-          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {historyOrders.map((o: Order) => renderOrderCard(o, true))}
-          </ul>
-        </div>
-      );
-    }
-
-    return <p style={{ color: "#64748b" }}>Bir menü seçin.</p>;
-  };
+  // BURAYA EKLE
 
   const renderAddressForm = () => (
     <form
@@ -935,8 +355,8 @@ export default function Profil2() {
           padding: 10,
           borderRadius: 8,
           border: "1.5px solid #bae6fd",
-          background: "#fff",
-          color: "#222",
+          background: "#fff",      // Arka plan beyaz
+          color: "#222",           // Yazı rengi siyah
         }}
       />
       <input
@@ -1010,7 +430,6 @@ export default function Profil2() {
       </div>
     </form>
   );
-
   const renderCardForm = () => (
     <form onSubmit={handleCardSave} style={{
       maxWidth: 400,
@@ -1047,7 +466,7 @@ export default function Profil2() {
       <input
         placeholder="Kart Numarası"
         value={cardForm.card_number}
-        maxLength={19}
+        maxLength={16}
         onChange={e => setCardForm(f => ({ ...f, card_number: e.target.value }))}
         style={{
           padding: 10, borderRadius: 8, border: "1.5px solid #bae6fd",
@@ -1061,7 +480,7 @@ export default function Profil2() {
           value={cardForm.expiry}
           maxLength={5}
           onChange={e => {
-            let val = e.target.value.replace(/\D/g, "");
+            let val = e.target.value.replace(/\D/g, ""); // Sadece rakam al
             if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2, 4);
             setCardForm(f => ({ ...f, expiry: val }));
           }}
@@ -1114,6 +533,577 @@ export default function Profil2() {
     </form>
   );
 
+  // ADRES ekle/güncelle
+  async function handleAddressSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user) return;
+    if (!addressForm.title || !addressForm.address || !addressForm.city || !addressForm.country) {
+      alert("Tüm adres alanlarını doldurun.");
+      return;
+    }
+    if (editAddressId) {
+      await supabase.from("user_addresses").update({
+        title: addressForm.title,
+        address: addressForm.address,
+        city: addressForm.city,
+        country: addressForm.country,
+      }).eq("id", editAddressId);
+    } else {
+      await supabase.from("user_addresses").insert([{
+        user_id: user.id,
+        ...addressForm,
+      }]);
+    }
+    setShowAddAddress(false);
+    setEditAddressId(null);
+    setAddressForm({ title: "", address: "", city: "", country: "" });
+    const { data: addrData } = await supabase
+      .from("user_addresses")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("id", { ascending: true });
+    setAddresses(addrData || []);
+  }
+
+  async function handleDeleteAddress(id: number) {
+    if (!window.confirm("Bu adresi silmek istediğinize emin misiniz?")) return;
+    await supabase.from("user_addresses").delete().eq("id", id);
+    setAddresses(addresses.filter(a => a.id !== id));
+  }
+  function handleEditAddress(id: number) {
+    const a = addresses.find(x => x.id === id);
+    if (!a) return;
+    setEditAddressId(id);
+    setAddressForm({ title: a.title, address: a.address, city: a.city, country: a.country });
+    setShowAddAddress(true);
+  }
+
+  // KART ekle/güncelle
+ async function handleCardSave(e: React.FormEvent) {
+  e.preventDefault();
+  if (!user) return;
+  if (!cardForm.title || !cardForm.card_number || !cardForm.expiry || !cardForm.cvv) {
+    alert("Tüm kart alanlarını doldurun.");
+    return;
+  }
+  if (!isValidCardNumber(cardForm.card_number)) {
+    alert("Kart numarası geçersiz.");
+    return;
+  }
+  if (!isValidExpiry(cardForm.expiry)) {
+    alert("Son kullanma tarihi geçersiz.");
+    return;
+  }
+  if (!isValidCVV(cardForm.cvv)) {
+    alert("CVV geçersiz.");
+    return;
+  }
+
+  // ⚠️ CVV'yi ASLA DB'ye yazmıyoruz
+  const payload = {
+    title: cardForm.title,
+    card_number: cardForm.card_number, // İdeal: sadece last4 yaz (aşağıdaki not)
+    expiry: cardForm.expiry,
+    name_on_card: cardForm.name_on_card,
+  };
+
+  if (editCardId) {
+    await supabase.from("user_cards").update(payload).eq("id", editCardId);
+  } else {
+    await supabase.from("user_cards").insert([{ user_id: user.id, ...payload }]);
+  }
+
+  setShowAddCard(false);
+  setEditCardId(null);
+  setCardForm({ title: "", card_number: "", expiry: "", cvv: "", name_on_card: "" });
+
+  const { data: cardData } = await supabase
+    .from("user_cards")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("id", { ascending: true });
+  setCards(cardData || []);
+}
+
+  async function handleDeleteCard(id: number) {
+    if (!window.confirm("Bu kartı silmek istediğinize emin misiniz?")) return;
+    await supabase.from("user_cards").delete().eq("id", id);
+    setCards(cards.filter(a => a.id !== id));
+  }
+
+  function handleEditCard(id: number) {
+    const c = cards.find(x => x.id === id);
+    if (!c) return;
+    setEditCardId(id);
+    setCardForm({
+      title: c.title || "",
+      card_number: c.card_number || "",
+      expiry: c.expiry || "",
+      cvv: c.cvv || "",
+      name_on_card: c.name_on_card || "",
+    });
+    setShowAddCard(true);
+  }
+
+  // --- PROFİL GÜNCELLEME ---
+  const handleProfileSave = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!user) return;
+  const userId = user.id;
+
+  const payload = {
+    first_name: profileForm.first_name.trim(),
+    last_name: profileForm.last_name.trim(),
+    phone: profileForm.phone.trim(),
+  };
+
+  try {
+    if (profile) {
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({ ...payload, updated_at: new Date() })
+        .eq("user_id", userId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("user_profiles")
+        .insert([{ user_id: userId, ...payload }]);
+      if (error) throw error;
+    }
+    setShowProfileForm(false);
+    // ✅ null spread hatası yok
+    setProfile(prev => ({ ...(prev ?? {}), ...payload } as UserProfile));
+  } catch (err: any) {
+    alert("Profil kaydedilemedi: " + (err?.message || "bilinmeyen hata"));
+  }
+};
+
+  // --- İADE KARGO TAKİP NO KAYDET ---
+  const handleIadeKargoTakipNoKaydet = async (orderId: number) => {
+    if (!iadeKargoTakipNo[orderId] || iadeKargoTakipNo[orderId].length < 7) {
+      alert("Geçerli bir takip kodu girin.");
+      return;
+    }
+    setIadeKargoKaydediliyor(prev => ({ ...prev, [orderId]: true }));
+    const { error } = await supabase
+      .from("orders")
+      .update({ iade_kargo_takip_no: iadeKargoTakipNo[orderId] })
+      .eq("id", orderId);
+
+    setIadeKargoKaydediliyor(prev => ({ ...prev, [orderId]: false }));
+    if (!error) {
+      alert("Takip kodu kaydedildi!");
+      await reloadOrders(user.id);
+      setIadeKargoTakipNo(prev => ({ ...prev, [orderId]: "" }));
+    } else {
+      alert("Hata: " + error.message);
+    }
+  };
+
+  // --- PROFİL KUTUSU ---
+  const renderProfileBox = () => {
+    if (showProfileForm || !profile) {
+      return (
+        <form onSubmit={handleProfileSave} style={{ maxWidth: 430, margin: "auto", background: "#f5f7fa", padding: "36px 32px 24px 32px", borderRadius: 16, boxShadow: "0 1px 8px rgba(30,41,59,0.09)", display: "flex", flexDirection: "column", gap: 20, color: "#222e3a" }}>
+          <h2 style={{ color: "#1e293b", margin: 0, marginBottom: 12, fontWeight: 700 }}>Profil Bilgileri</h2>
+          <label style={{ color: "#222e3a", fontSize: 14, fontWeight: 600 }}>
+            İsim
+            <input type="text" required placeholder="Adınızı giriniz" value={profileForm.first_name}
+              onChange={e => setProfileForm(f => ({ ...f, first_name: e.target.value }))}
+              style={{ width: "100%", padding: "12px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", marginTop: 3, color: "#222e3a" }} />
+          </label>
+          <label style={{ color: "#222e3a", fontSize: 14, fontWeight: 600 }}>
+            Soyisim
+            <input type="text" required placeholder="Soyadınızı giriniz" value={profileForm.last_name}
+              onChange={e => setProfileForm(f => ({ ...f, last_name: e.target.value }))}
+              style={{ width: "100%", padding: "12px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", marginTop: 3, color: "#222e3a" }} />
+          </label>
+          <label style={{ color: "#222e3a", fontSize: 14, fontWeight: 600 }}>
+            Telefon
+            <input type="tel" required placeholder="05xx xxx xx xx" value={profileForm.phone}
+              onChange={e => setProfileForm(f => ({ ...f, phone: e.target.value }))}
+              style={{ width: "100%", padding: "12px 14px", fontSize: 15, borderRadius: 8, border: "1.5px solid #bae6fd", background: "#fff", marginTop: 3, color: "#222e3a" }} />
+          </label>
+         <div style={{ display: "flex", gap: 10 }}>
+  <button type="submit" style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "14px 0", fontWeight: 700, fontSize: 16, flex: 1, cursor: "pointer" }}>
+    Kaydet
+  </button>
+
+  {profile && (
+    <button type="button" onClick={() => setShowProfileForm(false)}
+      style={{ background: "#fff", color: "#223555", border: "1.5px solid #c7dbe8", borderRadius: 8, padding: "14px 0", fontWeight: 600, fontSize: 16, flex: 1, cursor: "pointer" }}>
+      Vazgeç
+    </button>
+  )}
+
+  {profile && (
+    <button type="button" onClick={handleProfileDelete}
+      disabled={profileDeleting}
+      style={{ background: "#fff0f0", color: "#e11d48", border: "1.5px solid #fca5a5", borderRadius: 8, padding: "14px 0", fontWeight: 700, fontSize: 16, flex: 1, cursor: "pointer", opacity: profileDeleting ? 0.7 : 1 }}>
+      {profileDeleting ? "Siliniyor..." : "Profili Sil"}
+    </button>
+  )}
+</div>
+
+        </form>
+      );
+    }
+    return (
+      <div style={{ maxWidth: 430, margin: "auto", background: "#f5f7fa", borderRadius: 16, boxShadow: "0 1px 8px rgba(30,41,59,0.09)", padding: "38px 32px", color: "#222e3a" }}>
+        <h2 style={{ color: "#1e293b", margin: 0, marginBottom: 18, fontWeight: 700 }}>Profil Bilgileri</h2>
+        <div style={{ fontSize: 16, marginBottom: 9 }}><b>İsim:</b> {profile?.first_name}</div>
+        <div style={{ fontSize: 16, marginBottom: 9 }}><b>Soyisim:</b> {profile?.last_name}</div>
+        <div style={{ fontSize: 16, marginBottom: 22 }}><b>Telefon:</b> {profile?.phone}</div>
+     <div style={{ display: "flex", gap: 10 }}>
+  <button onClick={() => setShowProfileForm(true)}
+    style={{ flex: 1, background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "13px 0", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
+    Düzenle
+  </button>
+  <button onClick={handleProfileDelete}
+    disabled={profileDeleting}
+    style={{ flex: 1, background: "#fff0f0", color: "#e11d48", border: "1.5px solid #fca5a5", borderRadius: 8, padding: "13px 0", fontWeight: 700, fontSize: 16, cursor: "pointer", opacity: profileDeleting ? 0.7 : 1 }}>
+    {profileDeleting ? "Siliniyor..." : "Sil"}
+  </button>
+</div>
+
+      </div>
+
+    );
+
+  };
+
+  // --- SİPARİŞLER & İADE KARGOSU ---
+  const renderOrderCard = (order: Order, isHistory: boolean) => (
+    <li key={order.id} style={{ background: "#f5f7fa", borderRadius: 12, marginBottom: 17, boxShadow: "0 1px 7px #e5e7eb29", padding: "16px 20px", color: "#222e3a", transition: "box-shadow .2s" }}>
+      <div onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }} title="Siparişi detaylı görüntüle/gizle">
+        <div><b>Sipariş No:</b> #{order.id} <span style={{ color: "#0ea5e9", fontWeight: 600, marginLeft: 10 }}>{new Date(order.created_at).toLocaleString("tr-TR")}</span></div>
+        <span style={{ background: order.status === "Teslim Edildi" ? "#22c55e" : order.status === "İptal" ? "#ef4444" : "#eab308", color: "#fff", borderRadius: 9, padding: "4px 16px", fontSize: 14, fontWeight: 600, minWidth: 80, textAlign: "center", boxShadow: "0 1px 3px #aaa1" }}>{order.status || "Hazırlanıyor"}</span>
+      </div>
+      {expandedOrderId === order.id && (
+        <div style={{ marginTop: 16, borderTop: "1px solid #e5e7eb", paddingTop: 14 }}>
+          {/* Ürünler */}
+          <div style={{ fontWeight: 600, color: "#2563eb", marginBottom: 4 }}>Ürünler</div>
+          <ul style={{ margin: "0 0 8px 0", padding: 0 }}>
+            {Array.isArray(order.cart_items)
+              ? order.cart_items.map((item: any, i: number) => (
+                <li key={i} style={{ display: "flex", alignItems: "center", marginBottom: 7 }}>
+                  <img src={item.resim_url || "/placeholder.jpg"} width={38} height={38} style={{ borderRadius: 7, marginRight: 10, background: "#fff" }} alt="" />
+                  <span style={{ fontWeight: 600, color: "#223555", fontSize: 15 }}>{item.title}</span>
+                  <span style={{ marginLeft: 11, color: "#16a34a", fontWeight: 700 }}>{item.price} ₺</span>
+                  <span style={{ marginLeft: 10, color: "#64748b" }}>Adet: {item.adet}</span>
+                </li>
+              ))
+              : order.cart_items && typeof order.cart_items === "object"
+                ? (
+                  <li style={{ display: "flex", alignItems: "center", marginBottom: 7 }}>
+                    <img src={order.cart_items.resim_url || "/placeholder.jpg"} width={38} height={38} style={{ borderRadius: 7, marginRight: 10, background: "#fff" }} alt="" />
+                    <span style={{ fontWeight: 600, color: "#223555", fontSize: 15 }}>{order.cart_items.title}</span>
+                    <span style={{ marginLeft: 11, color: "#16a34a", fontWeight: 700 }}>{order.cart_items.price} ₺</span>
+                    <span style={{ marginLeft: 10, color: "#64748b" }}>Adet: {order.cart_items.adet}</span>
+                  </li>
+                )
+                : <li>Ürün bulunamadı</li>
+            }
+          </ul>
+          {/* Adres */}
+          <div style={{ marginTop: 9, fontSize: 15 }}>
+            <b style={{ color: "#0ea5e9" }}>Adres:</b>
+            <span style={{ marginLeft: 7, color: "#223555" }}>
+              {order.custom_address
+                ? `${order.custom_address.title} - ${order.custom_address.address}, ${order.custom_address.city} (${order.custom_address.country})`
+                : (() => {
+                  const addr = addresses.find(a => a.id === order.address_id);
+                  return addr
+                    ? `${addr.title} - ${addr.address}, ${addr.city} (${addr.country})`
+                    : "Adres bilgisi bulunamadı.";
+                })()
+              }
+            </span>
+          </div>
+          {/* Kart */}
+          <div style={{ marginTop: 4, fontSize: 15 }}>
+            <b style={{ color: "#0ea5e9" }}>Kart:</b>
+            <span style={{ marginLeft: 7, color: "#223555" }}>
+
+              {order.custom_card
+                ? `${order.custom_card.title || order.custom_card.name_on_card || "Kart"} - **** **** **** ${order.custom_card.last4 ?? ""}${order.custom_card.expiry ? " (" + order.custom_card.expiry + ")" : ""}`
+                : (() => {
+                  const card = cards.find(c => c.id === order.card_id);
+                  return card
+                    ? `${card.title} - **** **** **** ${String(card.card_number).slice(-4)}`
+                    : "Kart bilgisi bulunamadı.";
+                })()
+              }
+
+            </span>
+          </div>
+          {/* Kargo */}
+          <div style={{ marginTop: 14 }}>
+            <b style={{ color: "#0ea5e9" }}>Kargo:</b>
+            {order.kargo_firma && order.kargo_takip_no ? (
+              <span style={{ marginLeft: 7, color: "#223555", background: "#f6f7fb", padding: "5px 15px", borderRadius: 8, display: "inline-block", fontWeight: 700, letterSpacing: "0.5px" }}>
+                {order.kargo_firma} — <span style={{ color: "#2563eb" }}>{order.kargo_takip_no}</span>
+              </span>
+            ) : (
+              <span style={{ marginLeft: 7, color: "#f59e42", fontWeight: 600 }}>Kargo bilgisi eklenmemiş.</span>
+            )}
+          </div>
+          {/* Toplam */}
+          <div style={{ marginTop: 10, fontWeight: 700, color: "#1bbd8a", fontSize: 17 }}>
+            Toplam Tutar: {order.total_price?.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
+          </div>
+          {/* İADE DURUMU */}
+          {order.iade_durumu === "Talep Edildi" && (
+            <div style={{ marginTop: 12, background: "#fef3c7", color: "#92400e", padding: 10, borderRadius: 8, fontWeight: 700 }}>
+              İade Talebi Gönderildi (Satıcı onayı bekleniyor)
+            </div>
+          )}
+          {order.iade_durumu === "Onaylandı" && (
+            <div style={{ marginTop: 12, background: "#d1fae5", color: "#065f46", padding: 10, borderRadius: 8, fontWeight: 700 }}>
+              İade Süreci Başladı. Kargo ile ürünü geri gönderebilirsiniz!
+            </div>
+          )}
+          {order.iade_durumu === "Süreci Tamamlandı" && (
+            <div style={{ marginTop: 12, background: "#dbeafe", color: "#1e40af", padding: 10, borderRadius: 8, fontWeight: 700 }}>
+              İade Süreci Tamamlandı
+            </div>
+          )}
+          {order.iade_durumu === "Reddedildi" && (
+            <div style={{ marginTop: 12, background: "#fee2e2", color: "#b91c1c", padding: 10, borderRadius: 8, fontWeight: 700 }}>
+              İade Talebiniz Reddedildi
+            </div>
+          )}
+          {/* İADE KARGO TAKİP NO GİRİŞ */}
+          {order.iade_durumu === "Onaylandı" && !order.iade_kargo_takip_no && (
+            <div style={{ marginTop: 18, background: "#f8fafc", borderRadius: 9, padding: 18 }}>
+              <div style={{ marginBottom: 8, fontWeight: 600, color: "#223555" }}>
+                Ürünü iade kargoya verdiniz mi? Takip kodunu buraya yazın:
+              </div>
+              <input type="text" placeholder="Kargo Takip Kodu" value={iadeKargoTakipNo[order.id] || ""}
+                onChange={e => setIadeKargoTakipNo(prev => ({ ...prev, [order.id]: e.target.value }))}
+                style={{ width: 180, padding: 9, borderRadius: 7, border: "1.5px solid #16a34a", fontSize: 16, marginRight: 10 }}
+                maxLength={40}
+              />
+              <button style={{ background: "#16a34a", color: "#fff", fontWeight: 700, borderRadius: 7, padding: "9px 18px", border: "none", cursor: "pointer" }}
+                disabled={iadeKargoKaydediliyor[order.id] || (iadeKargoTakipNo[order.id]?.length ?? 0) < 7}
+                onClick={() => handleIadeKargoTakipNoKaydet(order.id)}
+              >
+                {iadeKargoKaydediliyor[order.id] ? "Kaydediliyor..." : "Kaydet"}
+              </button>
+            </div>
+          )}
+          {/* İADE KARGO NO GÖSTER */}
+          {order.iade_kargo_takip_no && (
+            <div style={{ marginTop: 16, color: "#16a34a", fontWeight: 700 }}>
+              <span style={{ background: "#dcfce7", padding: "6px 15px", borderRadius: 8 }}>
+                İade Kargo Takip Kodu: {order.iade_kargo_takip_no}
+              </span>
+            </div>
+          )}
+          {/* İADE SÜRECİ: KARGOYA VERİLDİ veya TESLİM EDİLDİ SONRASI 7 GÜN */}
+          {order.iade_durumu !== "Talep Edildi" && iadeSuresiAktif(order) && !order.iade_durumu && (
+            <div style={{ marginTop: 18 }}>
+              <button
+                onClick={() => setShowIadeModal(order.id)}
+                style={{ background: "#e11d48", color: "#fff", border: "none", borderRadius: 8, padding: "10px 28px", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
+                İade Talebi Aç
+              </button>
+              <span style={{ color: "#64748b", marginLeft: 16, fontSize: 13 }}>
+                {order.status === "Kargoya Verildi" && "Ürün kargoda, iade açabilirsiniz."}
+                {order.status === "Teslim Edildi" && order.teslim_tarihi &&
+                  `Teslimden itibaren 7 gün iade hakkınız var (${order.teslim_tarihi}).`}
+              </span>
+            </div>
+          )}
+          {/* TEKRAR SATIN AL BUTONU */}
+          {isHistory && expandedOrderId === order.id && (
+  <button
+    onClick={() => {
+      if (order.ilan_id) router.push(`/urun/${order.ilan_id}`);
+      else alert("İlan bilgisi bulunamadı.");
+    }}
+    style={{ marginTop: 12, background: "#1bbd8a", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontWeight: 700, cursor: "pointer" }}
+  >
+    Tekrar Satın Al
+  </button>
+)}
+
+        </div>
+      )}
+    </li>
+  );
+
+  // --- İçerik ---
+  const renderContent = () => {// BURAYA EKLE
+
+    if (selectedMenu === "adreslerim") {
+      return (
+        <div>
+          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Adreslerim</h2>
+          <button onClick={() => { setShowAddAddress(true); setEditAddressId(null); setAddressForm({ title: "", address: "", city: "", country: "" }); }}
+            style={{ marginBottom: 20, background: "#1bbd8a", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
+          >+ Adres Ekle</button>
+          {showAddAddress && renderAddressForm()}
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {addresses.map(addr => (
+              <li key={addr.id} style={{ background: "#f5f7fa", borderRadius: 9, marginBottom: 13, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <b>{addr.title}</b> — {addr.address}, {addr.city} ({addr.country})
+                </div>
+                <div>
+                  <button onClick={() => handleEditAddress(addr.id)} style={{ marginRight: 10, background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Düzenle</button>
+                  <button onClick={() => handleDeleteAddress(addr.id)} style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Sil</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    if (selectedMenu === "kartlarim") {
+      return (
+        <div>
+          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Kartlarım</h2>
+          <button onClick={() => { setShowAddCard(true); setEditCardId(null); setCardForm({ title: "", card_number: "", expiry: "", cvv: "", name_on_card: "", }); }}
+            style={{ marginBottom: 20, background: "#1bbd8a", color: "#fff", border: "none", borderRadius: 8, padding: "10px 22px", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
+          >+ Kart Ekle</button>
+          {showAddCard && renderCardForm()}
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {cards.map(card => (
+              <li key={card.id} style={{ background: "#f5f7fa", borderRadius: 9, marginBottom: 13, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <b>{card.title}</b> — **** **** **** {String(card.card_number).slice(-4)}
+                </div>
+                <div>
+                  <button onClick={() => handleEditCard(card.id)} style={{ marginRight: 10, background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Düzenle</button>
+                  <button onClick={() => handleDeleteCard(card.id)} style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, padding: "5px 11px", fontWeight: 700, cursor: "pointer" }}>Sil</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    } 
+
+    if (selectedMenu === "favoriIlanlar") {
+      return (
+        <div>
+          <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>Favori İlanlarım</h2>
+
+          {loadingFavoriler ? (
+            <p style={{ color: "#64748b" }}>Yükleniyor...</p>
+          ) : favoriIlanlar.length === 0 ? (
+            <p style={{ color: "#64748b" }}>Henüz favoriniz yok.</p>
+          ) : (
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(235px, 1fr))",
+              gap: 16
+            }}>
+              {favoriIlanlar.map((p: any) => (
+                <div key={p.id} style={{
+                  background: "#fff",
+                  borderRadius: 12,
+                  padding: 14,
+                  border: "1.5px solid #e4e9ef",
+                  boxShadow: "0 2px 10px #0000000d"
+                }}>
+                  <img
+                    src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                    alt={p.title}
+                    style={{ width: "100%", height: 130, objectFit: "cover", borderRadius: 8, marginBottom: 8, border: "1px solid #e5e7eb" }}
+                  />
+                  <div style={{ fontWeight: 700, color: "#223555", marginBottom: 6 }}>{p.title}</div>
+                  <div style={{ fontWeight: 700, color: p.indirimli_fiyat && p.indirimli_fiyat !== p.price ? "#ef4444" : "#16a34a" }}>
+                    {p.indirimli_fiyat && p.indirimli_fiyat !== p.price ? (
+                      <>
+                        <span style={{ textDecoration: "line-through", color: "#94a3b8", fontWeight: 600, marginRight: 6 }}>{p.price} ₺</span>
+                        <span>{p.indirimli_fiyat} ₺</span>
+                      </>
+                    ) : `${p.price} ₺`}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button
+                     onClick={() => router.push(`/urun/${p.id}`)}
+                      style={{ flex: 1, background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "9px 0", fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Gör
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!user) return;
+                        await supabase.from("favoriler").delete().eq("user_id", user.id).eq("ilan_id", p.id);
+                        await reloadFavoriler();
+                      }}
+                      style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, padding: "9px 12px", fontWeight: 700, cursor: "pointer" }}
+                      title="Favorilerden çıkar"
+                    >
+                      ❌
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (selectedMenu === "profilim") return renderProfileBox();
+
+if (selectedMenu === "siparislerim") {
+  if (!profile) {
+    return (
+      <div style={{color:"#64748b"}}>
+        Siparişleri görebilmek için profil bilgini tamamla.
+        <div style={{marginTop:10}}>
+          <button
+            onClick={() => { setSelectedMenu("profilim"); setShowProfileForm(true); }}
+            style={{background:"#2563eb",color:"#fff",border:"none",borderRadius:8,padding:"10px 16px",fontWeight:700}}
+          >
+            Profilimi Tamamla
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (activeOrders.length === 0) {
+    return <p style={{ color:"#64748b" }}>Aktif siparişiniz yok.</p>;
+  }
+  return (
+    <div>
+      <h2 style={{ color:"#223555", marginBottom:18, fontWeight:700 }}>Aktif Siparişler</h2>
+      <ul style={{ listStyle:"none", padding:0, margin:0 }}>
+        {activeOrders.map((o: Order) => renderOrderCard(o, false))}
+      </ul>
+    </div>
+  );
+}
+
+if (selectedMenu === "tekrarSatinAl") {
+  if (!profile) {
+    return <p style={{color:"#64748b"}}>Geçmiş siparişleri görmek için profil bilgini tamamla.</p>;
+  }
+  if (historyOrders.length === 0) {
+    return <p style={{ color:"#64748b" }}>Geçmiş siparişiniz yok.</p>;
+  }
+  return (
+    <div>
+      <h2 style={{ color:"#223555", marginBottom:18, fontWeight:700 }}>Geçmiş Siparişler</h2>
+      <ul style={{ listStyle:"none", padding:0, margin:0 }}>
+        {historyOrders.map((o: Order) => renderOrderCard(o, true))}
+      </ul>
+    </div>
+  );
+}
+
+return <p style={{ color:"#64748b" }}>Bir menü seçin.</p>;
+
+  };
+
+  
   // --- İADE MODAL ---
   const renderIadeModal = () => (
     <div style={{
@@ -1184,9 +1174,9 @@ export default function Profil2() {
       <div
         style={{
           display: "flex",
-          flexDirection: isMobile ? "column" : "row",
+          flexDirection: isMobile ? "column" : "row", // ✅ mobilde alt alta
           width: "100%",
-          maxWidth: "100%",
+          maxWidth: "100%",                           // ✅ tam ekran
           margin: isMobile ? "12px auto" : "24px auto",
           gap: isMobile ? 12 : 24,
           paddingLeft: isMobile ? 12 : 24,
@@ -1342,7 +1332,7 @@ export default function Profil2() {
           <div
             style={{
               position: "sticky",
-              top: 56,
+              top: 56,                // header yüksekliğine göre 56–64 deneyebilirsin
               zIndex: 10,
               background: "#eef2f6",
               padding: "8px 0",
@@ -1380,8 +1370,8 @@ export default function Profil2() {
           </div>
         )}
         <main style={{
-          flex: isMobile ? "1 1 auto" : "1 1 0%",
-          width: isMobile ? "100%" : "auto",
+          flex: isMobile ? "1 1 auto" : "1 1 0%",      // ✅ masaüstünde kalan alanı kapla
+          width: isMobile ? "100%" : "auto",           // ✅ mobilde tam genişlik, masaüstünde otomatik
           background: "#fff",
           borderRadius: 12,
           padding: isMobile ? 16 : 32,
@@ -1395,31 +1385,6 @@ export default function Profil2() {
         </main>
       </div>
       {showIadeModal !== null && renderIadeModal()}
-
-      <button
-  onClick={async () => {
-    const res = await fetch("/api/payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: user?.id,
-        amount: 100, // deneme için
-        card: {
-          card_number: "5528790000000008",
-          expiry: "12/26",
-          cvv: "123",
-          name_on_card: "Test Kullanıcı",
-          title: "Benim Kartım"
-        }
-      })
-    });
-    const data = await res.json();
-    console.log("Ödeme sonucu:", data);
-  }}
->
-  💳 Kart Kaydet / Ödeme Yap
-</button>
-
     </div>
   );
 }
