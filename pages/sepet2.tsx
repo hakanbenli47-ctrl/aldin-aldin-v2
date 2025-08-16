@@ -185,8 +185,9 @@ export default function Sepet2() {
       return;
     }
 
-  const maskedCard = cardDigits.slice(-4); // ✅ sadece son 4 hane
-const maskedCVV = "*".repeat(newCard.cvv.length - 1) + newCard.cvv.slice(-1); // ✅ yıldızlı cvv
+  // ---- Kartı kaydet ----
+const maskedCardNumber = newCard.card_number.slice(-4).padStart(newCard.card_number.length, "*");
+const maskedCVV = newCard.cvv.replace(/./g, "*").slice(0, -1) + newCard.cvv.slice(-1);
 
 const { data, error } = await supabase
   .from("user_cards")
@@ -194,15 +195,16 @@ const { data, error } = await supabase
     {
       user_id: currentUser.id,
       name_on_card: newCard.name_on_card,
-      card_number: maskedCard,   // ✅ artık maskeli
+      card_number: maskedCardNumber,  // ✅ DB'ye sadece maskelenmiş hali
       expiry: newCard.expiry,
-      cvv: maskedCVV,            // ✅ artık maskeli
+      cvv: maskedCVV,                 // ✅ yıldızlı şekilde
       title: newCard.title,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
   ])
-  .select(); 
+  .select();
+
 
 
     if (error) {
