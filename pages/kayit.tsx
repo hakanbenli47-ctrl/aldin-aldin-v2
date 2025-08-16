@@ -15,7 +15,7 @@ async function generateUniqueFirmaKodu() {
       .select("id")
       .eq("firma_kodu", kod)
       .maybeSingle();
-    if (error) throw new Error("firma_kodu kontrol hatası: " + error.message);
+    if (error) throw new Error("firma_kodu kontrol hatası: " + error.message); 
     if (!data) return kod; // benzersiz
   }
   // son çare: zaman damgalı
