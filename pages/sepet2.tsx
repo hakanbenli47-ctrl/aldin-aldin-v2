@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
-import {  useRef } from "react"; 
+
 // ----- MAIL GÖNDERME
 async function sendOrderEmails({
   aliciMail,
@@ -40,56 +40,60 @@ async function sendOrderEmails({
   });
 }
 
+type CardRow = {
+  id: number;
+  user_id: string;
+  title: string | null;
+  name_on_card: string | null;
+  last4: string | null;
+  brand: string | null;
+  expiry: string | null; // "MM/YYYY"
+  card_user_key: string | null;
+  card_token: string | null;
+};
+
 export default function Sepet2() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [addresses, setAddresses] = useState<any[]>([]);
-  const [cards, setCards] = useState<any[]>([]);
+  const [cards, setCards] = useState<CardRow[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
-const [newAddress, setNewAddress] = useState<any>({
-  first_name: "",
-  last_name: "",
-  phone: "",
-  title: "",
-  address: "",
-  city: "",
-  postal_code: "",
-  country: ""
-});
+  const [newAddress, setNewAddress] = useState<any>({
+    first_name: "",
+    last_name: "",
+    phone: "",
+    title: "",
+    address: "",
+    city: "",
+    postal_code: "",
+    country: "",
+  });
 
+  const [selectedCardId, setSelectedCardId] = useState<string>("");
+  const [showNewCardForm, setShowNewCardForm] = useState(false);
+  const [newCard, setNewCard] = useState<any>({
+    name_on_card: "",
+    card_number: "",
+    expiry: "",
+    cvv: "",
+    title: "",
+  });
 
-const [selectedCardId, setSelectedCardId] = useState<string>("");
-const [showNewCardForm, setShowNewCardForm] = useState(false);
-const [newCard, setNewCard] = useState<any>({
-  name_on_card: "",
-  card_number: "",
-  expiry: "",
-  cvv: "",
-  title: ""
-});
-// --- Kart formatlama yardımcıları ---
-function formatCardNumber(value: string) {
-  return value
-    .replace(/\D/g, "")
-    .replace(/(.{4})/g, "$1 ")
-    .trim();
-}
-
-function formatExpiry(value: string) {
-  const cleaned = value.replace(/\D/g, "");
-  if (cleaned.length >= 3) {
-    return cleaned.slice(0, 2) + "/" + cleaned.slice(2, 4);
+  // --- Kart formatlama yardımcıları ---
+  function formatCardNumber(value: string) {
+    return value.replace(/\D/g, "").replace(/(.{4})/g, "$1 ").trim();
   }
-  return cleaned;
-}
-
-function formatCVV(value: string) {
-  return value.replace(/\D/g, "").slice(0, 4);
-}
-
-const inputStyle = {
+  function formatExpiry(value: string) {
+    const cleaned = value.replace(/\D/g, "");
+    if (cleaned.length >= 3) return cleaned.slice(0, 2) + "/" + cleaned.slice(2, 4);
+    return cleaned;
+  }
+  function formatCVV(value: string) {
+    return value.replace(/\D/g, "").slice(0, 4);
+  }
+  const inputStyle = {
     width: "100%",
     padding: "10px 14px",
     border: "1px solid #d1d5db",
@@ -98,124 +102,130 @@ const inputStyle = {
     marginBottom: "10px",
     outline: "none",
     transition: "0.2s",
-  };
+  } as const;
+
   async function handleNewAddressSave() {
-  if (!newAddress.first_name || !newAddress.last_name || !newAddress.phone ||
-    !newAddress.title || !newAddress.address || !newAddress.city ||
-    !newAddress.postal_code || !newAddress.country) {
-  alert("Lütfen tüm alanları doldurun!");
-  return;
-}
+    if (
+      !newAddress.first_name ||
+      !newAddress.last_name ||
+      !newAddress.phone ||
+      !newAddress.title ||
+      !newAddress.address ||
+      !newAddress.city ||
+      !newAddress.postal_code ||
+      !newAddress.country
+    ) {
+      alert("Lütfen tüm alanları doldurun!");
+      return;
+    }
+    if (!/^(05\d{9})$/.test(newAddress.phone)) {
+      alert("Geçerli bir telefon numarası girin!");
+      return;
+    }
 
-if (!/^(05\d{9})$/.test(newAddress.phone)) {
-  alert("Geçerli bir telefon numarası girin!");
-  return;
-}
+    const { data, error } = await supabase
+      .from("user_addresses")
+      .insert([
+        {
+          user_id: currentUser.id,
+          first_name: newAddress.first_name,
+          last_name: newAddress.last_name,
+          phone: newAddress.phone,
+          title: newAddress.title,
+          address: newAddress.address,
+          city: newAddress.city,
+          postal_code: newAddress.postal_code,
+          country: newAddress.country,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .select();
 
+    if (error) {
+      console.error("Adres ekleme hatası:", error);
+      alert("Adres kaydedilemedi: " + error.message);
+      return;
+    }
 
- const { data, error } = await supabase
-  .from("user_addresses")
-  .insert([
-    {
-      user_id: currentUser.id,
-      first_name: newAddress.first_name,
-      last_name: newAddress.last_name,
-      phone: newAddress.phone,
-      title: newAddress.title,
-      address: newAddress.address,
-      city: newAddress.city,
-      postal_code: newAddress.postal_code,
-      country: newAddress.country,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    },
-  ])
-  .select();
-
-    
-
-  if (error) {
-    console.error("Adres ekleme hatası:", error);
-    alert("Adres kaydedilemedi: " + error.message);
-    return;
+    setAddresses((prev) => [...prev, data![0]]);
+    setShowNewAddressForm(false);
+    setSelectedAddressId(String(data![0].id));
+    alert("Adres başarıyla kaydedildi ✅");
   }
 
-  setAddresses((prev) => [...prev, data[0]]);
-  setShowNewAddressForm(false);
-  setSelectedAddressId(data[0].id);
+  // ------- GÜNCEL: Kart kaydet (iyzico'ya kaydet + DB'ye sadece token/last4)
+  async function handleNewCardSave() {
+    if (!newCard.name_on_card) return alert("Kart üzerindeki isim eksik!");
+    if (!newCard.card_number) return alert("Kart numarası girilmedi!");
+    if (!newCard.expiry) return alert("Son kullanma tarihi girilmedi!");
+    if (!newCard.cvv) return alert("CVV girilmedi!");
+    if (!newCard.title) return alert("Kart başlığı girilmedi!");
 
-  alert("Adres başarıyla kaydedildi ✅");
-}
-async function handleNewCardSave() {
-  if (!newCard.name_on_card) {
-    alert("Kart üzerindeki isim eksik!");
-    return;
-  }
-  if (!newCard.card_number) {
-    alert("Kart numarası girilmedi!");
-    return;
-  }
-  if (!newCard.expiry) {
-    alert("Son kullanma tarihi girilmedi!");
-    return;
-  }
-  if (!newCard.cvv) {
-    alert("CVV girilmedi!");
-    return;
-  }
-  if (!newCard.title) {
-    alert("Kart başlığı girilmedi!");
-    return;
-  }
+    const cardDigits = newCard.card_number.replace(/\s/g, "");
+    if (cardDigits.length !== 16) return alert("Geçerli bir kart numarası girin! (16 hane)");
+    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(newCard.expiry)) return alert("Son kullanma tarihi geçersiz! (AA/YY)");
+    if (!/^\d{3,4}$/.test(newCard.cvv)) return alert("Geçerli bir CVV girin! (3-4 hane)");
 
-  const cardDigits = newCard.card_number.replace(/\s/g, "");
-  if (cardDigits.length !== 16) {
-    alert("Geçerli bir kart numarası girin! (16 haneli olmalı)");
-    return;
-  }
-
-  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(newCard.expiry)) {
-    alert("Son kullanma tarihi geçersiz! (AA/YY formatında olmalı)");
-    return;
-  }
-
-  if (!/^\d{3,4}$/.test(newCard.cvv)) {
-    alert("Geçerli bir CVV girin! (3 veya 4 haneli olmalı)");
-    return;
-  }
-
-  const { data, error } = await supabase
-    .from("user_cards")
-    .insert([
-      {
+    // 1) iyzico'da kartı kaydet
+    const regRes = await fetch("/api/payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "registerCard",
         user_id: currentUser.id,
-        name_on_card: newCard.name_on_card,
-        card_number: cardDigits,
-        expiry: newCard.expiry,
-        cvv: newCard.cvv,
-        title: newCard.title,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      },
-    ])
-    .select();
+        email: currentUser.email,
+        card: {
+          name_on_card: newCard.name_on_card,
+          card_number: cardDigits,
+          expiry: newCard.expiry, // "MM/YY"
+          cvv: newCard.cvv,
+          title: newCard.title,
+        },
+      }),
+    });
+    const regData = await regRes.json();
+    if (!regData?.success) {
+      alert("Kart kaydedilemedi: " + (regData?.message || "bilinmeyen hata"));
+      return;
+    }
 
-  if (error) {
-    console.error("Kart ekleme hatası:", error);
-    alert("Kart kaydedilemedi: " + error.message);
-    return;
+    const { tokens, cardMeta } = regData;
+
+    // 2) DB'ye sadece güvenli alanlar
+    const { data, error } = await supabase
+      .from("user_cards")
+      .insert([
+        {
+          user_id: currentUser.id,
+          title: cardMeta.title,
+          name_on_card: cardMeta.name_on_card,
+          last4: cardMeta.last4,
+          brand: cardMeta.brand,
+          expiry: cardMeta.expiry, // "MM/YYYY"
+          card_user_key: tokens.cardUserKey,
+          card_token: tokens.cardToken,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .select();
+
+    if (error) {
+      console.error("Kart ekleme hatası:", error);
+      alert("Kart kaydedilemedi: " + error.message);
+      return;
+    }
+
+    setCards((prev) => [...prev, data![0] as CardRow]);
+    setShowNewCardForm(false);
+    setSelectedCardId(String(data![0].id));
+    alert("Kart başarıyla kaydedildi ✅");
   }
 
-  setCards((prev) => [...prev, data[0]]);
-  setShowNewCardForm(false);
-  setSelectedCardId(data[0].id);
-
-  alert("Kart başarıyla kaydedildi ✅");
-}
-
-// Mobil odak için:
-const emptyStateRef = useRef<HTMLDivElement>(null);
-const openModalBtnRef = useRef<HTMLButtonElement>(null);
+  // Mobil odak için:
+  const emptyStateRef = useRef<HTMLDivElement>(null);
+  const openModalBtnRef = useRef<HTMLButtonElement>(null);
 
   function HeaderBar() {
     return (
@@ -263,148 +273,118 @@ const openModalBtnRef = useRef<HTMLButtonElement>(null);
           </Link>
         </div>
         <div style={{ flex: 2, display: "flex", justifyContent: "center" }}>
-          <span style={{ fontWeight: 800, fontSize: 21, color: "#223555" }}>
-            Sepetim
-          </span>
+          <span style={{ fontWeight: 800, fontSize: 21, color: "#223555" }}>Sepetim</span>
         </div>
         <div style={{ flex: 1 }} />
       </header>
     );
   }
-// KULLANICIYI AL — BUNU EKLE
-useEffect(() => {
-  async function getUser() {
-    const { data } = await supabase.auth.getUser();
-    setCurrentUser(data?.user || null);
-    setLoading(false);
-  }
-  getUser();
-}, []);
 
-  // 1) Kullanıcıyı al
- useEffect(() => {
-  if (!currentUser) return;
+  // KULLANICIYI AL
+  useEffect(() => {
+    async function getUser() {
+      const { data } = await supabase.auth.getUser();
+      setCurrentUser(data?.user || null);
+      setLoading(false);
+    }
+    getUser();
+  }, []);
 
-  const fetchCart = async () => {
-    try {
-      // 1) cart'tan satırları çek
-      const { data: cart, error } = await supabase
-        .from("cart")
-        .select("id, adet, product_id, user_id, ozellikler")
-        .eq("user_id", currentUser.id);
+  // Kullanıcıya bağlı veriler
+  useEffect(() => {
+    if (!currentUser) return;
 
-      if (error) throw error;
-      if (!cart || cart.length === 0) {
+    const fetchCart = async () => {
+      try {
+        const { data: cart, error } = await supabase
+          .from("cart")
+          .select("id, adet, product_id, user_id, ozellikler")
+          .eq("user_id", currentUser.id);
+
+        if (error) throw error;
+        if (!cart || cart.length === 0) {
+          setCartItems([]);
+          return;
+        }
+
+        //ilanlar
+        const productIds = Array.from(new Set(cart.map((c: any) => c.product_id).filter(Boolean)));
+        const { data: ilanlar, error: perr } = await supabase
+          .from("ilan")
+          .select("id, title, price, indirimli_fiyat, resim_url, stok, user_email, user_id, ozellikler")
+          .in("id", productIds);
+        if (perr) throw perr;
+
+        const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
+
+        // firma adları
+        const sellerEmails = Array.from(new Set((ilanlar || []).map((p: any) => p.user_email).filter(Boolean)));
+        let firmMap: Record<string, string> = {};
+        if (sellerEmails.length) {
+          const { data: firms } = await supabase
+            .from("satici_firmalar")
+            .select("email,firma_adi")
+            .in("email", sellerEmails);
+          (firms || []).forEach((f: any) => (firmMap[f.email] = f.firma_adi));
+        }
+
+        const withProduct = (cart || []).map((c: any) => {
+          const prod = pMap.get(c.product_id);
+          return {
+            ...c,
+            product: prod ? { ...prod, firma_adi: firmMap[prod.user_email] || "(Firma yok)" } : null,
+          };
+        });
+        setCartItems(withProduct);
+      } catch (e) {
+        console.error("fetchCart hata:", e);
         setCartItems([]);
-        return;
       }
+    };
 
-      // 2) ürünleri 'ilan' tablosundan topluca çek
-      const productIds = Array.from(new Set(cart.map((c: any) => c.product_id).filter(Boolean)));
-      const { data: ilanlar, error: perr } = await supabase
-  .from("ilan")
-  .select("id, title, price, indirimli_fiyat, resim_url, stok, user_email, user_id, ozellikler")
-  .in("id", productIds);
+    const fetchAddressesAndCards = async () => {
+      const { data: addrData } = await supabase
+        .from("user_addresses")
+        .select("*")
+        .eq("user_id", currentUser.id)
+        .order("id", { ascending: true });
+      setAddresses(addrData || []);
+      if (!addrData || addrData.length === 0) setShowNewAddressForm(true);
 
-      if (perr) throw perr;
+      const { data: cardData } = await supabase
+        .from("user_cards")
+        .select("id,title,name_on_card,last4,brand,expiry,card_user_key,card_token")
+        .eq("user_id", currentUser.id)
+        .order("id", { ascending: true });
+      setCards((cardData || []) as CardRow[]);
+      if (!cardData || cardData.length === 0) setShowNewCardForm(true);
+    };
 
-      const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
+    fetchCart();
+    fetchAddressesAndCards();
+  }, [currentUser]);
 
-      // 3) firma isimleri (opsiyonel)
-      const sellerEmails = Array.from(
-        new Set((ilanlar || []).map((p: any) => p.user_email).filter(Boolean))
-      );
-      let firmMap: Record<string, string> = {};
-      if (sellerEmails.length) {
-        const { data: firms } = await supabase
-          .from("satici_firmalar")
-          .select("email,firma_adi")
-          .in("email", sellerEmails);
-        (firms || []).forEach((f: any) => (firmMap[f.email] = f.firma_adi));
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(ua) || (typeof window !== "undefined" && window.innerWidth <= 480);
+    if (!isMobile) return;
+    const t = setTimeout(() => {
+      if (cartItems.length === 0) {
+        emptyStateRef.current?.focus();
+        emptyStateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        openModalBtnRef.current?.focus();
+        openModalBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
+    }, 120);
+    return () => clearTimeout(t);
+  }, []);
 
-      // 4) cart + ürün birleştir
-      const withProduct = (cart || []).map((c: any) => {
-        const prod = pMap.get(c.product_id);
-        return {
-          ...c,
-          product: prod
-            ? { ...prod, firma_adi: firmMap[prod.user_email] || "(Firma yok)" }
-            : null,
-        };
-      });
-
-      setCartItems(withProduct);
-      console.log("Sepet OK, ürün sayısı:", withProduct.length);
-    } catch (e) {
-      console.error("fetchCart hata:", e);
-      setCartItems([]);
-    }
-  };
-
-  const fetchAddressesAndCards = async () => {
-  const { data: addrData } = await supabase
-    .from("user_addresses")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .order("id", { ascending: true });
-
-  setAddresses(addrData || []);
-
-  // 📌 Adres yoksa formu otomatik aç
-  if (!addrData || addrData.length === 0) {
-    setShowNewAddressForm(true);
-  }
-
-  const { data: cardData } = await supabase
-    .from("user_cards")
-    .select("*")
-    .eq("user_id", currentUser.id)
-    .order("id", { ascending: true });
-
-  setCards(cardData || []);
-
-  // 📌 Kart yoksa formu otomatik aç
-  if (!cardData || cardData.length === 0) {
-    setShowNewCardForm(true);
-  }
-};
-
-
-  fetchCart();
-  fetchAddressesAndCards();
-}, [currentUser]);
-
-useEffect(() => {
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-  const isMobile =
-    /Android|iPhone|iPad|iPod/i.test(ua) ||
-    (typeof window !== "undefined" && window.innerWidth <= 480);
-
-  // Modal açıkken bu odaklamayı yapma
- if (!isMobile) return;
-  const t = setTimeout(() => {
-    if (cartItems.length === 0) {
-      // Boş sepet: mesajı odakla + ortala
-      emptyStateRef.current?.focus();
-      emptyStateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    } else {
-      // Dolu sepet: "Sipariş Ver" butonunu odakla + ortala
-      openModalBtnRef.current?.focus();
-      openModalBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, 120);
-
-  return () => clearTimeout(t);
-}, []);
-
-  // ADET GÜNCELLEME --->
+  // ADET GÜNCELLEME
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
     if (yeniAdet < 1 || yeniAdet > stok) return;
     await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
-    setCartItems((prev) =>
-      prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c))
-    );
+    setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
   };
 
   const removeFromCart = async (cartId: number) => {
@@ -412,11 +392,9 @@ useEffect(() => {
     setCartItems((prev) => prev.filter((c) => c.id !== cartId));
   };
 
-  // İNDİRİMLİ FİYATLI TOPLAM!
+  // TOPLAM (indirimli varsa onu kullan)
   const toplamFiyat = cartItems.reduce((acc, item) => {
-    const indirimVar =
-      item.product?.indirimli_fiyat &&
-      item.product?.indirimli_fiyat !== item.product?.price;
+    const indirimVar = item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
     const fiyat = indirimVar
       ? parseFloat(item.product.indirimli_fiyat)
       : typeof item.product?.price === "string"
@@ -426,156 +404,130 @@ useEffect(() => {
     return acc + (fiyat || 0) * adet;
   }, 0);
 
-  // SİPARİŞ VER — aynı satıcıya tek order
-  // Sipariş ver fonksiyonu (ayrı kayıt: orders + seller_orders)
-async function handleSiparisVer(siparisBilgi: any) {
-  if (cartItems.length === 0) {
-    alert("Sepetiniz boş!");
-    return;
-  }
-
-  try {
-    type Grup = { sellerId: string; sellerEmail: string; firmaAdi?: string; items: any[] };
-    const gruplar = new Map<string, Grup>();
-
-    // Satıcıya göre ürünleri grupla
-    for (const it of cartItems) {
-      const sellerId = it?.product?.user_id;
-      const sellerEmail = it?.product?.user_email || "";
-      const firmaAdi = it?.product?.firma_adi;
-      if (!sellerId) continue;
-      if (!gruplar.has(sellerId)) gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
-      gruplar.get(sellerId)!.items.push(it);
+  // SİPARİŞ VER – gruplu (orders + seller_orders)
+  async function handleSiparisVer(siparisBilgi: any) {
+    if (cartItems.length === 0) {
+      alert("Sepetiniz boş!");
+      return;
     }
 
-    for (const [, grup] of gruplar) {
-      const items = grup.items.map((item: any) => ({
-        product_id: item.product?.id ?? item.product_id,
-        title: item.product?.title,
-        price: item.product?.price,
-        adet: item.adet,
-        resim_url: item.product?.resim_url,
-        ozellikler: item.ozellikler || {},
-      }));
+    try {
+      type Grup = { sellerId: string; sellerEmail: string; firmaAdi?: string; items: any[] };
+      const gruplar = new Map<string, Grup>();
 
-      const total = items.reduce(
-        (acc: number, it: any) => acc + (parseFloat(it.price) || 0) * (it.adet || 1),
-        0
-      );
-
-      // Adres bilgisi
-      const { data: addressData, error: addressError } = await supabase
-        .from("user_addresses")
-        .select("*")
-        .eq("id", siparisBilgi.addressId)
-        .single();
-      if (addressError) throw addressError;
-
-      // 1️⃣ Kullanıcı için kayıt
-      const userPayload: any = {
-        user_id: currentUser.id,
-        seller_id: grup.sellerId,
-        cart_items: items,
-        total_price: total,
-        status: "beklemede",
-        created_at: new Date(),
-        custom_address: addressData
-      };
-
-      if (!siparisBilgi.isCustom) {
-        userPayload.address_id = siparisBilgi.addressId;
-        userPayload.card_id = siparisBilgi.cardId;
+      // satıcıya göre grupla
+      for (const it of cartItems) {
+        const sellerId = it?.product?.user_id;
+        const sellerEmail = it?.product?.user_email || "";
+        const firmaAdi = it?.product?.firma_adi;
+        if (!sellerId) continue;
+        if (!gruplar.has(sellerId)) gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
+        gruplar.get(sellerId)!.items.push(it);
       }
 
-      const { data: insertedOrder, error: orderError } = await supabase
-        .from("orders")
-        .insert([userPayload])
-        .select()
-        .single();
-      if (orderError) throw orderError;
+      for (const [, grup] of gruplar) {
+        const items = grup.items.map((item: any) => ({
+          product_id: item.product?.id ?? item.product_id,
+          title: item.product?.title,
+          price: item.product?.price,
+          adet: item.adet,
+          resim_url: item.product?.resim_url,
+          ozellikler: item.ozellikler || {},
+        }));
 
-      // 2️⃣ Satıcı için kayıt (kart bilgisi yok)
-      // 2️⃣ Satıcı için kayıt (kart bilgisi yok)
-const sellerPayload: any = {
-  seller_id: grup.sellerId,
-  order_id: insertedOrder.id,  // ✅ Bu satır eklendi!
-  total_price: total,
-  status: "beklemede",
-  created_at: new Date(),
-  first_name: addressData?.first_name,
-  last_name: addressData?.last_name,
-  phone: addressData?.phone,
-  city: addressData?.city,
-  address: addressData?.address,
-  custom_features: items.map(i => ({
-    title: i.title,
-    adet: i.adet,
-    ozellikler: i.ozellikler
-  }))
-};
+        const total = items.reduce(
+          (acc: number, it: any) => acc + (parseFloat(it.price) || 0) * (it.adet || 1),
+          0
+        );
 
+        // adres
+        const { data: addressData, error: addressError } = await supabase
+          .from("user_addresses")
+          .select("*")
+          .eq("id", siparisBilgi.addressId)
+          .single();
+        if (addressError) throw addressError;
 
-      const { error: sellerError } = await supabase
-        .from("seller_orders")
-        .insert([sellerPayload]);
-      if (sellerError) throw sellerError;
+        // orders (kullanıcı)
+        const userPayload: any = {
+          user_id: currentUser.id,
+          seller_id: grup.sellerId,
+          cart_items: items,
+          total_price: total,
+          status: "beklemede",
+          created_at: new Date(),
+          custom_address: addressData,
+        };
+        if (!siparisBilgi.isCustom) {
+          userPayload.address_id = siparisBilgi.addressId;
+          userPayload.card_id = siparisBilgi.cardId;
+        }
 
-      // Mail
-      const urunBaslik = items.length > 1
-        ? `${items[0].title} +${items.length - 1} ürün`
-        : items[0].title;
+        const { data: insertedOrder, error: orderError } = await supabase
+          .from("orders")
+          .insert([userPayload])
+          .select()
+          .single();
+        if (orderError) throw orderError;
 
-      await sendOrderEmails({
-        aliciMail: currentUser.email,
-        saticiMail: grup.sellerEmail,
-        urunBaslik,
-        urunFiyat: total,
-        siparisNo: insertedOrder?.id,
-      });
+        // seller_orders (kart yok)
+        const sellerPayload: any = {
+          seller_id: grup.sellerId,
+          order_id: insertedOrder.id,
+          total_price: total,
+          status: "beklemede",
+          created_at: new Date(),
+          first_name: addressData?.first_name,
+          last_name: addressData?.last_name,
+          phone: addressData?.phone,
+          city: addressData?.city,
+          address: addressData?.address,
+          custom_features: items.map((i: any) => ({
+            title: i.title,
+            adet: i.adet,
+            ozellikler: i.ozellikler,
+          })),
+        };
+        const { error: sellerError } = await supabase.from("seller_orders").insert([sellerPayload]);
+        if (sellerError) throw sellerError;
+
+        // mail
+        const urunBaslik = items.length > 1 ? `${items[0].title} +${items.length - 1} ürün` : items[0].title;
+        await sendOrderEmails({
+          aliciMail: currentUser.email,
+          saticiMail: grup.sellerEmail,
+          urunBaslik,
+          urunFiyat: total,
+          siparisNo: insertedOrder?.id,
+        });
+      }
+
+      // Sepeti temizle
+      await supabase.from("cart").delete().eq("user_id", currentUser.id);
+      setCartItems([]);
+      alert("Sipariş(ler) başarıyla oluşturuldu!");
+    } catch (err: any) {
+      console.error("orders/seller_orders insert error:", err);
+      alert("Sipariş kaydedilemedi: " + (err?.message || JSON.stringify(err)));
     }
-
-    // Sepeti temizle
-    await supabase.from("cart").delete().eq("user_id", currentUser.id);
-    
-    setCartItems([]);
-    alert("Sipariş(ler) başarıyla oluşturuldu!");
-  
-  } catch (err: any) {
-    console.error("orders/seller_orders insert error:", err);
-    alert("Sipariş kaydedilemedi: " + (err?.message || JSON.stringify(err)));
   }
-}
-
-
 
   if (loading) {
-    return (
-      <p style={{ textAlign: "center", padding: 40 }}>
-        ⏳ Kullanıcı bilgisi yükleniyor...
-      </p>
-    );
+    return <p style={{ textAlign: "center", padding: 40 }}>⏳ Kullanıcı bilgisi yükleniyor...</p>;
   }
   if (!currentUser) {
     return (
       <div>
         <HeaderBar />
         <div style={{ textAlign: "center", marginTop: 70 }}>
-          <p style={{ margin: 40, color: "#e11d48" }}>
-            ❌ Sepete ürün eklemek için <b>giriş yapmalısınız!</b>
-          </p>
+          <p style={{ margin: 40, color: "#e11d48" }}>❌ Sepete ürün eklemek için <b>giriş yapmalısınız!</b></p>
         </div>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #f8fafc 0%, #e6f3f1 100%)",
-        padding: 0,
-      }}
-    >
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #f8fafc 0%, #e6f3f1 100%)", padding: 0 }}>
       <HeaderBar />
       <div
         style={{
@@ -588,51 +540,31 @@ const sellerPayload: any = {
           boxShadow: "0 4px 24px #e7e7e71a",
         }}
       >
-     {cartItems.length === 0 ? (
-  <div
-    ref={emptyStateRef}
-    tabIndex={-1}
-    style={{
-      minHeight: "40vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      outline: "none",
-      scrollMarginTop: 72, // sticky header için
-    }}
-  >
-    <p
-      style={{
-        textAlign: "center",
-        color: "#64748b",
-        fontSize: 17,
-        padding: 40,
-        margin: 0,
-      }}
-    >
-      Sepetiniz boş.
-    </p>
-  </div>
-) : (
-  /* ... mevcut dolu sepet içeriği ... */
-
-
+        {cartItems.length === 0 ? (
+          <div
+            ref={emptyStateRef}
+            tabIndex={-1}
+            style={{
+              minHeight: "40vh",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              outline: "none",
+              scrollMarginTop: 72,
+            }}
+          >
+            <p style={{ textAlign: "center", color: "#64748b", fontSize: 17, padding: 40, margin: 0 }}>
+              Sepetiniz boş.
+            </p>
+          </div>
+        ) : (
           <>
             {cartItems.map((item) => {
               const indirimVar =
-                item.product?.indirimli_fiyat &&
-                item.product?.indirimli_fiyat !== item.product?.price;
+                item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
               const stok = item.product?.stok ?? 99;
               return (
-                <div
-                  key={item.id}
-                  style={{
-                    display: "flex",
-                    gap: 14,
-                    marginBottom: 16,
-                    alignItems: "center",
-                  }}
-                >
+                <div key={item.id} style={{ display: "flex", gap: 14, marginBottom: 16, alignItems: "center" }}>
                   <img
                     src={item.product?.resim_url || "/placeholder.jpg"}
                     alt={item.product?.title}
@@ -641,67 +573,39 @@ const sellerPayload: any = {
                     style={{ borderRadius: 9, background: "#f3f4f6" }}
                   />
                   <div style={{ flex: 1 }}>
-                    <h3
-                      style={{
-                        margin: "0 0 4px",
-                        fontWeight: 700,
-                        color: "#333",
-                      }}
-                    >
-                      {item.product?.title}
-                    </h3>
-  
-                    {/* Ürün Özellikleri Gösterimi */}
-                    {/* Ürün Özellikleri Düzenleme */}
-{/* Ürün özellikleri - Sepette değiştirme */}
-{/* Eğer cart.ozellikler yoksa ama product.ozellikler varsa, onları seçilebilir şekilde göster */}
-{(
-  Object.entries(item.product?.ozellikler || {}).map(([ozellik, secenekler]) => {
-  const seciliDeger = item.ozellikler?.[ozellik] || "";
-  
-  return [ozellik, seciliDeger];
-})
-).map(([ozellik, deger]) => (
-  <div key={ozellik} style={{ marginBottom: 4 }}>
-    <b>{ozellik}:</b>{" "}
-    <select
-      value={deger as string}
-      onChange={async (e) => {
-        const yeniDeger = e.target.value;
+                    <h3 style={{ margin: "0 0 4px", fontWeight: 700, color: "#333" }}>{item.product?.title}</h3>
 
-        // Mevcut cart.ozellikler varsa onları al, yoksa boş nesne başlat
-        const mevcutOzellikler =
-          item.ozellikler && Object.keys(item.ozellikler).length > 0
-            ? item.ozellikler
-            : {};
-
-        const yeniOzellikler = { ...mevcutOzellikler, [ozellik]: yeniDeger };
-
-        // Supabase cart tablosunu güncelle
-        await supabase
-          .from("cart")
-          .update({ ozellikler: yeniOzellikler })
-          .eq("id", item.id);
-
-        // Local state güncelle
-        setCartItems((prev) =>
-          prev.map((urun) =>
-            urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
-          )
-        );
-      }}
-    >
-      <option value="">Seçiniz</option>
-      {(item.product?.ozellikler?.[ozellik] || [deger]).map((secenek: string) => (
-        <option key={secenek} value={secenek}>
-          {secenek}
-        </option>
-      ))}
-    </select>
-  </div>
-))}
-
-
+                    {/* Ürün özellikleri – sepette değiştirme */}
+                    {(
+                      Object.entries(item.product?.ozellikler || {}).map(([ozellik]) => {
+                        const seciliDeger = item.ozellikler?.[ozellik] || "";
+                        return [ozellik, seciliDeger];
+                      })
+                    ).map(([ozellik, deger]) => (
+                      <div key={String(ozellik)} style={{ marginBottom: 4 }}>
+                        <b>{ozellik}:</b>{" "}
+                        <select
+                          value={String(deger)}
+                          onChange={async (e) => {
+                            const yeniDeger = e.target.value;
+                            const mevcutOzellikler =
+                              item.ozellikler && Object.keys(item.ozellikler).length > 0 ? item.ozellikler : {};
+                            const yeniOzellikler = { ...mevcutOzellikler, [String(ozellik)]: yeniDeger };
+                            await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
+                            setCartItems((prev) =>
+                              prev.map((urun) => (urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun))
+                            );
+                          }}
+                        >
+                          <option value="">Seçiniz</option>
+                          {(item.product?.ozellikler?.[String(ozellik)] || [deger]).map((secenek: string) => (
+                            <option key={secenek} value={secenek}>
+                              {secenek}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
 
                     <div>
                       {indirimVar ? (
@@ -721,19 +625,11 @@ const sellerPayload: any = {
                           </span>
                         </>
                       ) : (
-                        <span style={{ color: "#22c55e", fontWeight: 700 }}>
-                          {item.product?.price} ₺
-                        </span>
+                        <span style={{ color: "#22c55e", fontWeight: 700 }}>{item.product?.price} ₺</span>
                       )}
                     </div>
-                    <div
-                      style={{
-                        marginTop: 8,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
-                    >
+
+                    <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
                       <button
                         style={{
                           border: "1px solid #ddd",
@@ -780,11 +676,10 @@ const sellerPayload: any = {
                       >
                         +
                       </button>
-                      <span style={{ color: "#999", fontSize: 13, marginLeft: 5 }}>
-                        Stok: {stok}
-                      </span>
+                      <span style={{ color: "#999", fontSize: 13, marginLeft: 5 }}>Stok: {stok}</span>
                     </div>
                   </div>
+
                   <button
                     style={{
                       background: "#fff0f0",
@@ -803,427 +698,360 @@ const sellerPayload: any = {
                 </div>
               );
             })}
-            
-            <div
-              style={{
-                textAlign: "right",
-                fontWeight: 800,
-                fontSize: 18,
-                marginTop: 10,
-                color: "#223555",
-              }}
-            >
-              Toplam:{" "}
-              {toplamFiyat.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
+
+            <div style={{ textAlign: "right", fontWeight: 800, fontSize: 18, marginTop: 10, color: "#223555" }}>
+              Toplam: {toplamFiyat.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
             </div>
 
-     {/* Adres Seçim Alanı */}
-<div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
-  <h3
-  style={{
-    fontSize: 19,
-    marginBottom: 10,
-    fontWeight: 700,
-    color: "#1e293b",
-    padding: "6px 0",
-    borderBottom: "2px solid #22c55e",
-    display: "inline-block",
-  }}
->
-  📍 Teslimat Adresi
-</h3>
+            {/* Adres Seçim */}
+            <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
+              <h3
+                style={{
+                  fontSize: 19,
+                  marginBottom: 10,
+                  fontWeight: 700,
+                  color: "#1e293b",
+                  padding: "6px 0",
+                  borderBottom: "2px solid #22c55e",
+                  display: "inline-block",
+                }}
+              >
+                📍 Teslimat Adresi
+              </h3>
 
-  {addresses.length > 0 ? (
-    <>
-      <select
-  style={{
-    width: "100%",
-    padding: 10,
-    borderRadius: 6,
-    border: "1px solid #ccc",
-    marginBottom: 10,
-  }}
-  onChange={(e) => {
-    setSelectedAddressId(e.target.value);
-    if (e.target.value) setShowNewAddressForm(false); // ✅ Seçim olunca form kapanır
-  }}
-  value={selectedAddressId}
->
+              {addresses.length > 0 ? (
+                <>
+                  <select
+                    style={{ width: "100%", padding: 10, borderRadius: 6, border: "1px solid #ccc", marginBottom: 10 }}
+                    onChange={(e) => {
+                      setSelectedAddressId(e.target.value);
+                      if (e.target.value) setShowNewAddressForm(false);
+                    }}
+                    value={selectedAddressId}
+                  >
+                    <option value="">Adres Seçiniz</option>
+                    {addresses.map((adres) => (
+                      <option key={adres.id} value={adres.id}>
+                        {adres.title} - {adres.city}, {adres.country}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    style={{
+                      background: "#f1f5f9",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                    onClick={() => setShowNewAddressForm(true)}
+                  >
+                    ➕ Yeni Adres Ekle
+                  </button>
+                </>
+              ) : (
+                <div>
+                  <p style={{ color: "#555" }}>Kayıtlı adresiniz bulunmuyor.</p>
+                  <button
+                    style={{
+                      background: "#22c55e",
+                      color: "#fff",
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setShowNewAddressForm(true)}
+                  >
+                    ➕ Yeni Adres Oluştur
+                  </button>
+                </div>
+              )}
 
-        <option value="">Adres Seçiniz</option>
-        {addresses.map((adres) => (
-         <option key={adres.id} value={adres.id}>
-  {adres.title} - {adres.city}, {adres.country}
-</option>
+              {showNewAddressForm && (
+                <div style={{ marginTop: 15 }}>
+                  <input
+                    type="text"
+                    placeholder="İsim"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, first_name: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Soy İsim"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, last_name: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Telefon (05XXXXXXXXX)"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Adres Başlığı"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, title: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Açık Adres"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Şehir"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Posta Kodu"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Ülke"
+                    style={inputStyle}
+                    onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
+                  />
 
-        ))}
-      </select>
-      <button
-        style={{
-          background: "#f1f5f9",
-          padding: "6px 10px",
-          borderRadius: 6,
-          border: "1px solid #ccc",
-          cursor: "pointer",
-          fontSize: 14,
-        }}
-        onClick={() => setShowNewAddressForm(true)}
-      >
-        ➕ Yeni Adres Ekle
-      </button>
-    </>
-  ) : (
-    <div>
-      <p style={{ color: "#555" }}>Kayıtlı adresiniz bulunmuyor.</p>
-      <button
-        style={{
-          background: "#22c55e",
-          color: "#fff",
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
-        }}
-        onClick={() => setShowNewAddressForm(true)}
-      >
-        ➕ Yeni Adres Oluştur
-      </button>
-    </div>
-  )}
+                  <button
+                    style={{
+                      background: "#2563eb",
+                      color: "#fff",
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={handleNewAddressSave}
+                  >
+                    💾 Adresi Kaydet
+                  </button>
+                </div>
+              )}
+            </div>
 
-  {showNewAddressForm && (
+            {/* Kart Seçim */}
+            <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
+              <h3
+                style={{
+                  fontSize: 19,
+                  marginBottom: 10,
+                  fontWeight: 700,
+                  color: "#1e293b",
+                  padding: "6px 0",
+                  borderBottom: "2px solid #3b82f6",
+                  display: "inline-block",
+                }}
+              >
+                💳 Ödeme Yöntemi
+              </h3>
 
-<div style={{ marginTop: 15 }}>
-      <input
-  type="text"
-  placeholder="İsim"
-  style={inputStyle}
-  onChange={(e) => setNewAddress({ ...newAddress, first_name: e.target.value })}
-/>
-<input
-  type="text"
-  placeholder="Soy İsim"
-  style={inputStyle}
-  onChange={(e) => setNewAddress({ ...newAddress, last_name: e.target.value })}
-/>
+              {cards.length > 0 ? (
+                <>
+                  <select
+                    style={{ width: "100%", padding: 10, borderRadius: 6, border: "1px solid #ccc", marginBottom: 10 }}
+                    onChange={(e) => {
+                      setSelectedCardId(e.target.value);
+                      if (e.target.value) setShowNewCardForm(false);
+                    }}
+                    value={selectedCardId}
+                  >
+                    <option value="">Kart Seçiniz</option>
+                    {cards.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title ?? "Kart"} •••• {c.last4}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    style={{
+                      background: "#f1f5f9",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                    onClick={() => setShowNewCardForm(true)}
+                  >
+                    ➕ Yeni Kart Ekle
+                  </button>
+                </>
+              ) : (
+                <div>
+                  <p style={{ color: "#555" }}>Kayıtlı kartınız yok.</p>
+                  <button
+                    style={{
+                      background: "#22c55e",
+                      color: "#fff",
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setShowNewCardForm(true)}
+                  >
+                    ➕ Yeni Kart Oluştur
+                  </button>
+                </div>
+              )}
 
-<input
-  type="text"
-  placeholder="Telefon (05XXXXXXXXX)"
-  style={inputStyle}
-  onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
-/>
-   <input
-  type="text"
-  placeholder="Adres Başlığı"
-  style={{
-    width: "100%",
-    padding: "10px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    fontSize: "15px",
-    marginBottom: "10px",
-    outline: "none",
-    transition: "0.2s",
-  }}
-  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
-  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-  onChange={(e) => setNewAddress({ ...newAddress, title: e.target.value })}
-/>
+              {showNewCardForm && (
+                <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    placeholder="Kart Başlığı"
+                    value={newCard.title}
+                    onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
+                  />
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    placeholder="Kart Üzerindeki İsim"
+                    value={newCard.name_on_card}
+                    onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
+                  />
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    placeholder="Kart Numarası"
+                    value={newCard.card_number}
+                    maxLength={19}
+                    onChange={(e) => setNewCard({ ...newCard, card_number: formatCardNumber(e.target.value) })}
+                  />
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    placeholder="Son Kullanma (AA/YY)"
+                    value={newCard.expiry}
+                    maxLength={5}
+                    onChange={(e) => setNewCard({ ...newCard, expiry: formatExpiry(e.target.value) })}
+                  />
+                  <input
+                    style={inputStyle}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    placeholder="CVV"
+                    value={newCard.cvv}
+                    maxLength={4}
+                    onChange={(e) => setNewCard({ ...newCard, cvv: formatCVV(e.target.value) })}
+                  />
+                  <button
+                    style={{
+                      background: "#2563eb",
+                      color: "#fff",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "15px",
+                      fontWeight: 600,
+                      transition: "background 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "#2563eb")}
+                    onClick={handleNewCardSave}
+                  >
+                    💾 Kartı Kaydet
+                  </button>
+                </div>
+              )}
+            </div>
 
-<input
-  type="text"
-  placeholder="Açık Adres"
-  style={{
-    width: "100%",
-    padding: "10px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    fontSize: "15px",
-    marginBottom: "10px",
-    outline: "none",
-    transition: "0.2s",
-  }}
-  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
-  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-  onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
-/>
+            {/* ÖDEME + SİPARİŞ */}
+            <button
+              ref={openModalBtnRef}
+              onClick={async () => {
+                if (!selectedAddressId) return alert("Adres seçiniz");
+                if (!selectedCardId) return alert("Kart seçiniz");
 
-<input
-  type="text"
-  placeholder="Şehir"
-  style={{
-    width: "100%",
-    padding: "10px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    fontSize: "15px",
-    marginBottom: "10px",
-    outline: "none",
-    transition: "0.2s",
-  }}
-  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
-  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-  onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
-/>
+                const addr = addresses.find((a) => String(a.id) === String(selectedAddressId));
+                const card = cards.find((c) => String(c.id) === String(selectedCardId));
+                if (!addr) return alert("Adres bulunamadı");
+                if (!card?.card_user_key || !card?.card_token) return alert("Kart tokenları eksik");
 
-<input
-  type="text"
-  placeholder="Posta Kodu"
-  style={{
-    width: "100%",
-    padding: "10px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    fontSize: "15px",
-    marginBottom: "10px",
-    outline: "none",
-    transition: "0.2s",
-  }}
-  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
-  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-  onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
-/>
+                // iyzico basket
+                const basketItems = cartItems.map((it: any) => {
+                  const indirimVar =
+                    it.product?.indirimli_fiyat && it.product?.indirimli_fiyat !== it.product?.price;
+                  const birim = indirimVar ? Number(it.product.indirimli_fiyat) : Number(it.product?.price);
+                  const toplam = birim * (it.adet || 1);
+                  return {
+                    id: it.product?.id ?? it.product_id,
+                    name: it.product?.title,
+                    category1: "Genel",
+                    price: toplam,
+                  };
+                });
 
-<input
-  type="text"
-  placeholder="Ülke"
-  style={{
-    width: "100%",
-    padding: "10px 14px",
-    border: "1px solid #d1d5db",
-    borderRadius: "8px",
-    fontSize: "15px",
-    marginBottom: "10px",
-    outline: "none",
-    transition: "0.2s",
-  }}
-  onFocus={(e) => (e.target.style.borderColor = "#22c55e")}
-  onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-  onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
-/>
+                // 1) ÖDEME
+                const paymentRes = await fetch("/api/payment", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "chargeSaved",
+                    amount: Number(toplamFiyat.toFixed(2)),
+                    tokens: { cardUserKey: card.card_user_key, cardToken: card.card_token },
+                    buyer: {
+                      id: currentUser.id,
+                      name: addr.first_name || "Ad",
+                      surname: addr.last_name || "Soyad",
+                      email: currentUser.email,
+                      gsmNumber: addr.phone || "",
+                    },
+                    address: {
+                      address: addr.address,
+                      city: addr.city,
+                      country: addr.country,
+                      postal_code: addr.postal_code || "",
+                    },
+                    basketItems,
+                  }),
+                });
+                const paymentData = await paymentRes.json();
+                if (!paymentData.success) {
+                  alert("💳 Ödeme başarısız: " + (paymentData.message || "bilinmeyen hata"));
+                  return;
+                }
 
-
-      <button
-        style={{
-          background: "#2563eb",
-          color: "#fff",
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
-        }}
-        onClick={handleNewAddressSave}
-      >
-        💾 Adresi Kaydet
-      </button>
-    </div>
-    
-  )}
-  {/* Kart Seçim Alanı */}
-<div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
-  <h3
-  style={{
-    fontSize: 19,
-    marginBottom: 10,
-    fontWeight: 700,
-    color: "#1e293b",
-    padding: "6px 0",
-    borderBottom: "2px solid #3b82f6",
-    display: "inline-block",
-  }}
->
-  💳 Ödeme Yöntemi
-</h3>
-
-
-  {cards.length > 0 ? (
-    <>
-      <select
-        style={{
-          width: "100%",
-          padding: 10,
-          borderRadius: 6,
-          border: "1px solid #ccc",
-          marginBottom: 10,
-        }}
-        onChange={(e) => {
-  setSelectedCardId(e.target.value);
-  if (e.target.value) setShowNewCardForm(false); // ✅ Kart seçilince form kapanır
-}}
-        value={selectedCardId}
-      >
-        <option value="">Kart Seçiniz</option>
-        {cards.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.title} •••• {c.card_number.slice(-4)}
-          </option>
-        ))}
-      </select>
-      <button
-        style={{
-          background: "#f1f5f9",
-          padding: "6px 10px",
-          borderRadius: 6,
-          border: "1px solid #ccc",
-          cursor: "pointer",
-          fontSize: 14,
-        }}
-        onClick={() => setShowNewCardForm(true)}
-      >
-        ➕ Yeni Kart Ekle
-      </button>
-    </>
-  ) : (
-    <div>
-      <p style={{ color: "#555" }}>Kayıtlı kartınız yok.</p>
-      <button
-        style={{
-          background: "#22c55e",
-          color: "#fff",
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
-        }}
-        onClick={() => setShowNewCardForm(true)}
-      >
-        ➕ Yeni Kart Oluştur
-      </button>
-    </div>
-  )}
-
-  {showNewCardForm && (
-  <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: "10px" }}>
-    {/* Kart Üzerindeki İsim */}
-    <input
-  style={inputStyle}
-  type="text"
-  placeholder="Kart Başlığı"
-  value={newCard.title}
-  onChange={(e) => setNewCard({ ...newCard, title: e.target.value })}
-/>
-<input
-  style={inputStyle}
-  type="text"
-  placeholder="Kart Üzerindeki İsim"
-  value={newCard.name_on_card}
-  onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
-/>
-
-{/* Kart Numarası */}
-<input
-  style={inputStyle}
-  type="text"
-  inputMode="numeric"
-  pattern="\d*"
-  placeholder="Kart Numarası"
-  value={newCard.card_number}
-  maxLength={19}
-  onChange={(e) =>
-    setNewCard({ ...newCard, card_number: formatCardNumber(e.target.value) })
-  }
-/>
-
-{/* Son Kullanma Tarihi */}
-<input
-  style={inputStyle}
-  type="text"
-  inputMode="numeric"
-  pattern="\d*"
-  placeholder="Son Kullanma (AA/YY)"
-  value={newCard.expiry}
-  maxLength={5}
-  onChange={(e) => setNewCard({ ...newCard, expiry: formatExpiry(e.target.value) })}
-/>
-
-{/* CVV */}
-<input
-  style={inputStyle}
-  type="text"
-  inputMode="numeric"
-  pattern="\d*"
-  placeholder="CVV"
-  value={newCard.cvv}
-  maxLength={4}
-  onChange={(e) => setNewCard({ ...newCard, cvv: formatCVV(e.target.value) })}
-/>
-
-    <button
-      style={{
-        background: "#2563eb",
-        color: "#fff",
-        padding: "10px 14px",
-        borderRadius: "8px",
-        border: "none",
-        cursor: "pointer",
-        fontSize: "15px",
-        fontWeight: 600,
-        transition: "background 0.2s ease",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "#1d4ed8")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "#2563eb")}
-      onClick={handleNewCardSave}
-    >
-      💾 Kartı Kaydet
-    </button>
-  </div>
-)}
-
-</div>
-<button 
-  onClick={async () => {
-    // 1. Ödeme isteğini yap
-    const paymentRes = await fetch("/api/payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: toplamFiyat,   // toplam sepet tutarı
-        card: cards.find(c => c.id === parseInt(selectedCardId)) // seçilen kartın bilgisi
-      }),
-    });
-
-    const paymentData = await paymentRes.json();
-
-    if (!paymentData.success) {
-      alert("💳 Ödeme başarısız: " + paymentData.message);
-      return;
-    }
-
-    // 2. Ödeme başarılı → siparişi kaydet
-    await handleSiparisVer({
-      addressId: parseInt(selectedAddressId),
-      cardId: parseInt(selectedCardId),
-      isCustom: false
-    });
-  }}
-  style={{
-    width: "100%",
-    padding: "12px 16px",
-    backgroundColor: "#16a34a",
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "bold",
-    borderRadius: "8px",
-    border: "none",
-    cursor: "pointer"
-  }}
->
-  ✅ Sipariş Ver
-</button>
-
-
-</div>
-
-
+                // 2) Ödeme başarılı → siparişi kaydet
+                await handleSiparisVer({
+                  addressId: parseInt(selectedAddressId),
+                  cardId: parseInt(selectedCardId),
+                  isCustom: false,
+                });
+              }}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                backgroundColor: "#16a34a",
+                color: "#fff",
+                fontSize: "16px",
+                fontWeight: "bold",
+                borderRadius: "8px",
+                border: "none",
+                cursor: "pointer",
+                marginTop: 16,
+              }}
+            >
+              ✅ Sipariş Ver
+            </button>
           </>
         )}
       </div>
-
-    
-
     </div>
   );
 }
-
-// ---- Sipariş Modalı
