@@ -495,22 +495,25 @@ async function handleSiparisVer(siparisBilgi: any) {
       if (orderError) throw orderError;
 
       // 2️⃣ Satıcı için kayıt (kart bilgisi yok)
-      const sellerPayload: any = {
-        seller_id: grup.sellerId,
-        total_price: total,
-        status: "beklemede",
-        created_at: new Date(),
-        first_name: addressData?.first_name,
-        last_name: addressData?.last_name,
-        phone: addressData?.phone,
-        city: addressData?.city,
-        address: addressData?.address,
-        custom_features: items.map(i => ({
-          title: i.title,
-          adet: i.adet,
-          ozellikler: i.ozellikler
-        }))
-      };
+      // 2️⃣ Satıcı için kayıt (kart bilgisi yok)
+const sellerPayload: any = {
+  seller_id: grup.sellerId,
+  order_id: insertedOrder.id,  // ✅ Bu satır eklendi!
+  total_price: total,
+  status: "beklemede",
+  created_at: new Date(),
+  first_name: addressData?.first_name,
+  last_name: addressData?.last_name,
+  phone: addressData?.phone,
+  city: addressData?.city,
+  address: addressData?.address,
+  custom_features: items.map(i => ({
+    title: i.title,
+    adet: i.adet,
+    ozellikler: i.ozellikler
+  }))
+};
+
 
       const { error: sellerError } = await supabase
         .from("seller_orders")
