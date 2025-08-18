@@ -36,7 +36,6 @@ const puanArr = (yorumlar || []).map(y => y.puan);
   return result;
 }
 
-const [loginDropdown, setLoginDropdown] = useState(false);
 
 
 // Firma adı + yıldız + yorum butonu
@@ -179,6 +178,7 @@ function isYeni(created_at?: string) {
 }
 
 const Index2: NextPage = () => {
+  const [loginDropdown, setLoginDropdown] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false)
  const [firmaAdMap, setFirmaAdMap] = useState<Record<string, FirmaInfo>>({});
   const [dbKategoriler, setDbKategoriler] = useState<Kategori[]>([]);
