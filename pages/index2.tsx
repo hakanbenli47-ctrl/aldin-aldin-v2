@@ -37,6 +37,7 @@ const puanArr = (yorumlar || []).map(y => y.puan);
   return result;
 }
 
+const [loginDropdown, setLoginDropdown] = useState(false);
 
 
 // Firma adı + yıldız + yorum butonu
@@ -643,21 +644,75 @@ const findKategoriAd = (id: number | null | undefined): string => {
 
       {!isLoggedIn ? (
         <>
-          <button
-            onClick={() => window.location.href = '/rol-secim'}
-            style={{
-              background: 'var(--primary, #2563eb)',
-              color: '#fff',
-              padding: '8px 14px',
-              borderRadius: 10,
-              border: 'none',
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: 'pointer'
-            }}
-          >
-            Giriş Yap
-          </button>
+         <div style={{ position: "relative" }}>
+  <button
+    onClick={() => setLoginDropdown(prev => !prev)}
+    style={{
+      background: 'var(--primary, #2563eb)',
+      color: '#fff',
+      padding: '8px 14px',
+      borderRadius: 10,
+      border: 'none',
+      fontWeight: 700,
+      fontSize: 14,
+      cursor: 'pointer'
+    }}
+  >
+    Giriş Yap
+  </button>
+
+  {loginDropdown && (
+    <div
+      style={{
+        position: "absolute",
+        top: "110%",
+        right: 0,
+        background: "#fff",
+        border: "1px solid #e2e8f0",
+        borderRadius: 8,
+        boxShadow: "0 4px 12px rgba(0,0,0,.08)",
+        zIndex: 999,
+        minWidth: 160
+      }}
+    >
+      <button
+        onClick={() => window.location.href = '/giris'}
+        style={{
+          display: "block",
+          width: "100%",
+          padding: "10px 14px",
+          background: "none",
+          border: "none",
+          textAlign: "left",
+          cursor: "pointer",
+          fontWeight: 600,
+          fontSize: 14,
+          color: "#223555"
+        }}
+      >
+        👤 Alıcı Giriş
+      </button>
+      <button
+        onClick={() => window.location.href = '/giris-satici'}
+        style={{
+          display: "block",
+          width: "100%",
+          padding: "10px 14px",
+          background: "none",
+          border: "none",
+          textAlign: "left",
+          cursor: "pointer",
+          fontWeight: 600,
+          fontSize: 14,
+          color: "#223555"
+        }}
+      >
+        🛒 Satıcı Giriş
+      </button>
+    </div>
+  )}
+</div>
+
           <button
             onClick={() => window.location.href = '/kayit'}
             style={{
