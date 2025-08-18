@@ -11,11 +11,10 @@
 // NOTE: Colors now use CSS variables with fallbacks to your current palette.
 // Define these in your global CSS (e.g., :root { --primary: #yourColor; ... }) to match your site theme.
 import type { NextPage } from 'next';
+import React, { useState, useEffect, ReactNode } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import React, { ReactNode } from 'react';
 import SloganBar from "../components/SloganBar";
 import { FiChevronDown } from 'react-icons/fi'
 import { useRouter } from 'next/router'
