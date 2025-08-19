@@ -24,7 +24,6 @@ export default function AdminSaticilar() {
   const [message, setMessage] = useState("");
   const [redAciklama, setRedAciklama] = useState<Record<number, string>>({});
 
-  // sadece bu mail admin
   const ADMIN_EMAILS = ["80birinfo@gmail.com"];
 
   useEffect(() => {
@@ -67,16 +66,12 @@ export default function AdminSaticilar() {
           belgeler = {};
           for (const [key, path] of Object.entries(parsedBelge)) {
             if (typeof path === "string" && path.length > 0) {
-              // 🔑 1 saatlik signed URL oluştur
+              // ✅ path artık "user123/kimlik-xxx.jpg" gibi kayıtlı
               const { data: signed, error: signedError } = await supabase.storage
                 .from("satici-belgeler")
                 .createSignedUrl(path, 3600);
 
-              if (signedError) {
-                console.error("Signed URL hatası:", signedError.message);
-              }
-
-              if (signed?.signedUrl) {
+              if (!signedError && signed?.signedUrl) {
                 belgeler[key] = signed.signedUrl;
               }
             }
@@ -90,7 +85,6 @@ export default function AdminSaticilar() {
     setLoading(false);
   };
 
-  // ✅ Mail gönderme fonksiyonu
   async function sendMail(to: string, subject: string, text: string, html: string) {
     try {
       await fetch("/api/send-mail", {
@@ -120,7 +114,6 @@ export default function AdminSaticilar() {
       setMessage("Başvuru güncellendi.");
       fetchBasvurular();
 
-      // ✅ Mail gönder
       const basvuru = basvurular.find((b) => b.id === id);
       if (basvuru?.user_email) {
         if (durum === "approved") {
