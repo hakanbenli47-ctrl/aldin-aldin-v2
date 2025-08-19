@@ -256,35 +256,54 @@ const safeOzellikler = {
       setTimeout(() => router.push("/satici"), 1200);
     }
   };
-  if (message.startsWith("Başvurunuz")) {
+ if (message.startsWith("Başvurunuz")) {
   return (
     <div
       style={{
         flex: "2 1 0%",
         display: "flex",
+        flexDirection: "column", // ✅ alt alta dizmek için
         alignItems: "center",
         justifyContent: "center",
         minHeight: 200,
-        fontWeight: 600,
-        color: "#e11d48",
+        gap: 20, // ✅ yazı ile buton arasında boşluk
       }}
     >
-      {message}
+      <p
+        style={{
+          fontWeight: 600,
+          color: "#e11d48",
+          fontSize: "18px",
+          textAlign: "center",
+        }}
+      >
+        {message}
+      </p>
+
       <button
         onClick={() => router.push("/satici-basvuru")}
         style={{
-          marginTop: 20,
-          padding: "10px 20px",
-          backgroundColor: "#2563eb",
-          color: "white",
+          padding: "12px 28px",
+          background: "linear-gradient(90deg, #2563eb, #1d4ed8)", // ✅ daha hoş renk
+          color: "#fff",
           border: "none",
-          borderRadius: "6px",
+          borderRadius: "8px",
           cursor: "pointer",
-          fontSize: "15px",
+          fontSize: "16px",
           fontWeight: "bold",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.2)", // ✅ gölge efekti
+          transition: "all 0.2s ease-in-out",
+        }}
+        onMouseOver={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background =
+            "linear-gradient(90deg, #1d4ed8, #1e40af)";
+        }}
+        onMouseOut={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.background =
+            "linear-gradient(90deg, #2563eb, #1d4ed8)";
         }}
       >
-        Tekrar Başvuru Yap
+        🔄 Tekrar Başvuru Yap
       </button>
     </div>
   );

@@ -34,14 +34,8 @@ export default function SaticiBasvuru() {
       return;
     }
 
-    // 🔐 Admin için 7 gün geçerli signed URL
-    const { data: signed } = await supabase.storage
-      .from("satici-belgeler")
-      .createSignedUrl(fileName, 60 * 60 * 24 * 7);
-
-    if (signed?.signedUrl) {
-      setBelgeler((prev) => ({ ...prev, [key]: signed.signedUrl }));
-    }
+    // ✅ Artık sadece dosya yolunu kaydediyoruz
+    setBelgeler((prev) => ({ ...prev, [key]: fileName }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +54,7 @@ export default function SaticiBasvuru() {
         firma_adi: firmaAdi,
         vergi_no: vergiNo,
         telefon,
-        belgeler,
+        belgeler, // 🔹 burada sadece path bilgisi var
         sozlesme_onay: sozlesmeOnay,
         durum: "pending",
       },
@@ -78,7 +72,6 @@ export default function SaticiBasvuru() {
       setBelgeler({});
       setSozlesmeOnay(false);
       setTimeout(() => router.push("/satici-durum"), 2000);
-
     }
   };
 
