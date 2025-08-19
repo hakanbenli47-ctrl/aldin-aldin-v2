@@ -36,10 +36,11 @@ export default function AdminSaticilar() {
       }
 
       // eğer admin değilse → anasayfaya at
-     if (!currentUser.email || !ADMIN_EMAILS.includes(currentUser.email)) {
+if (!currentUser.email || !ADMIN_EMAILS.includes(currentUser.email.toLowerCase())) {
   router.push("/");
   return;
 }
+
 
 
       // admin ise başvuruları yükle
