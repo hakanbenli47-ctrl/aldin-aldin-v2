@@ -68,9 +68,14 @@ export default function AdminSaticilar() {
           for (const [key, path] of Object.entries(parsedBelge)) {
             if (typeof path === "string" && path.length > 0) {
               // 🔑 1 saatlik signed URL oluştur
-              const { data: signed } = await supabase.storage
+              const { data: signed, error: signedError } = await supabase.storage
                 .from("satici-belgeler")
                 .createSignedUrl(path, 3600);
+
+              if (signedError) {
+                console.error("Signed URL hatası:", signedError.message);
+              }
+
               if (signed?.signedUrl) {
                 belgeler[key] = signed.signedUrl;
               }
