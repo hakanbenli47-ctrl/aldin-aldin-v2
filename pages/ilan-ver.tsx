@@ -270,6 +270,22 @@ const safeOzellikler = {
       }}
     >
       {message}
+      <button
+        onClick={() => router.push("/satici-basvuru")}
+        style={{
+          marginTop: 20,
+          padding: "10px 20px",
+          backgroundColor: "#2563eb",
+          color: "white",
+          border: "none",
+          borderRadius: "6px",
+          cursor: "pointer",
+          fontSize: "15px",
+          fontWeight: "bold",
+        }}
+      >
+        Tekrar Başvuru Yap
+      </button>
     </div>
   );
 }
