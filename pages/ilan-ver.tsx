@@ -110,10 +110,17 @@ const removeRenk = (value: string) => {
       .eq("user_id", user.id)
       .single();
 
-    if (error || !data || data.durum !== "approved") {
-      router.push("/satici-basvuru"); // başvuru yapmamışsa veya onaylı değilse
-      return;
-    }
+    if (error || !data) {
+  // hiç başvuru yok → başvuru formuna yönlendir
+  router.push("/satici-basvuru");
+  return;
+}
+
+if (data.durum !== "approved") {
+  // başvuru var ama onaylı değil → sadece uyarı göster
+  setMessage(`Başvurunuz ${data.durum}. İlan vermek için onay bekleyin.`);
+  return;
+}
 
     // 3. Kategorileri yükle
     const { data: kategorilerData } = await supabase.from("kategori").select("*");
@@ -242,6 +249,24 @@ const safeOzellikler = {
       setTimeout(() => router.push("/satici"), 1200);
     }
   };
+  if (message.startsWith("Başvurunuz")) {
+  return (
+    <div
+      style={{
+        flex: "2 1 0%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: 200,
+        fontWeight: 600,
+        color: "#e11d48",
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
 // ---- SADECE GİYİMDE beden/renk gönder ----
 const giyimMi = isGiyimCat(kategoriId);
 let safeOzellikler: any = { ...ozellikler };
