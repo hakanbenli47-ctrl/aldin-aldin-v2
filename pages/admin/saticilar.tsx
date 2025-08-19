@@ -9,7 +9,7 @@ type Basvuru = {
   firma_adi: string;
   vergi_no?: string;
   telefon?: string;
-  belgeler?: Record<string, string>; // signed URL'ler
+  belgeler?: Record<string, string>; // direkt public URL'ler
   sozlesme_onay: boolean;
   durum: "pending" | "approved" | "rejected";
   created_at: string;
@@ -64,24 +64,13 @@ export default function AdminSaticilar() {
       let belgeler: Record<string, string> | undefined;
 
       if (row.belgeler) {
-        const parsedBelge = typeof row.belgeler === "string" ? JSON.parse(row.belgeler) : row.belgeler;
-        belgeler = {};
+        const parsedBelge =
+          typeof row.belgeler === "string"
+            ? JSON.parse(row.belgeler)
+            : row.belgeler;
 
-       for (const [key, path] of Object.entries(parsedBelge)) {
-  if (typeof path === "string" && path.length > 0) {
-    // Eğer path sadece dosya adı ise:
-    const fullPath = `${row.user_id}/${path}`;
-
-    const { data: signed, error: signedError } = await supabase.storage
-      .from("satici-belgeler")
-      .createSignedUrl(fullPath, 3600);
-
-    if (!signedError && signed?.signedUrl) {
-      belgeler[key] = signed.signedUrl;
-    }
-  }
-}
-
+        // Artık belgeler public URL olarak kaydediliyor
+        belgeler = parsedBelge;
       }
 
       parsed.push({ ...row, belgeler });
@@ -122,7 +111,7 @@ export default function AdminSaticilar() {
     setMessage("Başvuru güncellendi.");
     fetchBasvurular();
 
-    // mail gönder
+    // mail gönder (sadece admin görsün dedin, ama başvuru sahibine de bilgi verilsin mi? ❓)
     const basvuru = basvurular.find((b) => b.id === id);
     if (basvuru?.user_email) {
       if (durum === "approved") {
@@ -176,7 +165,12 @@ export default function AdminSaticilar() {
                 {b.belgeler && Object.keys(b.belgeler).length > 0 ? (
                   Object.entries(b.belgeler).map(([k, v]) => (
                     <div key={k}>
-                      <a href={v} target="_blank" rel="noopener noreferrer" style={{ color: "#1648b0" }}>
+                      <a
+                        href={v}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#1648b0" }}
+                      >
                         {k.toUpperCase()}
                       </a>
                     </div>

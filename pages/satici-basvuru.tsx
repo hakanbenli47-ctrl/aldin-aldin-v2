@@ -59,25 +59,31 @@ export default function SaticiBasvuru() {
       .replace(/[^a-zA-Z0-9.\-_]/g, "");
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
-    if (!e.target.files?.[0] || !user) return;
-    const file = e.target.files[0];
-    const safeName = sanitizeFileName(file.name);
-    const fileName = `${user.id}/${key}-${Date.now()}-${safeName}`;
+  if (!e.target.files?.[0] || !user) return;
+  const file = e.target.files[0];
+  const safeName = sanitizeFileName(file.name);
+  const fileName = `${key}-${user.id}-${Date.now()}-${safeName}`;
 
-    const { error } = await supabase.storage
-      .from("satici-belgeler")
-      .upload(fileName, file, { upsert: true });
+  const { error } = await supabase.storage
+    .from("satici-belgeler")
+    .upload(fileName, file, { upsert: true });
 
-    if (error) {
-      setMessage("Belge yüklenemedi: " + error.message);
-      return;
-    }
+  if (error) {
+    setMessage("Belge yüklenemedi: " + error.message);
+    return;
+  }
 
-    setBelgeler((prev) => ({
-      ...prev,
-      [key]: fileName,
-    }));
-  };
+  // ✅ Public URL al
+  const { data } = supabase
+    .storage
+    .from("satici-belgeler")
+    .getPublicUrl(fileName);
+
+  setBelgeler((prev) => ({
+    ...prev,
+    [key]: data.publicUrl,   // artık public URL kaydediyoruz
+  }));
+};
 
   // 📩 Mail gönderme fonksiyonu
   async function sendMail(to: string, subject: string, text: string, html: string) {
