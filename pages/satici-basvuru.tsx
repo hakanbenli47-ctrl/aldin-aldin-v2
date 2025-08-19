@@ -77,7 +77,8 @@ export default function SaticiBasvuru() {
       setTelefon("");
       setBelgeler({});
       setSozlesmeOnay(false);
-      setTimeout(() => router.push("/"), 2000);
+      setTimeout(() => router.push("/satici-durum"), 2000);
+
     }
   };
 
