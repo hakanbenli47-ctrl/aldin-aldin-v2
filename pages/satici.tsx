@@ -611,6 +611,18 @@ const { data: yeniOrders } = await supabase
             )}
           </button>
         ))}
+        <div style={{ display: "flex", gap: "10px" }}>
+  <button className="btn btn-primary">Yayındaki İlanlar</button>
+  <button className="btn btn-secondary">Gelen Siparişler</button>
+  <button className="btn btn-success">+ Yeni İlan Ekle</button>
+  {/* 🔽 Yeni eklenen buton */}
+  <button 
+    className="btn btn-warning"
+    onClick={() => router.push("/satici/analiz")}
+  >
+    Analizler
+  </button>
+</div>
         <button
           onClick={handleYeniIlanEkle}
           style={{
