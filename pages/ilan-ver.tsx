@@ -94,14 +94,35 @@ const removeRenk = (value: string) => {
   }));
 };
   useEffect(() => {
-    async function fetchKategoriler() {
-      const { data } = await supabase.from("kategori").select("*");
-      if (data) setKategoriler(data);
+  async function initPage() {
+    // 1. Kullanıcıyı al
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      router.push("/giris"); // giriş yapmamışsa login sayfasına
+      return;
     }
-    fetchKategoriler();
+    setUser(user);
 
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-  }, []);
+    // 2. Satıcı başvurusu var mı ve approved mu?
+    const { data, error } = await supabase
+      .from("satici_basvuru")
+      .select("durum")
+      .eq("user_id", user.id)
+      .single();
+
+    if (error || !data || data.durum !== "approved") {
+      router.push("/satici-basvuru"); // başvuru yapmamışsa veya onaylı değilse
+      return;
+    }
+
+    // 3. Kategorileri yükle
+    const { data: kategorilerData } = await supabase.from("kategori").select("*");
+    if (kategorilerData) setKategoriler(kategorilerData);
+  }
+
+  initPage();
+}, []);
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;

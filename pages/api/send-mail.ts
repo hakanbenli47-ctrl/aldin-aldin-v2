@@ -15,6 +15,9 @@ type Body = {
   subject: string;
   text?: string;
   html?: string;
+  firmaAdi?: string;
+  vergiNo?: string;
+  telefon?: string;
   cc?: string | string[];
   bcc?: string | string[];
   replyTo?: string;
@@ -27,22 +30,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { to, subject, text, html, cc, bcc, replyTo } = (req.body || {}) as Body;
+    const { to, subject, text, html, cc, bcc, replyTo, firmaAdi, vergiNo, telefon } =
+      (req.body || {}) as Body;
 
-    if (!to || !subject || (!text && !html)) {
-      return res.status(400).json({ error: "to, subject ve text|html zorunludur" });
+    if (!to || !subject) {
+      return res.status(400).json({ error: "to ve subject zorunludur" });
     }
     if (!SENDGRID_KEY || !SENDGRID_FROM) {
       return res.status(500).json({ error: "SendGrid yapılandırması eksik" });
     }
 
-    // Çoğu sürümle uyumlu basit tip: text/html'i üst alanlardan veriyoruz.
+    // Eğer özel html gönderilmemişse admin bildirimi için şablon hazırla
+    const htmlContent =
+      html ||
+      `
+      <div style="font-family: Arial, sans-serif; padding: 20px; background: #f9fafb;">
+        <h2 style="color: #1648b0;">Yeni Satıcı Başvurusu</h2>
+        <p><b>Firma:</b> ${firmaAdi || "-"}</p>
+        <p><b>Vergi No:</b> ${vergiNo || "-"}</p>
+        <p><b>Telefon:</b> ${telefon || "-"}</p>
+        <p style="margin-top:20px;">
+          <a href="https://seninsite.com/admin/saticilar" target="_blank" 
+             style="display:inline-block;padding:10px 16px;background:#1648b0;
+             color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">
+             Başvuruyu Görüntüle
+          </a>
+        </p>
+      </div>
+    `;
+
     const msg: MailDataRequired = {
       to,
       from: SENDGRID_FROM,
       subject,
-      ...(text ? { text } : {}),
-      ...(html ? { html } : {}),
+      ...(text ? { text } : { text: "Yeni satıcı başvurusu var." }),
+      html: htmlContent,
       ...(cc ? { cc } : {}),
       ...(bcc ? { bcc } : {}),
       ...(replyTo ? { replyTo } : {}),
