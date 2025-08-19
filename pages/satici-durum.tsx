@@ -6,6 +6,8 @@ type Basvuru = {
   firma_adi: string;
   durum: string;
   created_at: string;
+  red_nedeni?: string;
+  belgeler?: { [key: string]: string };
 };
 
 export default function SaticiDurum() {
@@ -25,7 +27,7 @@ export default function SaticiDurum() {
 
       const { data } = await supabase
         .from("satici_basvuru")
-        .select("firma_adi, durum, created_at")
+        .select("firma_adi, durum, created_at, red_nedeni, belgeler")
         .eq("user_id", user.id)
         .single();
 
@@ -36,7 +38,11 @@ export default function SaticiDurum() {
     loadData();
   }, []);
 
-  if (loading) return <p style={{ padding: 20 }}>Yükleniyor...</p>;
+  if (loading) return (
+    <div style={{ padding: 20, textAlign: "center" }}>
+      🔄 Başvuru bilgileri getiriliyor...
+    </div>
+  );
 
   return (
     <div style={{ maxWidth: 500, margin: "40px auto", padding: 20, border: "1px solid #ddd", borderRadius: 10 }}>
@@ -72,6 +78,27 @@ export default function SaticiDurum() {
             {basvuru.durum === "approved" && <span style={{ color: "green" }}>✅ Onaylandı</span>}
             {basvuru.durum === "rejected" && <span style={{ color: "red" }}>❌ Reddedildi</span>}
           </p>
+
+          {basvuru.durum === "rejected" && basvuru.red_nedeni && (
+            <p style={{ color: "red" }}>
+              <b>Red Nedeni:</b> {basvuru.red_nedeni}
+            </p>
+          )}
+
+          {basvuru.belgeler && (
+            <div style={{ marginTop: 10 }}>
+              <b>Yüklenen Belgeler:</b>
+              <ul>
+                {Object.entries(basvuru.belgeler).map(([key, url]) => (
+                  <li key={key}>
+                    <a href={url} target="_blank" style={{ color: "#1648b0" }}>
+                      {key.toUpperCase()}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {basvuru.durum === "approved" && (
             <button

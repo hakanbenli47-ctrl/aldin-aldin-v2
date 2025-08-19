@@ -9,7 +9,7 @@ export default function SaticiBasvuru() {
   const [firmaAdi, setFirmaAdi] = useState("");
   const [vergiNo, setVergiNo] = useState("");
   const [telefon, setTelefon] = useState("");
-  const [belgeler, setBelgeler] = useState<{[key:string]: string}>({});
+  const [belgeler, setBelgeler] = useState<{ [key: string]: string }>({});
   const [sozlesmeOnay, setSozlesmeOnay] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -19,13 +19,14 @@ export default function SaticiBasvuru() {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  // Belge yükleme (ör: vergi levhası, kimlik vs.)
+  // 🔹 Belge yükleme (ör: vergi levhası, kimlik vs.)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
-    if (!e.target.files?.[0]) return;
+    if (!e.target.files?.[0] || !user) return;
     const file = e.target.files[0];
     const fileName = `${user.id}/${key}-${Date.now()}-${file.name}`;
+
     const { error } = await supabase.storage
-      .from("satici-belgeleri") // 🔹 önce supabase’de bu bucket’ı oluştur
+      .from("satici-belgeler") // ✅ doğru bucket adı
       .upload(fileName, file, { upsert: true });
 
     if (error) {
@@ -33,9 +34,13 @@ export default function SaticiBasvuru() {
       return;
     }
 
-    const { data } = supabase.storage.from("satici-belgeleri").getPublicUrl(fileName);
-    if (data?.publicUrl) {
-      setBelgeler(prev => ({ ...prev, [key]: data.publicUrl }));
+    // 🔐 Admin için 7 gün geçerli signed URL
+    const { data: signed } = await supabase.storage
+      .from("satici-belgeler")
+      .createSignedUrl(fileName, 60 * 60 * 24 * 7);
+
+    if (signed?.signedUrl) {
+      setBelgeler((prev) => ({ ...prev, [key]: signed.signedUrl }));
     }
   };
 
@@ -57,8 +62,8 @@ export default function SaticiBasvuru() {
         telefon,
         belgeler,
         sozlesme_onay: sozlesmeOnay,
-        durum: "pending"
-      }
+        durum: "pending",
+      },
     ]);
 
     setLoading(false);
@@ -82,26 +87,13 @@ export default function SaticiBasvuru() {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>Firma Adı</label>
-        <input
-          type="text"
-          value={firmaAdi}
-          onChange={(e) => setFirmaAdi(e.target.value)}
-          required
-        />
+        <input type="text" value={firmaAdi} onChange={(e) => setFirmaAdi(e.target.value)} required />
 
         <label>Vergi No / TC</label>
-        <input
-          type="text"
-          value={vergiNo}
-          onChange={(e) => setVergiNo(e.target.value)}
-        />
+        <input type="text" value={vergiNo} onChange={(e) => setVergiNo(e.target.value)} />
 
         <label>Telefon</label>
-        <input
-          type="text"
-          value={telefon}
-          onChange={(e) => setTelefon(e.target.value)}
-        />
+        <input type="text" value={telefon} onChange={(e) => setTelefon(e.target.value)} />
 
         <label>Vergi Levhası (PDF/JPG)</label>
         <input type="file" accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "vergi_levhasi")} />
@@ -133,7 +125,7 @@ export default function SaticiBasvuru() {
             borderRadius: 8,
             padding: "12px",
             cursor: "pointer",
-            marginTop: 10
+            marginTop: 10,
           }}
         >
           {loading ? "Gönderiliyor..." : "Başvuruyu Gönder"}
