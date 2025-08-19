@@ -117,10 +117,17 @@ const removeRenk = (value: string) => {
 }
 
 if (data.durum !== "approved") {
-  // başvuru var ama onaylı değil → sadece uyarı göster
-  setMessage(`Başvurunuz ${data.durum}. İlan vermek için onay bekleyin.`);
+  let durumMesaj = "";
+  if (data.durum === "pending") {
+    durumMesaj = "Başvurunuz inceleniyor. Onay bekleyin.";
+  } else if (data.durum === "rejected") {
+    durumMesaj = "Başvurunuz reddedildi. Tekrar başvuruda bulunun.";
+  }
+
+  setMessage(durumMesaj);
   return;
 }
+
 
     // 3. Kategorileri yükle
     const { data: kategorilerData } = await supabase.from("kategori").select("*");
