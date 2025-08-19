@@ -53,7 +53,6 @@ export default function AdminSaticilar() {
     if (error) {
       setMessage("Veri çekilemedi: " + error.message);
     } else {
-      // Belgeleri parse + signed URL üret
       const parsed: Basvuru[] = [];
       for (const row of data || []) {
         let belgeler: Record<string, string> | undefined;
@@ -62,12 +61,14 @@ export default function AdminSaticilar() {
             typeof row.belgeler === "string"
               ? JSON.parse(row.belgeler)
               : row.belgeler;
+
           belgeler = {};
           for (const [key, path] of Object.entries(parsedBelge)) {
-            if (typeof path === "string") {
+            if (typeof path === "string" && path.length > 0) {
+              // 🔑 1 saatlik signed URL oluştur
               const { data: signed } = await supabase.storage
                 .from("satici-belgeler")
-                .createSignedUrl(path, 3600); // 1 saat
+                .createSignedUrl(path, 3600);
               if (signed?.signedUrl) {
                 belgeler[key] = signed.signedUrl;
               }
