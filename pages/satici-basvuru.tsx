@@ -19,14 +19,26 @@ export default function SaticiBasvuru() {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  // 🔹 Belge yükleme (ör: vergi levhası, kimlik vs.)
+  // 🔹 Güvenli dosya adı oluşturma
+  const sanitizeFileName = (name: string) => {
+    return name
+      .normalize("NFD") // Türkçe karakterleri parçala
+      .replace(/[\u0300-\u036f]/g, "") // aksan/türkçe işaretleri kaldır
+      .replace(/\s+/g, "-") // boşlukları tire yap
+      .replace(/[^a-zA-Z0-9.\-_]/g, ""); // sadece güvenli karakterler bırak
+  };
+
+  // 🔹 Belge yükleme
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
     if (!e.target.files?.[0] || !user) return;
     const file = e.target.files[0];
-    const fileName = `${user.id}/${key}-${Date.now()}-${file.name}`;
+
+    const ext = file.name.split(".").pop(); // uzantı al
+    const safeName = sanitizeFileName(file.name);
+    const fileName = `${user.id}/${key}-${Date.now()}-${safeName}`;
 
     const { error } = await supabase.storage
-      .from("satici-belgeler") // ✅ doğru bucket adı
+      .from("satici-belgeler")
       .upload(fileName, file, { upsert: true });
 
     if (error) {
@@ -34,7 +46,6 @@ export default function SaticiBasvuru() {
       return;
     }
 
-    // ✅ Artık sadece dosya yolunu kaydediyoruz
     setBelgeler((prev) => ({ ...prev, [key]: fileName }));
   };
 
@@ -54,7 +65,7 @@ export default function SaticiBasvuru() {
         firma_adi: firmaAdi,
         vergi_no: vergiNo,
         telefon,
-        belgeler, // 🔹 burada sadece path bilgisi var
+        belgeler,
         sozlesme_onay: sozlesmeOnay,
         durum: "pending",
       },
