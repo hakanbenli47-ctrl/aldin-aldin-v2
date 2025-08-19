@@ -78,7 +78,7 @@ export default function SaticiBasvuru() {
 
     setBelgeler((prev) => ({
       ...prev,
-      [key]: publicData.publicUrl, // ✅ artık tam URL kaydediyoruz
+      [key]: fileName, // ✅ artık tam URL kaydediyoruz
     }));
   };
 
