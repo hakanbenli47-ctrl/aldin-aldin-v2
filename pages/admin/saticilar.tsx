@@ -25,6 +25,7 @@ export default function AdminSaticilar() {
   const [message, setMessage] = useState("");
   const [redAciklama, setRedAciklama] = useState<Record<number, string>>({});
 
+  // sadece bu mailler admin girebilir
   const ADMIN_EMAILS = ["80birinfo@gmail.com"];
 
   useEffect(() => {
@@ -58,18 +59,19 @@ export default function AdminSaticilar() {
     }
 
     const parsed: Basvuru[] = [];
+
     for (const row of data || []) {
       let belgeler: Record<string, string> | undefined;
 
       if (row.belgeler) {
-        const parsedBelge = row.belgeler; // ✅ JSON.parse yok
-
+        const parsedBelge = typeof row.belgeler === "string" ? JSON.parse(row.belgeler) : row.belgeler;
         belgeler = {};
+
         for (const [key, path] of Object.entries(parsedBelge)) {
           if (typeof path === "string" && path.length > 0) {
             const { data: signed, error: signedError } = await supabase.storage
               .from("satici-belgeler")
-              .createSignedUrl(path, 3600);
+              .createSignedUrl(path, 3600); // 1 saatlik link
 
             if (!signedError && signed?.signedUrl) {
               belgeler[key] = signed.signedUrl;
@@ -116,6 +118,7 @@ export default function AdminSaticilar() {
     setMessage("Başvuru güncellendi.");
     fetchBasvurular();
 
+    // mail gönder
     const basvuru = basvurular.find((b) => b.id === id);
     if (basvuru?.user_email) {
       if (durum === "approved") {
