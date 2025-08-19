@@ -6,7 +6,7 @@ export default function SaticiBasvuru() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
-  const [firmaAdi, setFirmaAdi] = useState("");
+  const [firmaAdi, setFirmaAdi] = useState(""); // ✅ Otomatik dolacak
   const [vergiNo, setVergiNo] = useState("");
   const [telefon, setTelefon] = useState("");
   const [belgeler, setBelgeler] = useState<{ [key: string]: string }>({});
@@ -16,24 +16,49 @@ export default function SaticiBasvuru() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    async function checkUser() {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        router.push("/giris");
+        return;
+      }
+      setUser(data.user);
+
+      // ✅ Kullanıcının firmasını satıcı_firmalar tablosundan çek
+      const { data: firma } = await supabase
+        .from("satici_firmalar")
+        .select("firma_adi")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (firma?.firma_adi) {
+        setFirmaAdi(firma.firma_adi);
+      }
+
+      // Kullanıcının başvurusu var mı kontrol et
+      const { data: existing } = await supabase
+        .from("satici_basvuru")
+        .select("id")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (existing) {
+        router.push("/satici-durum");
+      }
+    }
+    checkUser();
   }, []);
 
-  // 🔹 Güvenli dosya adı oluşturma
-  const sanitizeFileName = (name: string) => {
-    return name
-      .normalize("NFD") // Türkçe karakterleri parçala
-      .replace(/[\u0300-\u036f]/g, "") // aksan/türkçe işaretleri kaldır
-      .replace(/\s+/g, "-") // boşlukları tire yap
-      .replace(/[^a-zA-Z0-9.\-_]/g, ""); // sadece güvenli karakterler bırak
-  };
+  const sanitizeFileName = (name: string) =>
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9.\-_]/g, "");
 
-  // 🔹 Belge yükleme
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
     if (!e.target.files?.[0] || !user) return;
     const file = e.target.files[0];
-
-    const ext = file.name.split(".").pop(); // uzantı al
     const safeName = sanitizeFileName(file.name);
     const fileName = `${user.id}/${key}-${Date.now()}-${safeName}`;
 
@@ -46,7 +71,15 @@ export default function SaticiBasvuru() {
       return;
     }
 
-    setBelgeler((prev) => ({ ...prev, [key]: fileName }));
+    // ✅ Public URL al
+    const { data: publicData } = supabase.storage
+      .from("satici-belgeler")
+      .getPublicUrl(fileName);
+
+    setBelgeler((prev) => ({
+      ...prev,
+      [key]: publicData.publicUrl, // ✅ artık tam URL kaydediyoruz
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,10 +92,14 @@ export default function SaticiBasvuru() {
     setLoading(true);
     setMessage("");
 
+    // 🔥 Önceki başvuruyu sil
+    await supabase.from("satici_basvuru").delete().eq("user_id", user?.id);
+
+    // Yeni başvuruyu ekle
     const { error } = await supabase.from("satici_basvuru").insert([
       {
         user_id: user?.id,
-        firma_adi: firmaAdi,
+        firma_adi: firmaAdi, // ✅ otomatik gelen firma adı
         vergi_no: vergiNo,
         telefon,
         belgeler,
@@ -77,7 +114,6 @@ export default function SaticiBasvuru() {
       setMessage("Başvuru kaydedilemedi: " + error.message);
     } else {
       setMessage("✅ Başvurunuz başarıyla alındı. Onay sürecini bekleyin.");
-      setFirmaAdi("");
       setVergiNo("");
       setTelefon("");
       setBelgeler({});
@@ -92,7 +128,7 @@ export default function SaticiBasvuru() {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>Firma Adı</label>
-        <input type="text" value={firmaAdi} onChange={(e) => setFirmaAdi(e.target.value)} required />
+        <input type="text" value={firmaAdi} disabled /> {/* ✅ kullanıcı değiştiremiyor */}
 
         <label>Vergi No / TC</label>
         <input type="text" value={vergiNo} onChange={(e) => setVergiNo(e.target.value)} />
