@@ -574,14 +574,7 @@ const { data: yeniOrders } = await supabase
         }}
       >
         {TABS.map((tab) => (
-          <Link key={tab.key} href={tab.href}>
-    <button
-      className={activeTab === tab.key ? "aktifButon" : "pasifButon"}
-    >
-      {tab.label}
-    </button>
-  </Link>
-))}
+          
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
