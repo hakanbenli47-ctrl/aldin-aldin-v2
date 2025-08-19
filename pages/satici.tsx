@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import DopingModal from "../components/DopingModal";
 import type React from "react";
-import Link from "next/link";
+
 function OzellikEtiketleri({ item }: { item: any }) {
   const options = item?.options || {};     // ürünün özellik snapshot’ı
   const selection = item?.selection || {}; // alıcının seçimi (beden/renk/Miktar...)
@@ -56,7 +56,6 @@ function OzellikEtiketleri({ item }: { item: any }) {
 const TABS = [
   { key: "ilanlar", label: "Yayındaki İlanlar" },
   { key: "siparisler", label: "Gelen Siparişler" },
-  { key: "analiz", label: "Analizler", href: "/satici/analizler" }, 
 ];
 
 // --- Kargo Firmaları
@@ -574,7 +573,6 @@ const { data: yeniOrders } = await supabase
         }}
       >
         {TABS.map((tab) => (
-          
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
