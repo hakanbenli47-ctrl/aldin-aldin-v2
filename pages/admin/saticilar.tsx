@@ -46,39 +46,49 @@ export default function AdminSaticilar() {
   }, []);
 
   const fetchBasvurular = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("satici_basvuru")
-      .select("*")
-      .order("created_at", { ascending: false });
+  setLoading(true);
+  const { data, error } = await supabase
+    .from("satici_basvuru")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-    if (error) {
-      setMessage("Veri çekilemedi: " + error.message);
-      setLoading(false);
-      return;
-    }
-
-    const parsed: Basvuru[] = [];
-
-    for (const row of data || []) {
-      let belgeler: Record<string, string> | undefined;
-
-      if (row.belgeler) {
-        const parsedBelge =
-          typeof row.belgeler === "string"
-            ? JSON.parse(row.belgeler)
-            : row.belgeler;
-
-        // Artık belgeler public URL olarak kaydediliyor
-        belgeler = parsedBelge;
-      }
-
-      parsed.push({ ...row, belgeler });
-    }
-
-    setBasvurular(parsed);
+  if (error) {
+    setMessage("Veri çekilemedi: " + error.message);
     setLoading(false);
-  };
+    return;
+  }
+
+  const parsed: Basvuru[] = [];
+
+  for (const row of data || []) {
+    let belgeler: Record<string, string> | undefined;
+
+    if (row.belgeler) {
+      const parsedBelge =
+        typeof row.belgeler === "string"
+          ? JSON.parse(row.belgeler)
+          : row.belgeler;
+
+      belgeler = {};
+
+      // her dosyayı public URL’ye çeviriyoruz
+      for (const [k, v] of Object.entries(parsedBelge)) {
+        const { data: urlData } = supabase
+          .storage
+          .from("satici-belgeler")
+          .getPublicUrl(v as string);
+
+        belgeler[k] = urlData.publicUrl;
+      }
+    }
+
+    parsed.push({ ...row, belgeler });
+  }
+
+  setBasvurular(parsed);
+  setLoading(false);
+};
+
 
   async function sendMail(to: string, subject: string, text: string, html: string) {
     try {
