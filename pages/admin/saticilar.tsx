@@ -62,10 +62,7 @@ export default function AdminSaticilar() {
       let belgeler: Record<string, string> | undefined;
 
       if (row.belgeler) {
-        const parsedBelge =
-          typeof row.belgeler === "string"
-            ? JSON.parse(row.belgeler)
-            : row.belgeler;
+        const parsedBelge = row.belgeler; // ✅ JSON.parse yok
 
         belgeler = {};
         for (const [key, path] of Object.entries(parsedBelge)) {
