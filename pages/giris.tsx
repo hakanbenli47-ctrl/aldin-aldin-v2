@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
 
+const ADMIN_EMAILS = ["80birinfo@gmail.com"]; // buraya admin mailleri ekle
+
 export default function Giris() {
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -64,6 +66,15 @@ export default function Giris() {
       if (!confirmed) {
         setMessage("❗ Lütfen e-posta adresinizi doğrulayın.");
         await supabase.auth.signOut();
+        return;
+      }
+
+      // ✅ Admin kontrolü: eğer admin ise OTP'yi atla ve admin paneline git
+      if (data.user && ADMIN_EMAILS.includes(data.user.email?.toLowerCase() || "")) {
+        setMessage("👑 Admin girişi başarılı, yönlendiriliyorsunuz...");
+        setTimeout(() => {
+          router.push("/admin/saticilar");
+        }, 500);
         return;
       }
 
@@ -160,6 +171,16 @@ export default function Giris() {
       setMessage("❌ Giriş başarısız: " + error.message);
       return;
     }
+
+    // ✅ Admin kontrolü
+    if (data.user && ADMIN_EMAILS.includes(data.user.email?.toLowerCase() || "")) {
+      setMessage("👑 Admin girişi başarılı, yönlendiriliyorsunuz...");
+      setTimeout(() => {
+        router.push("/admin/saticilar");
+      }, 900);
+      return;
+    }
+
     const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
     setTimeout(() => {
       if (role === "satici") router.push("/");
@@ -306,7 +327,7 @@ export default function Giris() {
         )}
 
         {message && (
-          <p style={{ marginTop: 10, color: message.startsWith("✅") ? "#16a34a" : "#111" }}>
+          <p style={{ marginTop: 10, color: message.startsWith("✅") || message.startsWith("👑") ? "#16a34a" : "#111" }}>
             {message}
           </p>
         )}
