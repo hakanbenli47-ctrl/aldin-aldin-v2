@@ -36,12 +36,10 @@ export default function AdminSaticilar() {
       }
 
       // eğer admin değilse → anasayfaya at
-if (!currentUser.email || !ADMIN_EMAILS.includes(currentUser.email.toLowerCase())) {
-  router.push("/");
-  return;
-}
-
-
+      if (!currentUser.email || !ADMIN_EMAILS.includes(currentUser.email.toLowerCase())) {
+        router.push("/");
+        return;
+      }
 
       // admin ise başvuruları yükle
       fetchBasvurular();
@@ -54,8 +52,17 @@ if (!currentUser.email || !ADMIN_EMAILS.includes(currentUser.email.toLowerCase()
       .from("satici_basvuru")
       .select("*")
       .order("created_at", { ascending: false });
-    if (error) setMessage("Veri çekilemedi: " + error.message);
-    else setBasvurular(data || []);
+
+    if (error) {
+      setMessage("Veri çekilemedi: " + error.message);
+    } else {
+      // 👉 belgeler text ise JSON'a çevir
+      const parsed = (data || []).map((row: any) => ({
+        ...row,
+        belgeler: typeof row.belgeler === "string" ? JSON.parse(row.belgeler) : row.belgeler,
+      }));
+      setBasvurular(parsed);
+    }
     setLoading(false);
   };
 
