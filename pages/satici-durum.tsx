@@ -18,31 +18,42 @@ export default function SaticiDurum() {
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error("Kullanıcı alınamadı:", error);
+        return;
+      }
       if (!user) {
         router.push("/giris");
         return;
       }
       setUser(user);
 
-      const { data } = await supabase
+      // ✅ user.id doğru alan
+      const { data, error: queryError } = await supabase
         .from("satici_basvuru")
         .select("firma_adi, durum, created_at, red_nedeni, belgeler")
-        .eq("user_id", user.id)
+        .eq("user_id", user.id) 
         .single();
+
+      if (queryError) {
+        console.error("Sorgu hatası:", queryError);
+      }
 
       if (data) setBasvuru(data);
       setLoading(false);
     }
 
     loadData();
-  }, []);
+  }, [router]);
 
-  if (loading) return (
-    <div style={{ padding: 20, textAlign: "center" }}>
-      🔄 Başvuru bilgileri getiriliyor...
-    </div>
-  );
+  if (loading) {
+    return (
+      <div style={{ padding: 20, textAlign: "center" }}>
+        🔄 Başvuru bilgileri getiriliyor...
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 500, margin: "40px auto", padding: 20, border: "1px solid #ddd", borderRadius: 10 }}>
