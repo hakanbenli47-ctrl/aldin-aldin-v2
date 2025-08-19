@@ -67,17 +67,21 @@ export default function AdminSaticilar() {
         const parsedBelge = typeof row.belgeler === "string" ? JSON.parse(row.belgeler) : row.belgeler;
         belgeler = {};
 
-        for (const [key, path] of Object.entries(parsedBelge)) {
-          if (typeof path === "string" && path.length > 0) {
-            const { data: signed, error: signedError } = await supabase.storage
-              .from("satici-belgeler")
-              .createSignedUrl(path, 3600); // 1 saatlik link
+       for (const [key, path] of Object.entries(parsedBelge)) {
+  if (typeof path === "string" && path.length > 0) {
+    // Eğer path sadece dosya adı ise:
+    const fullPath = `${row.user_id}/${path}`;
 
-            if (!signedError && signed?.signedUrl) {
-              belgeler[key] = signed.signedUrl;
-            }
-          }
-        }
+    const { data: signed, error: signedError } = await supabase.storage
+      .from("satici-belgeler")
+      .createSignedUrl(fullPath, 3600);
+
+    if (!signedError && signed?.signedUrl) {
+      belgeler[key] = signed.signedUrl;
+    }
+  }
+}
+
       }
 
       parsed.push({ ...row, belgeler });
