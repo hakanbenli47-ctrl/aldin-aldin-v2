@@ -27,6 +27,7 @@ export default function SaticiBasvuru() {
       }
       setUser(data.user);
 
+      // Firma adını mevcut kayıt varsa çek
       const { data: firma } = await supabase
         .from("satici_firmalar")
         .select("firma_adi")
@@ -37,6 +38,7 @@ export default function SaticiBasvuru() {
         setFirmaAdi(firma.firma_adi);
       }
 
+      // Daha önce başvuru varsa yönlendir
       const { data: existing } = await supabase
         .from("satici_basvuru")
         .select("id")
@@ -77,7 +79,7 @@ export default function SaticiBasvuru() {
     }));
   };
 
-  // 📩 Mail gönderme
+  // 📩 Mail gönderme fonksiyonu
   async function sendMail(to: string, subject: string, text: string, html: string) {
     try {
       await fetch("/api/send-mail", {
@@ -100,8 +102,10 @@ export default function SaticiBasvuru() {
     setLoading(true);
     setMessage("");
 
+    // Eski başvuruyu sil
     await supabase.from("satici_basvuru").delete().eq("user_id", user?.id);
 
+    // Yeni başvuru kaydı
     const { error } = await supabase.from("satici_basvuru").insert([{
       user_id: user?.id,
       firma_adi: firmaAdi,
@@ -110,7 +114,6 @@ export default function SaticiBasvuru() {
       belgeler,
       sozlesme_onay: sozlesmeOnay,
       durum: "pending",
-      user_email: user?.email,
     }]);
 
     setLoading(false);
@@ -120,17 +123,7 @@ export default function SaticiBasvuru() {
     } else {
       setMessage("✅ Başvurunuz başarıyla alındı. Onay sürecini bekleyin.");
 
-      // Kullanıcıya mail
-      sendMail(
-        user?.email,
-        "Satıcı Başvurunuz Alındı",
-        `Merhaba ${firmaAdi}, başvurunuz alınmıştır. Onay sürecindedir.`,
-        `<p>Merhaba <b>${firmaAdi}</b>,</p>
-         <p>Satıcı başvurunuz alınmıştır ✅</p>
-         <p>Onay sürecinden sonra tarafınıza bilgilendirme yapılacaktır.</p>`
-      );
-
-      // Admin’e mail
+      // 📩 Sadece admin’e mail
       for (const admin of ADMIN_EMAILS) {
         sendMail(
           admin,
@@ -142,10 +135,13 @@ export default function SaticiBasvuru() {
         );
       }
 
+      // Form resetle
       setVergiNo("");
       setTelefon("");
       setBelgeler({});
       setSozlesmeOnay(false);
+
+      // Başvuru durumuna yönlendir
       setTimeout(() => router.push("/satici-durum"), 2000);
     }
   };
