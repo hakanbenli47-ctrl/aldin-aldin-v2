@@ -13,6 +13,7 @@ type Basvuru = {
   durum: string;
   created_at: string;
   red_nedeni?: string;
+  user_email?: string; // 🔑 mail için ekledim
 };
 
 export default function AdminSaticilar() {
@@ -82,6 +83,19 @@ export default function AdminSaticilar() {
     setLoading(false);
   };
 
+  // ✅ Mail gönderme fonksiyonu
+  async function sendMail(to: string, subject: string, text: string, html: string) {
+    try {
+      await fetch("/api/send-mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to, subject, text, html }),
+      });
+    } catch (err) {
+      console.error("Mail gönderilemedi:", err);
+    }
+  }
+
   const updateDurum = async (id: number, durum: "approved" | "rejected") => {
     let updateData: any = { durum };
     if (durum === "rejected") {
@@ -98,6 +112,30 @@ export default function AdminSaticilar() {
     } else {
       setMessage("Başvuru güncellendi.");
       fetchBasvurular();
+
+      // ✅ Mail gönder
+      const basvuru = basvurular.find((b) => b.id === id);
+      if (basvuru?.user_email) {
+        if (durum === "approved") {
+          sendMail(
+            basvuru.user_email,
+            "Satıcı Başvurunuz Onaylandı",
+            `Merhaba ${basvuru.firma_adi}, satıcı başvurunuz onaylandı.`,
+            `<p>Merhaba <b>${basvuru.firma_adi}</b>,</p>
+             <p>Satıcı başvurunuz <span style="color:green">ONAYLANDI ✅</span>.</p>
+             <p>Artık ürünlerinizi eklemeye başlayabilirsiniz.</p>`
+          );
+        } else {
+          sendMail(
+            basvuru.user_email,
+            "Satıcı Başvurunuz Reddedildi",
+            `Merhaba ${basvuru.firma_adi}, başvurunuz reddedildi. Sebep: ${redAciklama[id] || ""}`,
+            `<p>Merhaba <b>${basvuru.firma_adi}</b>,</p>
+             <p>Satıcı başvurunuz <span style="color:red">REDDEDİLDİ ❌</span>.</p>
+             <p>Sebep: ${redAciklama[id] || "Belirtilmedi"} </p>`
+          );
+        }
+      }
     }
   };
 
