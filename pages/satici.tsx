@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import DopingModal from "../components/DopingModal";
 import type React from "react";
-
+import Link from "next/link";
 function OzellikEtiketleri({ item }: { item: any }) {
   const options = item?.options || {};     // ürünün özellik snapshot’ı
   const selection = item?.selection || {}; // alıcının seçimi (beden/renk/Miktar...)
@@ -56,6 +56,7 @@ function OzellikEtiketleri({ item }: { item: any }) {
 const TABS = [
   { key: "ilanlar", label: "Yayındaki İlanlar" },
   { key: "siparisler", label: "Gelen Siparişler" },
+  { key: "analiz", label: "Analizler", href: "/satici/analizler" }, 
 ];
 
 // --- Kargo Firmaları
@@ -573,6 +574,14 @@ const { data: yeniOrders } = await supabase
         }}
       >
         {TABS.map((tab) => (
+          <Link key={tab.key} href={tab.href}>
+    <button
+      className={activeTab === tab.key ? "aktifButon" : "pasifButon"}
+    >
+      {tab.label}
+    </button>
+  </Link>
+))}
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
@@ -611,18 +620,7 @@ const { data: yeniOrders } = await supabase
             )}
           </button>
         ))}
-        <div style={{ display: "flex", gap: "10px" }}>
-  <button className="btn btn-primary">Yayındaki İlanlar</button>
-  <button className="btn btn-secondary">Gelen Siparişler</button>
-  <button className="btn btn-success">+ Yeni İlan Ekle</button>
-  {/* 🔽 Yeni eklenen buton */}
-  <button 
-    className="btn btn-warning"
-    onClick={() => router.push("/satici/analiz")}
-  >
-    Analizler
-  </button>
-</div>
+        
         <button
           onClick={handleYeniIlanEkle}
           style={{
