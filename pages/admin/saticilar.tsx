@@ -8,12 +8,12 @@ type Basvuru = {
   firma_adi: string;
   vergi_no?: string;
   telefon?: string;
-  belgeler?: Record<string, string>;
+  belgeler?: Record<string, string>; // signed URL'ler burada tutulacak
   sozlesme_onay: boolean;
   durum: string;
   created_at: string;
   red_nedeni?: string;
-  user_email?: string; // 🔑 mail için ekledim
+  user_email?: string;
 };
 
 export default function AdminSaticilar() {
@@ -24,7 +24,7 @@ export default function AdminSaticilar() {
   const [message, setMessage] = useState("");
   const [redAciklama, setRedAciklama] = useState<Record<number, string>>({});
 
-  // 👇 sadece bu mail admin olsun
+  // sadece bu mail admin
   const ADMIN_EMAILS = ["80birinfo@gmail.com"];
 
   useEffect(() => {
@@ -57,6 +57,7 @@ export default function AdminSaticilar() {
       const parsed: Basvuru[] = [];
       for (const row of data || []) {
         let belgeler: Record<string, string> | undefined;
+
         if (row.belgeler) {
           const parsedBelge =
             typeof row.belgeler === "string"
@@ -76,6 +77,7 @@ export default function AdminSaticilar() {
             }
           }
         }
+
         parsed.push({ ...row, belgeler });
       }
       setBasvurular(parsed);
@@ -165,10 +167,10 @@ export default function AdminSaticilar() {
               <td style={{ padding: 8, border: "1px solid #ddd" }}>{b.vergi_no || "-"}</td>
               <td style={{ padding: 8, border: "1px solid #ddd" }}>{b.telefon || "-"}</td>
               <td style={{ padding: 8, border: "1px solid #ddd" }}>
-                {b.belgeler ? (
+                {b.belgeler && Object.keys(b.belgeler).length > 0 ? (
                   Object.entries(b.belgeler).map(([k, v]) => (
                     <div key={k}>
-                      <a href={String(v)} target="_blank" style={{ color: "#1648b0" }}>
+                      <a href={v} target="_blank" rel="noopener noreferrer" style={{ color: "#1648b0" }}>
                         {k.toUpperCase()}
                       </a>
                     </div>

@@ -6,7 +6,7 @@ export default function SaticiBasvuru() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
-  const [firmaAdi, setFirmaAdi] = useState(""); // ✅ Otomatik dolacak
+  const [firmaAdi, setFirmaAdi] = useState("");
   const [vergiNo, setVergiNo] = useState("");
   const [telefon, setTelefon] = useState("");
   const [belgeler, setBelgeler] = useState<{ [key: string]: string }>({});
@@ -14,6 +14,9 @@ export default function SaticiBasvuru() {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  // 📩 Admin listesi
+  const ADMIN_EMAILS = ["80birinfo@gmail.com"];
 
   useEffect(() => {
     async function checkUser() {
@@ -24,7 +27,6 @@ export default function SaticiBasvuru() {
       }
       setUser(data.user);
 
-      // ✅ Kullanıcının firmasını satıcı_firmalar tablosundan çek
       const { data: firma } = await supabase
         .from("satici_firmalar")
         .select("firma_adi")
@@ -35,7 +37,6 @@ export default function SaticiBasvuru() {
         setFirmaAdi(firma.firma_adi);
       }
 
-      // Kullanıcının başvurusu var mı kontrol et
       const { data: existing } = await supabase
         .from("satici_basvuru")
         .select("id")
@@ -50,8 +51,7 @@ export default function SaticiBasvuru() {
   }, []);
 
   const sanitizeFileName = (name: string) =>
-    name
-      .normalize("NFD")
+    name.normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, "-")
       .replace(/[^a-zA-Z0-9.\-_]/g, "");
@@ -71,16 +71,24 @@ export default function SaticiBasvuru() {
       return;
     }
 
-    // ✅ Public URL al
-    const { data: publicData } = supabase.storage
-      .from("satici-belgeler")
-      .getPublicUrl(fileName);
-
     setBelgeler((prev) => ({
       ...prev,
-      [key]: fileName, // ✅ artık tam URL kaydediyoruz
+      [key]: fileName,
     }));
   };
+
+  // 📩 Mail gönderme
+  async function sendMail(to: string, subject: string, text: string, html: string) {
+    try {
+      await fetch("/api/send-mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to, subject, text, html }),
+      });
+    } catch (err) {
+      console.error("Mail gönderilemedi:", err);
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,21 +100,18 @@ export default function SaticiBasvuru() {
     setLoading(true);
     setMessage("");
 
-    // 🔥 Önceki başvuruyu sil
     await supabase.from("satici_basvuru").delete().eq("user_id", user?.id);
 
-    // Yeni başvuruyu ekle
-    const { error } = await supabase.from("satici_basvuru").insert([
-      {
-        user_id: user?.id,
-        firma_adi: firmaAdi, // ✅ otomatik gelen firma adı
-        vergi_no: vergiNo,
-        telefon,
-        belgeler,
-        sozlesme_onay: sozlesmeOnay,
-        durum: "pending",
-      },
-    ]);
+    const { error } = await supabase.from("satici_basvuru").insert([{
+      user_id: user?.id,
+      firma_adi: firmaAdi,
+      vergi_no: vergiNo,
+      telefon,
+      belgeler,
+      sozlesme_onay: sozlesmeOnay,
+      durum: "pending",
+      user_email: user?.email,
+    }]);
 
     setLoading(false);
 
@@ -114,6 +119,29 @@ export default function SaticiBasvuru() {
       setMessage("Başvuru kaydedilemedi: " + error.message);
     } else {
       setMessage("✅ Başvurunuz başarıyla alındı. Onay sürecini bekleyin.");
+
+      // Kullanıcıya mail
+      sendMail(
+        user?.email,
+        "Satıcı Başvurunuz Alındı",
+        `Merhaba ${firmaAdi}, başvurunuz alınmıştır. Onay sürecindedir.`,
+        `<p>Merhaba <b>${firmaAdi}</b>,</p>
+         <p>Satıcı başvurunuz alınmıştır ✅</p>
+         <p>Onay sürecinden sonra tarafınıza bilgilendirme yapılacaktır.</p>`
+      );
+
+      // Admin’e mail
+      for (const admin of ADMIN_EMAILS) {
+        sendMail(
+          admin,
+          "Yeni Satıcı Başvurusu",
+          `${firmaAdi} firmasından yeni satıcı başvurusu yapıldı.`,
+          `<p><b>${firmaAdi}</b> firmasından yeni satıcı başvurusu yapıldı.</p>
+           <p>Vergi No: ${vergiNo || "-"}</p>
+           <p>Telefon: ${telefon || "-"}</p>`
+        );
+      }
+
       setVergiNo("");
       setTelefon("");
       setBelgeler({});
@@ -128,7 +156,7 @@ export default function SaticiBasvuru() {
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>Firma Adı</label>
-        <input type="text" value={firmaAdi} disabled /> {/* ✅ kullanıcı değiştiremiyor */}
+        <input type="text" value={firmaAdi} disabled />
 
         <label>Vergi No / TC</label>
         <input type="text" value={vergiNo} onChange={(e) => setVergiNo(e.target.value)} />
