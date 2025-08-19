@@ -1,3 +1,4 @@
+// pages/admin/saticilar.tsx
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { useRouter } from "next/router";
@@ -8,9 +9,9 @@ type Basvuru = {
   firma_adi: string;
   vergi_no?: string;
   telefon?: string;
-  belgeler?: Record<string, string>; // signed URL'ler burada tutulacak
+  belgeler?: Record<string, string>; // signed URL'ler
   sozlesme_onay: boolean;
-  durum: string;
+  durum: "pending" | "approved" | "rejected";
   created_at: string;
   red_nedeni?: string;
   user_email?: string;
@@ -52,36 +53,38 @@ export default function AdminSaticilar() {
 
     if (error) {
       setMessage("Veri çekilemedi: " + error.message);
-    } else {
-      const parsed: Basvuru[] = [];
-      for (const row of data || []) {
-        let belgeler: Record<string, string> | undefined;
+      setLoading(false);
+      return;
+    }
 
-        if (row.belgeler) {
-          const parsedBelge =
-            typeof row.belgeler === "string"
-              ? JSON.parse(row.belgeler)
-              : row.belgeler;
+    const parsed: Basvuru[] = [];
+    for (const row of data || []) {
+      let belgeler: Record<string, string> | undefined;
 
-          belgeler = {};
-          for (const [key, path] of Object.entries(parsedBelge)) {
-            if (typeof path === "string" && path.length > 0) {
-              // ✅ path artık "user123/kimlik-xxx.jpg" gibi kayıtlı
-              const { data: signed, error: signedError } = await supabase.storage
-                .from("satici-belgeler")
-                .createSignedUrl(path, 3600);
+      if (row.belgeler) {
+        const parsedBelge =
+          typeof row.belgeler === "string"
+            ? JSON.parse(row.belgeler)
+            : row.belgeler;
 
-              if (!signedError && signed?.signedUrl) {
-                belgeler[key] = signed.signedUrl;
-              }
+        belgeler = {};
+        for (const [key, path] of Object.entries(parsedBelge)) {
+          if (typeof path === "string" && path.length > 0) {
+            const { data: signed, error: signedError } = await supabase.storage
+              .from("satici-belgeler")
+              .createSignedUrl(path, 3600);
+
+            if (!signedError && signed?.signedUrl) {
+              belgeler[key] = signed.signedUrl;
             }
           }
         }
-
-        parsed.push({ ...row, belgeler });
       }
-      setBasvurular(parsed);
+
+      parsed.push({ ...row, belgeler });
     }
+
+    setBasvurular(parsed);
     setLoading(false);
   };
 
@@ -110,31 +113,32 @@ export default function AdminSaticilar() {
 
     if (error) {
       setMessage("Hata: " + error.message);
-    } else {
-      setMessage("Başvuru güncellendi.");
-      fetchBasvurular();
+      return;
+    }
 
-      const basvuru = basvurular.find((b) => b.id === id);
-      if (basvuru?.user_email) {
-        if (durum === "approved") {
-          sendMail(
-            basvuru.user_email,
-            "Satıcı Başvurunuz Onaylandı",
-            `Merhaba ${basvuru.firma_adi}, satıcı başvurunuz onaylandı.`,
-            `<p>Merhaba <b>${basvuru.firma_adi}</b>,</p>
-             <p>Satıcı başvurunuz <span style="color:green">ONAYLANDI ✅</span>.</p>
-             <p>Artık ürünlerinizi eklemeye başlayabilirsiniz.</p>`
-          );
-        } else {
-          sendMail(
-            basvuru.user_email,
-            "Satıcı Başvurunuz Reddedildi",
-            `Merhaba ${basvuru.firma_adi}, başvurunuz reddedildi. Sebep: ${redAciklama[id] || ""}`,
-            `<p>Merhaba <b>${basvuru.firma_adi}</b>,</p>
-             <p>Satıcı başvurunuz <span style="color:red">REDDEDİLDİ ❌</span>.</p>
-             <p>Sebep: ${redAciklama[id] || "Belirtilmedi"} </p>`
-          );
-        }
+    setMessage("Başvuru güncellendi.");
+    fetchBasvurular();
+
+    const basvuru = basvurular.find((b) => b.id === id);
+    if (basvuru?.user_email) {
+      if (durum === "approved") {
+        sendMail(
+          basvuru.user_email,
+          "Satıcı Başvurunuz Onaylandı",
+          `Merhaba ${basvuru.firma_adi}, satıcı başvurunuz onaylandı.`,
+          `<p>Merhaba <b>${basvuru.firma_adi}</b>,</p>
+           <p>Satıcı başvurunuz <span style="color:green">ONAYLANDI ✅</span>.</p>
+           <p>Artık ürünlerinizi eklemeye başlayabilirsiniz.</p>`
+        );
+      } else {
+        sendMail(
+          basvuru.user_email,
+          "Satıcı Başvurunuz Reddedildi",
+          `Merhaba ${basvuru.firma_adi}, başvurunuz reddedildi. Sebep: ${redAciklama[id] || ""}`,
+          `<p>Merhaba <b>${basvuru.firma_adi}</b>,</p>
+           <p>Satıcı başvurunuz <span style="color:red">REDDEDİLDİ ❌</span>.</p>
+           <p>Sebep: ${redAciklama[id] || "Belirtilmedi"} </p>`
+        );
       }
     }
   };
@@ -142,7 +146,7 @@ export default function AdminSaticilar() {
   if (loading) return <p style={{ padding: 30 }}>Yükleniyor...</p>;
 
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto", padding: 20 }}>
+    <div style={{ maxWidth: 1000, margin: "40px auto", padding: 20 }}>
       <h2 style={{ marginBottom: 20, color: "#1648b0" }}>Satıcı Başvuruları</h2>
 
       {message && <p style={{ color: "green", fontWeight: 600 }}>{message}</p>}
