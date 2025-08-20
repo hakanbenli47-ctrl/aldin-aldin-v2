@@ -51,26 +51,27 @@ const Analizler: React.FC = () => {
   return (
     <div className="p-8">
       {/* Sekmeler */}
-      <div className="flex justify-center gap-8 mb-10">
-        {[
-          { key: "gunluk", label: "📅 Günlük" },
-          { key: "haftalik", label: "📊 Haftalık" },
-          { key: "aylik", label: "📈 Aylık" },
-        ].map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key as any)}
-            className={`px-12 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 
-              ${
-                tab === t.key
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl scale-105"
-                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 hover:shadow-md"
-              }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <div className="flex justify-center mb-12">
+  {[
+    { key: "gunluk", label: "📅 Günlük" },
+    { key: "haftalik", label: "📊 Haftalık" },
+    { key: "aylik", label: "📈 Aylık" },
+  ].map((t, i) => (
+    <button
+      key={t.key}
+      onClick={() => setTab(t.key as any)}
+      className={`mx-4 px-14 py-5 rounded-2xl font-semibold text-lg transition-all duration-300 
+        ${
+          tab === t.key
+            ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg scale-105"
+            : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 hover:shadow-md"
+        }`}
+    >
+      {t.label}
+    </button>
+  ))}
+</div>
+
 
       {/* İçerik */}
       {loading ? (
