@@ -32,7 +32,7 @@ export default function AdminSaticilar() {
   const [message, setMessage] = useState("");
   const [redAciklama, setRedAciklama] = useState<Record<number, string>>({});
   const [odemeler, setOdemeler] = useState<OdemeSatiri[]>([]);
-  const KOMISYON_ORANI = 0.10; // %10 komisyon örnek
+  const KOMISYON_ORANI = 0.10; // %10 komisyon
 
   const ADMIN_EMAILS = ["80birinfo@gmail.com"];
 
@@ -93,8 +93,9 @@ export default function AdminSaticilar() {
 
   const fetchOdemeler = async () => {
     const { data, error } = await supabase
-      .from("siparisler") // ✅ kendi sipariş tablonun adı
-      .select("id, toplam_tutar, satici_id, saticilar(firma_adi)");
+      .from("siparisler")
+      .select("id, toplam_tutar, status, satici_id, saticilar(firma_adi)")
+      .eq("status", "delivered"); // ✅ sadece teslim edilen siparişler
 
     if (error) {
       console.error("Siparişler alınamadı:", error.message);
