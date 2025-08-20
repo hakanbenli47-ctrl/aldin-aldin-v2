@@ -7,7 +7,6 @@ const Analizler: React.FC = () => {
   const [veri, setVeri] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // tarih aralıklarını hesapla
   const getDateRange = () => {
     const now = new Date();
     let start: Date;
@@ -39,12 +38,10 @@ const Analizler: React.FC = () => {
     fetchData();
   }, [tab]);
 
-  // hesaplamalar
   const toplamCiro = veri.reduce((acc, s) => acc + (s.total_price || 0), 0);
   const komisyon = toplamCiro * 0.08;
   const netOdeme = toplamCiro - komisyon;
 
-  // en çok satan ürün
   const urunSayilari: Record<string, number> = {};
   veri.forEach((s) => {
     urunSayilari[s.urunBaslik] = (urunSayilari[s.urunBaslik] || 0) + 1;
@@ -52,9 +49,9 @@ const Analizler: React.FC = () => {
   const enCokSatan = Object.entries(urunSayilari).sort((a, b) => b[1] - a[1])[0];
 
   return (
-    <div className="p-6">
+    <div className="p-8">
       {/* Sekmeler */}
-      <div className="flex gap-6 mb-10 justify-center">
+      <div className="flex justify-center gap-8 mb-10">
         {[
           { key: "gunluk", label: "📅 Günlük" },
           { key: "haftalik", label: "📊 Haftalık" },
@@ -63,17 +60,14 @@ const Analizler: React.FC = () => {
           <button
             key={t.key}
             onClick={() => setTab(t.key as any)}
-            className={`relative px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform 
+            className={`px-12 py-4 rounded-2xl font-semibold text-lg transition-all duration-300 
               ${
                 tab === t.key
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl scale-110"
-                  : "bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:shadow-md hover:scale-105"
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl scale-105"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 hover:shadow-md"
               }`}
           >
             {t.label}
-            {tab === t.key && (
-              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-1 bg-blue-600 rounded-full"></span>
-            )}
           </button>
         ))}
       </div>
@@ -82,35 +76,35 @@ const Analizler: React.FC = () => {
       {loading ? (
         <div className="text-center text-gray-500">Yükleniyor...</div>
       ) : veri.length === 0 ? (
-        <div className="text-center text-gray-500 bg-gray-50 py-10 rounded-xl shadow-sm">
+        <div className="text-center text-gray-500 bg-gray-50 py-14 rounded-2xl shadow-inner text-lg">
           Bu {tab === "gunluk" ? "gün" : tab === "haftalik" ? "hafta" : "ay"} satışınız yok.
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <tbody className="divide-y divide-gray-100">
-              <tr>
-                <td className="px-6 py-4 font-medium text-gray-600">Toplam Ciro</td>
-                <td className="px-6 py-4 text-right font-bold text-gray-900">
+              <tr className="hover:bg-gray-50">
+                <td className="px-6 py-5 font-medium text-gray-600 text-lg">💰 Toplam Ciro</td>
+                <td className="px-6 py-5 text-right font-bold text-gray-900 text-lg">
                   ₺{toplamCiro.toLocaleString("tr-TR")}
                 </td>
               </tr>
-              <tr>
-                <td className="px-6 py-4 font-medium text-gray-600">%8 Komisyon</td>
-                <td className="px-6 py-4 text-right font-bold text-red-500">
+              <tr className="hover:bg-gray-50">
+                <td className="px-6 py-5 font-medium text-gray-600 text-lg">📉 %8 Komisyon</td>
+                <td className="px-6 py-5 text-right font-bold text-red-500 text-lg">
                   ₺{komisyon.toLocaleString("tr-TR")}
                 </td>
               </tr>
-              <tr>
-                <td className="px-6 py-4 font-medium text-gray-600">Net Ödeme</td>
-                <td className="px-6 py-4 text-right font-bold text-green-600">
+              <tr className="hover:bg-gray-50">
+                <td className="px-6 py-5 font-medium text-gray-600 text-lg">✅ Net Ödeme</td>
+                <td className="px-6 py-5 text-right font-bold text-green-600 text-lg">
                   ₺{netOdeme.toLocaleString("tr-TR")}
                 </td>
               </tr>
               {enCokSatan && (
-                <tr>
-                  <td className="px-6 py-4 font-medium text-gray-600">En Çok Satılan</td>
-                  <td className="px-6 py-4 text-right font-bold text-indigo-600">
+                <tr className="hover:bg-gray-50">
+                  <td className="px-6 py-5 font-medium text-gray-600 text-lg">🏆 En Çok Satılan</td>
+                  <td className="px-6 py-5 text-right font-bold text-indigo-600 text-lg">
                     {enCokSatan[0]} ({enCokSatan[1]} adet)
                   </td>
                 </tr>
