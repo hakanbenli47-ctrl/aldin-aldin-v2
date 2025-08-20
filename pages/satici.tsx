@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import DopingModal from "../components/DopingModal";
 import type React from "react";
-
+import Link from "next/link";
 function OzellikEtiketleri({ item }: { item: any }) {
   const options = item?.options || {};     // ürünün özellik snapshot’ı
   const selection = item?.selection || {}; // alıcının seçimi (beden/renk/Miktar...)
@@ -56,6 +56,7 @@ function OzellikEtiketleri({ item }: { item: any }) {
 const TABS = [
   { key: "ilanlar", label: "Yayındaki İlanlar" },
   { key: "siparisler", label: "Gelen Siparişler" },
+  { key: "analizler", label: "Analizler", href: "/analizler" },
 ];
 
 // --- Kargo Firmaları
@@ -572,45 +573,73 @@ const { data: yeniOrders } = await supabase
           alignItems: "center",
         }}
       >
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              fontWeight: 700,
-              fontSize: 14,
-              padding: "8px 18px",
-              borderRadius: 7,
-              background: activeTab === tab.key ? "#2563eb" : "#f3f4f6",
-              color: activeTab === tab.key ? "#fff" : "#223555",
-              border: "none",
-              boxShadow: activeTab === tab.key ? "0 4px 12px #2563eb18" : "none",
-              cursor: "pointer",
-              position: "relative",
-            }}
-          >
-            {tab.label}
-            {tab.key === "siparisler" && siparisler.length > 0 && (
-              <span
-                style={{
-                  background: "#ef4444",
-                  color: "#fff",
-                  borderRadius: "50%",
-                  padding: "2px 7px",
-                  fontSize: 12,
-                  fontWeight: 800,
-                  marginLeft: 8,
-                  position: "absolute",
-                  top: -9,
-                  right: -8,
-                  border: "2px solid #fff",
-                }}
-              >
-                {siparisler.length}
-              </span>
-            )}
-          </button>
-        ))}
+       {TABS.map((tab) => {
+  // Eğer tab "analizler" ise direkt link ile yönlendir
+  if (tab.key === "analizler") {
+    return (
+      <Link key={tab.key} href="/analizler">
+        <button
+          style={{
+            fontWeight: 700,
+            fontSize: 14,
+            padding: "8px 18px",
+            borderRadius: 7,
+            background: "#f3f4f6",
+            color: "#223555",
+            border: "none",
+            boxShadow: "none",
+            cursor: "pointer",
+            position: "relative",
+          }}
+        >
+          {tab.label}
+        </button>
+      </Link>
+    );
+  }
+
+  // Diğer tablar (ilanlar, siparisler) state üzerinden çalışsın
+  return (
+    <button
+      key={tab.key}
+      onClick={() => setActiveTab(tab.key)}
+      style={{
+        fontWeight: 700,
+        fontSize: 14,
+        padding: "8px 18px",
+        borderRadius: 7,
+        background: activeTab === tab.key ? "#2563eb" : "#f3f4f6",
+        color: activeTab === tab.key ? "#fff" : "#223555",
+        border: "none",
+        boxShadow: activeTab === tab.key ? "0 4px 12px #2563eb18" : "none",
+        cursor: "pointer",
+        position: "relative",
+      }}
+    >
+      {tab.label}
+      {tab.key === "siparisler" && siparisler.length > 0 && (
+        <span
+          style={{
+            background: "#ef4444",
+            color: "#fff",
+            borderRadius: "50%",
+            padding: "2px 7px",
+            fontSize: 12,
+            fontWeight: 800,
+            marginLeft: 8,
+            position: "absolute",
+            top: -9,
+            right: -8,
+            border: "2px solid #fff",
+          }}
+        >
+          {siparisler.length}
+        </span>
+      )}
+    </button>
+  );
+})}
+
         
         <button
           onClick={handleYeniIlanEkle}
