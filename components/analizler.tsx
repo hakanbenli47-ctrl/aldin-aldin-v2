@@ -54,7 +54,7 @@ const Analizler: React.FC = () => {
   return (
     <div className="p-6">
       {/* Sekmeler */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-4 mb-6 justify-center">
         {[
           { key: "gunluk", label: "Günlük" },
           { key: "haftalik", label: "Haftalık" },
@@ -63,13 +63,17 @@ const Analizler: React.FC = () => {
           <button
             key={t.key}
             onClick={() => setTab(t.key as any)}
-            className={`px-5 py-2 rounded-xl font-semibold shadow-sm transition ${
-              tab === t.key
-                ? "bg-blue-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
+            className={`relative px-6 py-2.5 rounded-xl font-semibold transition-all duration-300 shadow-sm
+              ${
+                tab === t.key
+                  ? "bg-blue-600 text-white shadow-lg scale-105"
+                  : "bg-white text-gray-700 hover:bg-blue-50 hover:scale-105 border border-gray-200"
+              }`}
           >
             {t.label}
+            {tab === t.key && (
+              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-blue-600 rounded-full"></span>
+            )}
           </button>
         ))}
       </div>
