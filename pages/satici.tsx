@@ -5,6 +5,7 @@ import Image from "next/image";
 import DopingModal from "../components/DopingModal";
 import type React from "react";
 import Link from "next/link";
+import Analizler from "../components/analizler";
 function OzellikEtiketleri({ item }: { item: any }) {
   const options = item?.options || {};     // ürünün özellik snapshot’ı
   const selection = item?.selection || {}; // alıcının seçimi (beden/renk/Miktar...)
@@ -56,7 +57,8 @@ function OzellikEtiketleri({ item }: { item: any }) {
 const TABS = [
   { key: "ilanlar", label: "Yayındaki İlanlar" },
   { key: "siparisler", label: "Gelen Siparişler" },
-  { key: "analizler", label: "Analizler", href: "/analizler" },
+  { key: "analizler", label: "Analizler" },
+
 ];
 
 // --- Kargo Firmaları
@@ -573,72 +575,46 @@ const { data: yeniOrders } = await supabase
           alignItems: "center",
         }}
       >
-       {TABS.map((tab) => {
-  // Eğer tab "analizler" ise direkt link ile yönlendir
-  if (tab.key === "analizler") {
-    return (
-      <Link key={tab.key} href="/analizler">
-        <button
-          style={{
-            fontWeight: 700,
-            fontSize: 14,
-            padding: "8px 18px",
-            borderRadius: 7,
-            background: "#f3f4f6",
-            color: "#223555",
-            border: "none",
-            boxShadow: "none",
-            cursor: "pointer",
-            position: "relative",
-          }}
-        >
-          {tab.label}
-        </button>
-      </Link>
-    );
-  }
+      {TABS.map((tab) => (
+  <button
+    key={tab.key}
+    onClick={() => setActiveTab(tab.key)}
+    style={{
+      fontWeight: 700,
+      fontSize: 14,
+      padding: "8px 18px",
+      borderRadius: 7,
+      background: activeTab === tab.key ? "#2563eb" : "#f3f4f6",
+      color: activeTab === tab.key ? "#fff" : "#223555",
+      border: "none",
+      boxShadow: activeTab === tab.key ? "0 4px 12px #2563eb18" : "none",
+      cursor: "pointer",
+      position: "relative",
+    }}
+  >
+    {tab.label}
+    {tab.key === "siparisler" && siparisler.length > 0 && (
+      <span
+        style={{
+          background: "#ef4444",
+          color: "#fff",
+          borderRadius: "50%",
+          padding: "2px 7px",
+          fontSize: 12,
+          fontWeight: 800,
+          marginLeft: 8,
+          position: "absolute",
+          top: -9,
+          right: -8,
+          border: "2px solid #fff",
+        }}
+      >
+        {siparisler.length}
+      </span>
+    )}
+  </button>
+))}
 
-  // Diğer tablar (ilanlar, siparisler) state üzerinden çalışsın
-  return (
-    <button
-      key={tab.key}
-      onClick={() => setActiveTab(tab.key)}
-      style={{
-        fontWeight: 700,
-        fontSize: 14,
-        padding: "8px 18px",
-        borderRadius: 7,
-        background: activeTab === tab.key ? "#2563eb" : "#f3f4f6",
-        color: activeTab === tab.key ? "#fff" : "#223555",
-        border: "none",
-        boxShadow: activeTab === tab.key ? "0 4px 12px #2563eb18" : "none",
-        cursor: "pointer",
-        position: "relative",
-      }}
-    >
-      {tab.label}
-      {tab.key === "siparisler" && siparisler.length > 0 && (
-        <span
-          style={{
-            background: "#ef4444",
-            color: "#fff",
-            borderRadius: "50%",
-            padding: "2px 7px",
-            fontSize: 12,
-            fontWeight: 800,
-            marginLeft: 8,
-            position: "absolute",
-            top: -9,
-            right: -8,
-            border: "2px solid #fff",
-          }}
-        >
-          {siparisler.length}
-        </span>
-      )}
-    </button>
-  );
-})}
 
         
         <button
@@ -963,6 +939,7 @@ const { data: yeniOrders } = await supabase
                 )}
               </div>
             ))}
+
             {ilanlar.length === 0 && (
               <div
                 style={{
@@ -1037,10 +1014,10 @@ const { data: yeniOrders } = await supabase
                     <th style={thS}>Sipariş No</th>
                     <th style={thS}>Ürün(ler)</th>
                     <th style={thS}>Alıcı</th>
-<th style={thS}>İsim Soyisim</th>
-<th style={thS}>Telefon</th>
-<th style={thS}>Adres</th>
-<th style={thS}>Tutar</th>
+                    <th style={thS}>İsim Soyisim</th>
+                    <th style={thS}>Telefon</th>
+                     <th style={thS}>Adres</th>
+                    <th style={thS}>Tutar</th>
 
                     <th style={thS}>Durum</th>
                     <th style={thS}>Kargo Firma</th>
@@ -1051,7 +1028,7 @@ const { data: yeniOrders } = await supabase
                 </thead>
                 <tbody>
                   {(siparisTab === "aktif" ? aktifSiparisler : gecmisSiparisler).map(
-  (sip: any) => {
+                 (sip: any) => {
                       const edit =
                         siparisEdits[sip.id] || {
                           kargoNo: "",
@@ -1062,64 +1039,66 @@ const { data: yeniOrders } = await supabase
                         <tr key={sip.id} style={{ borderBottom: "1.5px solid #e5e7eb" }}>
                           <td style={tdS}>{sip.id}</td>
                        <td style={tdS}>
-  {Array.isArray(sip.custom_features) ? (
-    sip.custom_features.map((u: any, i: number) => (
-      <div key={i} style={{ marginBottom: 6 }}>
-        <div>
-          {u.title} <span style={{ color: "#888" }}>x{u.adet}</span>
-        </div>
+                         {Array.isArray(sip.custom_features) ? (
+                                sip.custom_features.map((u: any, i: number) => (
+                <div key={i} style={{ marginBottom: 6 }}>
+                <div>
+                 {u.title} <span style={{ color: "#888" }}>x{u.adet}</span>
+                 </div>
 
-        {/* Özellikler */}
-        {u.ozellikler &&
-  Object.entries(u.ozellikler).map(([key, value], idx) => (
-    <div key={idx} style={{ fontSize: 12, color: "#666" }}>
-      {key}: {String(value)}
-    </div>
-  ))}
+                {/* Özellikler */}
+                 {u.ozellikler &&
+                 Object.entries(u.ozellikler).map(([key, value], idx) => (
+                 <div key={idx} style={{ fontSize: 12, color: "#666" }}>
+                {key}: {String(value)}
+                  </div>
+             ))}
 
-      </div>
-    ))
-  ) : typeof sip.custom_features === "object" && sip.custom_features !== null ? (
-    <div>
-      <div>
-        {sip.custom_features.title}{" "}
-        <span style={{ color: "#888" }}>x{sip.custom_features.adet}</span>
-      </div>
+           </div>
+              ))
+             ) : typeof sip.custom_features === "object" && sip.custom_features !== null ? (
+             <div> 
+              <div>
+                {sip.custom_features.title}{" "}
+                <span style={{ color: "#888" }}>x{sip.custom_features.adet}</span>
+                  </div>
 
-      {sip.custom_features.ozellikler &&
-  Object.entries(sip.custom_features.ozellikler).map(([key, value], idx) => (
-    <div key={idx} style={{ fontSize: 12, color: "#666" }}>
-      {key}: {String(value)}
-    </div>
-  ))}
+               {sip.custom_features.ozellikler &&
+                 Object.entries(sip.custom_features.ozellikler).map(([key, value], idx) => (
+                <div key={idx} style={{ fontSize: 12, color: "#666" }}>
+             {key}: {String(value)}
+               </div>
+                 ))}
 
-    </div>
-  ) : (
-    "-"
-  )}
-</td>
+                  </div>
+                   ) : (
+                  "-"
+                   )}
+  
+                        </td>
+
 
 
                           {/* Alıcı (Kullanıcı ID veya email) */}
-<td style={tdS}>{sip.user_id || "-"}</td>
+                        <td style={tdS}>{sip.user_id || "-"}</td>
 
-{/* İsim Soyisim */}
-<td style={tdS}>
-  {`${sip.first_name || ""} ${sip.last_name || ""}`.trim() || "-"}
-</td>
+                       {/* İsim Soyisim */}
+                   <td style={tdS}>
+                      {`${sip.first_name || ""} ${sip.last_name || ""}`.trim() || "-"}
+                      </td>
 
-{/* Telefon */}
-<td style={tdS}>{sip.phone || "-"}</td>
+                          {/* Telefon */}
+                     <td style={tdS}>{sip.phone || "-"}</td>
 
-{/* Adres */}
-<td style={tdS}>
-  {`${sip.address || ""} ${sip.city || ""}`.trim() || "-"}
-</td>
+                      {/* Adres */}
+                    <td style={tdS}>
+                    {`${sip.address || ""} ${sip.city || ""}`.trim() || "-"}
+                            </td>
 
-{/* Tutar */}
-<td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
-  {sip.total_price} ₺
-</td>
+                           {/* Tutar */}
+                    <td style={{ ...tdS, color: "#089981", fontWeight: 700 }}>
+                      {sip.total_price} ₺
+                          </td>
 
                           <td style={tdS}>
                             <span
@@ -1322,9 +1301,9 @@ const { data: yeniOrders } = await supabase
                                     }}
                                     onClick={async () => {
                                       await supabase
-  .from("seller_orders")
-  .update({ iade_durumu: "Onaylandı" })
-  .eq("id", sip.id);
+                            .from("seller_orders")
+                            .update({ iade_durumu: "Onaylandı" })
+                              .eq("id", sip.id);
 
                                       fetchSiparisler();
                                     }}
@@ -1343,12 +1322,12 @@ const { data: yeniOrders } = await supabase
                                       const reason = prompt("Red sebebini yazınız:");
                                       if (!reason) return;
                                       await supabase
-  .from("seller_orders")
-  .update({
-    iade_durumu: "Reddedildi",
-    iade_aciklamasi: reason,
-  })
-  .eq("id", sip.id);
+                               .from("seller_orders")
+                                   .update({
+                         iade_durumu: "Reddedildi",
+                     iade_aciklamasi: reason,
+                                })
+                       .eq("id", sip.id);
 
                                       fetchSiparisler();
                                     }}
@@ -1421,70 +1400,70 @@ const { data: yeniOrders } = await supabase
                               </div>
                             )}
                           </td>
-<td style={tdS}>
-  {sip.status === "İptal" && (
-    <button
-      style={{ ...butS, background: "#ef4444", color: "#fff" }}
-      onClick={() => handleSiparisIptal(sip.id)}
-    >
-      Sil
-    </button>
-  )}
+                <td style={tdS}>
+                 {sip.status === "İptal" && (
+                    <button
+                  style={{ ...butS, background: "#ef4444", color: "#fff" }}
+                   onClick={() => handleSiparisIptal(sip.id)}
+                        >
+                     Sil
+                    </button>
+                     )}
 
-  {/* Fatura butonu (TEK BAŞINA, self-closing!) */}
-  <FaturaYukleButton siparis={sip} onFaturaYuklendi={fetchSiparisler} />
+                       {/* Fatura butonu (TEK BAŞINA, self-closing!) */}
+                     <FaturaYukleButton siparis={sip} onFaturaYuklendi={fetchSiparisler} />
 
-  {/* Ürünü İptal Et — FaturaYukleButton'ın KARDESİ (dışında) */}
-  <button
-    onClick={async () => {
-      if (!confirm("Bu ürünü iptal etmek istediğinize emin misiniz?")) return;
+                      {/* Ürünü İptal Et — FaturaYukleButton'ın KARDESİ (dışında) */}
+                    <button
+                   onClick={async () => {
+                         if (!confirm("Bu ürünü iptal etmek istediğinize emin misiniz?")) return;
 
-     const { error } = await supabase
-  .from("seller_orders")
-  .update({ status: "İptal" })
-  .eq("id", sip.id);
-
-
-      if (error) {
-        alert("Sipariş iptal edilemedi ❌");
-        return;
-      }
-
-      try {
-    await fetch("/api/send-mail", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    orderId: sip.id, // alıcıyı API bulacak
-    subject: `Siparişiniz iptal edildi - #${sip.id}`,
-    text: `Merhaba,\n#${sip.id} numaralı siparişiniz iptal edilmiştir.`,
-    html: `<p>Merhaba,</p><p><b>#${sip.id}</b> numaralı siparişiniz iptal edilmiştir.</p>`
-  }),
-});
+                     const { error } = await supabase
+                   .from("seller_orders")
+                    .update({ status: "İptal" })
+                  .eq("id", sip.id);
 
 
-        alert("Sipariş iptal edildi ve mail gönderildi ✅");
-      } catch (e) {
-        console.error(e);
-        alert("Sipariş iptal edildi ama e-posta gönderilemedi.");
-      }
+                    if (error) {
+                    alert("Sipariş iptal edilemedi ❌");
+                   return;
+                   }
 
-      fetchSiparisler();
-    }}
-    style={{
-      ...butS,
-      backgroundColor: "#f44336",
-      color: "#fff",
-      marginLeft: 8,
-    }}
-  >
-    Ürünü İptal Et
-  </button>
-</td>
+                      try {
+               await fetch("/api/send-mail", {
+                   method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  orderId: sip.id, // alıcıyı API bulacak
+                  subject: `Siparişiniz iptal edildi - #${sip.id}`,
+                    text: `Merhaba,\n#${sip.id} numaralı siparişiniz iptal edilmiştir.`,
+                  html: `<p>Merhaba,</p><p><b>#${sip.id}</b> numaralı siparişiniz iptal edilmiştir.</p>`
+                 }),
+                  });
+
+
+          alert("Sipariş iptal edildi ve mail gönderildi ✅");
+           } catch (e) {
+             console.error(e);
+             alert("Sipariş iptal edildi ama e-posta gönderilemedi.");
+           }
+
+          fetchSiparisler();
+           }}
+           style={{
+          ...butS,
+           backgroundColor: "#f44336",
+          color: "#fff",
+          marginLeft: 8,
+          }}
+           >
+             Ürünü İptal Et
+             </button>
+              </td>
 
                           
                         </tr>
-                      );
+         );
                     }
                   )}
                 </tbody>
@@ -1492,6 +1471,21 @@ const { data: yeniOrders } = await supabase
             )}
           </>
         )}
+        {/* ANALİZLER */}
+{activeTab === "analizler" && (
+  <div
+    style={{
+      background: "#fff",
+      borderRadius: 9,
+      padding: "20px",
+      boxShadow: "0 2px 10px #e5e7eb16",
+      marginTop: 20,
+    }}
+  >
+    <Analizler />
+  </div>
+)}
+
       </div>
     </div>
   );
