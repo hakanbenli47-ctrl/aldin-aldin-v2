@@ -7,13 +7,14 @@ const Analizler: React.FC = () => {
   const [veri, setVeri] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Tarih aralıkları
   const getDateRange = () => {
     const now = new Date();
     let start: Date;
     if (tab === "gunluk") {
       start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     } else if (tab === "haftalik") {
-      const day = now.getDay();
+      const day = now.getDay(); // Pazar=0
       start = new Date(now);
       start.setDate(now.getDate() - day);
     } else {
@@ -38,10 +39,12 @@ const Analizler: React.FC = () => {
     fetchData();
   }, [tab]);
 
+  // Hesaplamalar
   const toplamCiro = veri.reduce((acc, s) => acc + (s.total_price || 0), 0);
   const komisyon = toplamCiro * 0.08;
   const netOdeme = toplamCiro - komisyon;
 
+  // En çok satan
   const urunSayilari: Record<string, number> = {};
   veri.forEach((s) => {
     urunSayilari[s.urunBaslik] = (urunSayilari[s.urunBaslik] || 0) + 1;
@@ -51,27 +54,41 @@ const Analizler: React.FC = () => {
   return (
     <div className="p-8">
       {/* Sekmeler */}
-      <div className="flex justify-center mb-12">
-  {[
-    { key: "gunluk", label: "📅 Günlük" },
-    { key: "haftalik", label: "📊 Haftalık" },
-    { key: "aylik", label: "📈 Aylık" },
-  ].map((t, i) => (
-    <button
-      key={t.key}
-      onClick={() => setTab(t.key as any)}
-      className={`mx-4 px-14 py-5 rounded-2xl font-semibold text-lg transition-all duration-300 
-        ${
-          tab === t.key
-            ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg scale-105"
-            : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 hover:shadow-md"
-        }`}
-    >
-      {t.label}
-    </button>
-  ))}
-</div>
-
+      <div className="mx-auto mb-12 max-w-3xl">
+        <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-7">
+          {[
+            { key: "gunluk", label: "📅 Günlük" },
+            { key: "haftalik", label: "📊 Haftalık" },
+            { key: "aylik", label: "📈 Aylık" },
+          ].map((t) => {
+            const active = tab === (t.key as any);
+            return (
+              <div key={t.key} className="relative">
+                <button
+                  onClick={() => setTab(t.key as any)}
+                  aria-pressed={active}
+                  className={[
+                    "group relative inline-flex items-center justify-center",
+                    "rounded-2xl px-10 sm:px-12 py-4 sm:py-5",
+                    "font-semibold text-base sm:text-lg",
+                    "transition-all duration-300 ease-out",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70",
+                    active
+                      ? "bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-xl ring-1 ring-indigo-500/30 hover:shadow-2xl hover:brightness-110"
+                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-sm",
+                    "hover:-translate-y-0.5",
+                  ].join(" ")}
+                >
+                  {t.label}
+                </button>
+                {active && (
+                  <span className="pointer-events-none absolute -bottom-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-indigo-500/80"></span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* İçerik */}
       {loading ? (
