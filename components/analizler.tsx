@@ -51,33 +51,44 @@ const Analizler: React.FC = () => {
   });
   const enCokSatan = Object.entries(urunSayilari).sort((a, b) => b[1] - a[1])[0];
 
+  // Üstteki sekmelerle aynı stil (inline)
+  const SEKME_BUTON = (aktif: boolean): React.CSSProperties => ({
+    fontWeight: 700,
+    fontSize: 14,
+    padding: "8px 18px",
+    borderRadius: 7,
+    background: aktif ? "#2563eb" : "#f3f4f6",
+    color: aktif ? "#fff" : "#223555",
+    border: "none",
+    boxShadow: aktif ? "0 4px 12px #2563eb18" : "none",
+    cursor: "pointer",
+  });
+
   return (
     <div className="p-8">
-      {/* Sekmeler — Satıcı sayfasındaki buton stili */}
-      <div className="flex items-center justify-center gap-3 sm:gap-4 mb-8">
+      {/* Sekmeler — yukarıdaki butonlarla aynı görünüm */}
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          justifyContent: "center",
+          alignItems: "center",
+          marginBottom: 18,
+        }}
+      >
         {[
           { key: "gunluk", label: "Günlük" },
-          { key: "haftalik", label: "Gelen Siparişler yerine 'Haftalık'" }, // Sadece örnek etiket açıklaması, istersen "Haftalık" kalsın
+          { key: "haftalik", label: "Haftalık" },
           { key: "aylik", label: "Aylık" },
-        ].map((t) => {
-          const active = tab === (t.key as any);
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key as any)}
-              className={[
-                "whitespace-nowrap rounded-lg px-5 py-2 font-bold text-[14px]",
-                "transition-all duration-200 shadow-none",
-                active
-                  ? "bg-blue-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.12)]"
-                  : "bg-gray-100 text-slate-800 hover:bg-gray-200",
-                "active:scale-[0.98] active:bg-blue-700",
-              ].join(" ")}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key as any)}
+            style={SEKME_BUTON(tab === (t.key as any))}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* İçerik */}
