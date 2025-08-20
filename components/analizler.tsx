@@ -53,41 +53,31 @@ const Analizler: React.FC = () => {
 
   return (
     <div className="p-8">
-      {/* Sekmeler */}
-      <div className="mx-auto mb-12 max-w-3xl">
-        <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-7">
-          {[
-            { key: "gunluk", label: "📅 Günlük" },
-            { key: "haftalik", label: "📊 Haftalık" },
-            { key: "aylik", label: "📈 Aylık" },
-          ].map((t) => {
-            const active = tab === (t.key as any);
-            return (
-              <div key={t.key} className="relative">
-                <button
-                  onClick={() => setTab(t.key as any)}
-                  aria-pressed={active}
-                  className={[
-                    "group relative inline-flex items-center justify-center",
-                    "rounded-2xl px-10 sm:px-12 py-4 sm:py-5",
-                    "font-semibold text-base sm:text-lg",
-                    "transition-all duration-300 ease-out",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/70",
-                    active
-                      ? "bg-gradient-to-br from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-xl ring-1 ring-indigo-500/30 hover:shadow-2xl hover:brightness-110"
-                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-sm",
-                    "hover:-translate-y-0.5",
-                  ].join(" ")}
-                >
-                  {t.label}
-                </button>
-                {active && (
-                  <span className="pointer-events-none absolute -bottom-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-indigo-500/80"></span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      {/* Sekmeler — Satıcı sayfasındaki buton stili */}
+      <div className="flex items-center justify-center gap-3 sm:gap-4 mb-8">
+        {[
+          { key: "gunluk", label: "Günlük" },
+          { key: "haftalik", label: "Gelen Siparişler yerine 'Haftalık'" }, // Sadece örnek etiket açıklaması, istersen "Haftalık" kalsın
+          { key: "aylik", label: "Aylık" },
+        ].map((t) => {
+          const active = tab === (t.key as any);
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as any)}
+              className={[
+                "whitespace-nowrap rounded-lg px-5 py-2 font-bold text-[14px]",
+                "transition-all duration-200 shadow-none",
+                active
+                  ? "bg-blue-600 text-white shadow-[0_4px_12px_rgba(37,99,235,0.12)]"
+                  : "bg-gray-100 text-slate-800 hover:bg-gray-200",
+                "active:scale-[0.98] active:bg-blue-700",
+              ].join(" ")}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* İçerik */}
