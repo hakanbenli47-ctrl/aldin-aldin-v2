@@ -54,25 +54,25 @@ const Analizler: React.FC = () => {
   return (
     <div className="p-6">
       {/* Sekmeler */}
-      <div className="flex gap-4 mb-8 justify-center">
+      <div className="flex gap-6 mb-10 justify-center">
         {[
-          { key: "gunluk", label: "Günlük" },
-          { key: "haftalik", label: "Haftalık" },
-          { key: "aylik", label: "Aylık" },
+          { key: "gunluk", label: "📅 Günlük" },
+          { key: "haftalik", label: "📊 Haftalık" },
+          { key: "aylik", label: "📈 Aylık" },
         ].map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key as any)}
-            className={`relative px-6 py-2 rounded-lg font-semibold transition-all duration-300 
+            className={`relative px-8 py-3 rounded-xl font-semibold transition-all duration-300 transform 
               ${
                 tab === t.key
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg scale-105"
-                  : "bg-white text-gray-700 border border-gray-200 hover:bg-blue-50 hover:scale-105"
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xl scale-110"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-blue-50 hover:shadow-md hover:scale-105"
               }`}
           >
             {t.label}
             {tab === t.key && (
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-1 bg-blue-600 rounded-full"></span>
+              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-1 bg-blue-600 rounded-full"></span>
             )}
           </button>
         ))}
