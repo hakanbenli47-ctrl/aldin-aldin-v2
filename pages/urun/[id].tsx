@@ -163,7 +163,7 @@ export default function UrunDetay({
   const sepeteEkle = async (urun: Ilan) => {
     if (!user) {
       alert("Lütfen giriş yapınız!");
-      router.push("/rol-secim");
+      router.push("/giris");
       return;
     }
     const userId = user.id;
