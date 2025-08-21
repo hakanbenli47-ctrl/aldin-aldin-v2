@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { app } from "../lib/firebase";
-import { supabase } from "../lib/supabaseClient"; // ✅ Supabase client
+import { supabase } from "../lib/supabaseClient";
 
 export default function NotificationComponent() {
   const [token, setToken] = useState<string | null>(null);
@@ -26,22 +26,17 @@ export default function NotificationComponent() {
             console.log("FCM Token:", currentToken);
             setToken(currentToken);
 
-            // 🔹 Supabase’e kaydet
-            const { data: { user } } = await supabase.auth.getUser(); // giriş yapan kullanıcıyı al
-            if (user) {
-              const { error } = await supabase
-                .from("notification_tokens")
-                .upsert(
-                  {
-                    user_id: user.id,
-                    token: currentToken,
-                  },
-                  { onConflict: "user_id" }
-                );
+            // ✅ Supabase'e kaydet
+          // ✅ Supabase'e kaydet
+const user = (await supabase.auth.getUser()).data.user; // giriş yapan kullanıcı
+if (user?.id) {
+  await supabase.from("notification_tokens").upsert({
+    user_id: user.id,
+    token: currentToken,
+  });
+  console.log("Token Supabase'e kaydedildi ✅");
+}
 
-              if (error) console.error("Supabase kayıt hatası ❌", error);
-              else console.log("Token Supabase'e kaydedildi ✅");
-            }
           } else {
             console.log("Token alınamadı ❌");
           }
