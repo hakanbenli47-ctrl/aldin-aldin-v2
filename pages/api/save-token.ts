@@ -14,12 +14,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Aynı kullanıcı için aynı token varsa tekrar ekleme
-  const { data, error } = await supabase
-    .from("notification_tokens")
-    .upsert(
-      { user_id, token, created_at: new Date().toISOString() },
-      { onConflict: "user_id,token" } // duplicate engelle
-    );
+ const { data, error } = await supabase
+  .from("notification_tokens")
+  .upsert(
+    { user_id, token, created_at: new Date().toISOString() },
+    { onConflict: "user_id,token" } // artık çalışır çünkü unique key var
+  );
+
 
   if (error) {
     return res.status(500).json({ error: error.message });
