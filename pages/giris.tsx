@@ -3,7 +3,61 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
 
+// 🔔 Firebase (sadece bu dosyada, güvenli init)
+import { initializeApp, getApps } from "firebase/app";
+import { getMessaging, getToken, isSupported } from "firebase/messaging";
+
 const ADMIN_EMAILS = ["80birinfo@gmail.com"]; // buraya admin mailleri ekle
+
+// ✅ Senin Firebase config'in
+const firebaseConfig = {
+  apiKey: "AIzaSyBVsd_UoZSk6WE0AQu1lWpgOESf1bHSM",
+  authDomain: "birapp-44f8a.firebaseapp.com",
+  projectId: "birapp-44f8a",
+  storageBucket: "birapp-44f8a.appspot.com",
+  messagingSenderId: "987619236912",
+  appId: "1:987619236912:web:7b1a7398523e5590221f5",
+  measurementId: "G-BTLZMP04HS",
+};
+
+// 🔑 Web Push sertifika (VAPID)
+const VAPID_KEY =
+  "BDgEzYFX7Jdx7ch28xHMXLRuWOhwSeyTZkYOszOOSj8DORBO2JagAMVT47hxn4MeyBx8NkIsVj0tJuJXINAUc_4";
+
+// 🔧 Giriş yapan kullanıcının FCM tokenını kaydet
+async function saveFcmToken(userId: string) {
+  try {
+    if (typeof window === "undefined") return;
+    if (!(await isSupported())) return; // Safari/uygunsuz tarayıcı vs.
+
+    // izin al
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return;
+
+    // SW kaydı (public/firebase-messaging-sw.js mevcut olmalı)
+    const swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+
+    // app init (idempotent)
+    if (!getApps().length) initializeApp(firebaseConfig);
+    const messaging = getMessaging();
+
+    // token al
+    const token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: swReg,
+    });
+    if (!token) return;
+
+    // Supabase'e kaydet (senin endpointin)
+    await fetch("/api/save-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, user_id: userId }),
+    });
+  } catch (e) {
+    console.warn("FCM token kaydedilemedi:", e);
+  }
+}
 
 export default function Giris() {
   const [message, setMessage] = useState("");
@@ -69,12 +123,11 @@ export default function Giris() {
         return;
       }
 
-      // ✅ Admin kontrolü: eğer admin ise OTP'yi atla ve admin paneline git
+      // ✅ Admin kontrolü: adminse OTP yok & token kaydı → yönlendirme
       if (data.user && ADMIN_EMAILS.includes(data.user.email?.toLowerCase() || "")) {
+        await saveFcmToken(data.user.id);
         setMessage("👑 Admin girişi başarılı, yönlendiriliyorsunuz...");
-        setTimeout(() => {
-          router.push("/admin/saticilar");
-        }, 500);
+        setTimeout(() => router.push("/admin/saticilar"), 500);
         return;
       }
 
@@ -87,6 +140,8 @@ export default function Giris() {
         if (c.ok) {
           const { trusted } = await c.json();
           if (trusted) {
+            // 🔸 trusted akış: token kaydet + yönlendir
+            await saveFcmToken(data.user!.id);
             setMessage("🔓 Güvenilir IP - OTP istenmedi.");
             const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
             setTimeout(() => {
@@ -98,6 +153,7 @@ export default function Giris() {
         }
       } catch {}
 
+      // OTP akışı için signOut
       await supabase.auth.signOut();
 
       const base = `${window.location.origin}/api/auth/start-otp`;
@@ -145,7 +201,9 @@ export default function Giris() {
         body: JSON.stringify({ email: em, code: otpCode }),
       });
       if (v.status === 405 || v.status === 404) {
-        v = await fetch(`${base}?email=${encodeURIComponent(em)}&code=${encodeURIComponent(otpCode)}`, { method: "GET" });
+        v = await fetch(`${base}?email=${encodeURIComponent(em)}&code=${encodeURIComponent(otpCode)}`, {
+          method: "GET",
+        });
       }
       if (!v.ok) {
         const t = await v.text();
@@ -154,7 +212,7 @@ export default function Giris() {
       }
 
       setMessage("✅ Kod doğru, giriş yapılıyor...");
-      await finalLogin(em, password);
+      await finalLogin(em, password); // token kaydı finalLogin içinde
     } catch (err: any) {
       console.error("OTP doğrulama hatası:", err);
       const msg = typeof err?.message === "string" ? err.message : "Doğrulama sırasında hata oluştu.";
@@ -171,6 +229,11 @@ export default function Giris() {
       setMessage("❌ Giriş başarısız: " + error.message);
       return;
     }
+
+    // 🔸 Burada token kaydı (OTP akışı sonrası kesin kullanıcı var)
+    try {
+      await saveFcmToken(data.user!.id);
+    } catch {}
 
     // ✅ Admin kontrolü
     if (data.user && ADMIN_EMAILS.includes(data.user.email?.toLowerCase() || "")) {
@@ -232,7 +295,7 @@ export default function Giris() {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              autoComplete="username"   // ← email yerine username kullan
+              autoComplete="username"
               placeholder="E-posta"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -337,6 +400,35 @@ export default function Giris() {
             Hesabın yok mu? Kayıt ol
           </a>
         </div>
+
+        {/* ✅ Şifre sıfırlama linki */}
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <a href="/sifre-sifirla" style={{ color: "#ef4444", textDecoration: "underline", fontSize: 14 }}>
+            Şifremi Unuttum
+          </a>
+        </div>
+
+        {/* ✅ Google ile giriş (redirect ettiği için bu sayfada token kaydı zor;
+              ama parolalı girişler artık tabloya kaydediliyor.) */}
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <button
+            onClick={async () => {
+              const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
+              if (error) setMessage("❌ Google ile giriş başarısız: " + error.message);
+            }}
+            style={{
+              background: "#fff",
+              border: "1px solid #ddd",
+              padding: "10px 16px",
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: "pointer",
+              width: "100%",
+            }}
+          >
+            🔑 Google ile Giriş Yap
+          </button>
+        </div>
       </div>
 
       {/* Android'e özel görünümler */}
@@ -350,7 +442,7 @@ export default function Giris() {
 
         /* Android: ilk anda tam ortada olsun, klavye/dinamik bar oynamasın */
         .login-android .login-shell {
-          min-height: 100dvh !important;     /* adres çubuğu yüksekliğini hesaba katar */
+          min-height: 100dvh !important; /* adres çubuğu yüksekliğini hesaba katar */
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
@@ -362,7 +454,7 @@ export default function Giris() {
         .login-android .login-card {
           width: 100vw !important;
           max-width: 480px !important;
-          border-radius: 0 !important;       /* mobilde düz kenar – istersen kaldır */
+          border-radius: 0 !important; /* mobilde düz kenar – istersen kaldır */
           box-shadow: none !important;
           padding: 24px 16px !important;
           min-width: auto !important;
