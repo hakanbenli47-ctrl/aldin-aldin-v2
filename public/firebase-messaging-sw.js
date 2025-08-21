@@ -1,9 +1,6 @@
-// Bu dosya public klasöründe olacak: /public/firebase-messaging-sw.js
-
 importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js");
 
-// Aynı config'i buraya da yazmalısın
 firebase.initializeApp({
   apiKey: "AIzaSyBVsd_UoZSk6WE0AQu1lWpgOESf1bHSM",
   authDomain: "birapp-44f8a.firebaseapp.com",
@@ -14,18 +11,27 @@ firebase.initializeApp({
   measurementId: "G-BTLZMP04HS",
 });
 
-// messaging'i al
 const messaging = firebase.messaging();
 
-// Bildirim arka planda geldiğinde tetiklenir
+// Background message
 messaging.onBackgroundMessage((payload) => {
-  console.log("[firebase-messaging-sw.js] Background message received:", payload);
+  console.log("[firebase-messaging-sw.js] Background message:", payload);
 
   const notificationTitle = payload.notification?.title || "Yeni Bildirim";
   const notificationOptions = {
     body: payload.notification?.body || "Bir güncelleme var!",
-    icon: "/logo192.png" // Buraya kendi ikonunu ekle
+    icon: "/logo192.png",
+    data: {
+      url: payload.data?.url || "https://80bir.com", // varsayılan yönlendirme
+    },
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Bildirime tıklandığında → siteye yönlendir
+self.addEventListener("notificationclick", function (event) {
+  event.notification.close();
+  const url = event.notification?.data?.url || "https://80bir.com";
+  event.waitUntil(clients.openWindow(url));
 });

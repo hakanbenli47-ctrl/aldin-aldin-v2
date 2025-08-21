@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
-// Firebase config (senin firebase configini yaz buraya)
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyBvJdU...",
   authDomain: "birapp-44f8a.firebaseapp.com",
@@ -29,7 +29,10 @@ export default function App({ Component, pageProps }: AppProps) {
     const messaging = getMessaging(app);
 
     // Token al
-    getToken(messaging, { vapidKey: "BDgEzYFX7Jdx7ch28xHMXLRuWOhwSeyTZkYOszOOSj8DORBO2JagAMVT47hxn4MeyBx8NkIsVj0tJuJXINAUc_4" })
+    getToken(messaging, {
+      vapidKey:
+        "BDgEzYFX7Jdx7ch28xHMXLRuWOhwSeyTZkYOszOOSj8DORBO2JagAMVT47hxn4MeyBx8NkIsVj0tJuJXINAUc_4",
+    })
       .then((currentToken) => {
         if (currentToken) {
           console.log("FCM Token:", currentToken);
@@ -51,14 +54,23 @@ export default function App({ Component, pageProps }: AppProps) {
     // Foreground mesaj dinleme
     onMessage(messaging, (payload) => {
       console.log("Message received. ", payload);
-      alert(payload.notification?.title || "Yeni bildirim!");
+
+      // Eğer url datası geldiyse → siteye yönlendir
+      if (payload.data?.url) {
+        window.location.href = payload.data.url;
+      } else {
+        alert(payload.notification?.title || "Yeni bildirim!");
+      }
     });
   }, []);
 
   return (
     <>
       <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
         <meta name="theme-color" content="#2563eb" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
