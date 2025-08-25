@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
 
-const DESTEK_EMAILS = ["destek1@80bir.com", "destek2@80bir.com"];
+const DESTEK_EMAILS = ["destek80bir@gmail.com"];
 
 export default function DestekAdmin() {
   const router = useRouter();
