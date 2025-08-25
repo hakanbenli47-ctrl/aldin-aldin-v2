@@ -8,12 +8,13 @@ import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 // Firebase config
 const firebaseConfig = {
-  apiKey: "AIzaSyBvJdU...",
-  authDomain: "birapp-44f8a.firebaseapp.com",
-  projectId: "birapp-44f8a",
-  storageBucket: "birapp-44f8a.appspot.com",
-  messagingSenderId: "987619236912",
-  appId: "1:987619236912:web:7b1a739852e5590221f5",
+  apiKey: "AIzaSyAz_ZEDKke3Pg0SyA2uV5jIOuu5pvRuKRM",
+  authDomain: "birapp-67573.firebaseapp.com",
+  projectId: "birapp-67573",
+  storageBucket: "birapp-67573.firebasestorage.app",
+  messagingSenderId: "575930274632",
+  appId: "1:575930274632:web:760add3bcb2558e8d0d97d",
+  measurementId: "G-SR16YENH0L"
 };
 
 export default function App({ Component, pageProps }: AppProps) {
