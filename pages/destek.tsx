@@ -17,6 +17,7 @@ export default function Destek() {
   const [yeniMesaj, setYeniMesaj] = useState("");
   const [userEmail, setUserEmail] = useState<string>("");
   const [emailInput, setEmailInput] = useState("");
+  const [status, setStatus] = useState<"pending" | "active">("pending");
   const kutuRef = useRef<HTMLDivElement>(null);
 
   // Var olan mesajları yükle
@@ -26,6 +27,7 @@ export default function Destek() {
       .select("*")
       .eq("sohbet_id", sid)
       .order("gonderilme_tarihi", { ascending: true });
+
     if (data) setMesajlar(data as any);
     scrollToBottom();
   };
@@ -54,7 +56,7 @@ export default function Destek() {
           status: "pending",
         },
       ])
-      .select("id")
+      .select("id, status")
       .single();
 
     if (error) {
@@ -64,6 +66,7 @@ export default function Destek() {
     }
 
     setSohbetId(ins.id);
+    setStatus(ins.status as "pending" | "active");
     await loadMesajlar(ins.id);
 
     // Realtime dinleme
@@ -99,6 +102,18 @@ export default function Destek() {
   // Mesaj gönder
   const gonder = async () => {
     if (!yeniMesaj.trim() || !sohbetId) return;
+
+    // 👇 Optimistic update (hemen ekrana bas)
+    const fakeMsg: Mesaj = {
+      id: Date.now(),
+      sohbet_id: sohbetId,
+      gonderen_email: userEmail,
+      mesaj_metni: yeniMesaj.trim(),
+      gonderilme_tarihi: new Date().toISOString(),
+      rol: "kullanici",
+    };
+    setMesajlar((prev) => [...prev, fakeMsg]);
+    scrollToBottom();
 
     const { error } = await supabase.from("destek_mesajlari").insert({
       sohbet_id: sohbetId,
@@ -191,6 +206,13 @@ export default function Destek() {
             </div>
           );
         })}
+
+        {/* 👇 Bekleme mesajı */}
+        {status === "pending" && (
+          <div style={{ textAlign: "center", color: "#999", marginTop: 10 }}>
+            🔔 Destek ekibinin sohbete katılması bekleniyor...
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
