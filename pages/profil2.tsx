@@ -1262,48 +1262,7 @@ return <p style={{ color:"#64748b" }}>Bir menü seçin.</p>;
                 ))}
               </ul>
 
-              <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>
-                Hizmetlerim
-              </h3>
-              <ul style={{ listStyle: "none", padding: 0, marginBottom: 30 }}>
-                {servicesItems.map((item) => (
-                  <li
-                    key={item.id}
-                    style={{
-                      padding: "8px 15px",
-                      marginBottom: 8,
-                      cursor: "pointer",
-                      color: "#475569",
-                      fontWeight: 500,
-                      borderRadius: 6,
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      transition: "background-color 0.15s",
-                    }}
-                    onClick={() => setSelectedMenu(item.id)}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f0fdfa")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                  >
-                    <span>{item.label}</span>
-                    {item.badge && (
-                      <span
-                        style={{
-                          background: item.badge === "YENİ" ? "#ef4444" : "#f97316",
-                          color: "white",
-                          borderRadius: 6,
-                          padding: "0 6px",
-                          fontSize: 11,
-                          fontWeight: "700",
-                        }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-
+            
               <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 10, color: "#334155" }}>
                 Hesabım & Yardım
               </h3>

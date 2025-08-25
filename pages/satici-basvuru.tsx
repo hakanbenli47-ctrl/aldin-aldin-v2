@@ -15,7 +15,6 @@ export default function SaticiBasvuru() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // 📩 Admin listesi
   const ADMIN_EMAILS = ["80birinfo@gmail.com"];
 
   useEffect(() => {
@@ -27,27 +26,21 @@ export default function SaticiBasvuru() {
       }
       setUser(data.user);
 
-      // Firma adını mevcut kayıt varsa çek
       const { data: firma } = await supabase
         .from("satici_firmalar")
         .select("firma_adi")
         .eq("user_id", data.user.id)
         .maybeSingle();
 
-      if (firma?.firma_adi) {
-        setFirmaAdi(firma.firma_adi);
-      }
+      if (firma?.firma_adi) setFirmaAdi(firma.firma_adi);
 
-      // Daha önce başvuru varsa yönlendir
       const { data: existing } = await supabase
         .from("satici_basvuru")
         .select("id")
         .eq("user_id", data.user.id)
         .maybeSingle();
 
-      if (existing) {
-        router.push("/satici-durum");
-      }
+      if (existing) router.push("/satici-durum");
     }
     checkUser();
   }, []);
@@ -59,33 +52,31 @@ export default function SaticiBasvuru() {
       .replace(/[^a-zA-Z0-9.\-_]/g, "");
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
-  if (!e.target.files?.[0] || !user) return;
-  const file = e.target.files[0];
-  const safeName = sanitizeFileName(file.name);
-  const fileName = `${key}-${user.id}-${Date.now()}-${safeName}`;
+    if (!e.target.files?.[0] || !user) return;
+    const file = e.target.files[0];
+    const safeName = sanitizeFileName(file.name);
+    const fileName = `${key}-${user.id}-${Date.now()}-${safeName}`;
 
-  const { error } = await supabase.storage
-    .from("satici-belgeler")
-    .upload(fileName, file, { upsert: true });
+    const { error } = await supabase.storage
+      .from("satici-belgeler")
+      .upload(fileName, file, { upsert: true });
 
-  if (error) {
-    setMessage("Belge yüklenemedi: " + error.message);
-    return;
-  }
+    if (error) {
+      setMessage("Belge yüklenemedi: " + error.message);
+      return;
+    }
 
-  // ✅ Public URL al
-  const { data } = supabase
-    .storage
-    .from("satici-belgeler")
-    .getPublicUrl(fileName);
+    const { data } = supabase
+      .storage
+      .from("satici-belgeler")
+      .getPublicUrl(fileName);
 
-  setBelgeler((prev) => ({
-    ...prev,
-    [key]: data.publicUrl,   // artık public URL kaydediyoruz
-  }));
-};
+    setBelgeler((prev) => ({
+      ...prev,
+      [key]: data.publicUrl,
+    }));
+  };
 
-  // 📩 Mail gönderme fonksiyonu
   async function sendMail(to: string, subject: string, text: string, html: string) {
     try {
       await fetch("/api/send-mail", {
@@ -100,6 +91,12 @@ export default function SaticiBasvuru() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!vergiNo || !telefon || !belgeler.vergi_levhasi || !belgeler.kimlik) {
+      setMessage("Lütfen tüm alanları doldurun ve gerekli belgeleri yükleyin.");
+      return;
+    }
+
     if (!sozlesmeOnay) {
       setMessage("Sözleşmeyi onaylamadan başvuru gönderemezsiniz.");
       return;
@@ -108,10 +105,8 @@ export default function SaticiBasvuru() {
     setLoading(true);
     setMessage("");
 
-    // Eski başvuruyu sil
     await supabase.from("satici_basvuru").delete().eq("user_id", user?.id);
 
-    // Yeni başvuru kaydı
     const { error } = await supabase.from("satici_basvuru").insert([{
       user_id: user?.id,
       firma_adi: firmaAdi,
@@ -119,6 +114,7 @@ export default function SaticiBasvuru() {
       telefon,
       belgeler,
       sozlesme_onay: sozlesmeOnay,
+      sozlesme_onay_tarih: new Date().toISOString(),
       durum: "pending",
     }]);
 
@@ -129,7 +125,6 @@ export default function SaticiBasvuru() {
     } else {
       setMessage("✅ Başvurunuz başarıyla alındı. Onay sürecini bekleyin.");
 
-      // 📩 Sadece admin’e mail
       for (const admin of ADMIN_EMAILS) {
         sendMail(
           admin,
@@ -141,36 +136,37 @@ export default function SaticiBasvuru() {
         );
       }
 
-      // Form resetle
       setVergiNo("");
       setTelefon("");
       setBelgeler({});
       setSozlesmeOnay(false);
 
-      // Başvuru durumuna yönlendir
       setTimeout(() => router.push("/satici-durum"), 2000);
     }
   };
 
   return (
     <div style={{ maxWidth: 500, margin: "40px auto", padding: 20 }}>
-      <h2 style={{ marginBottom: 20, color: "#1648b0" }}>Satıcı Başvuru Formu</h2>
+      <h2 style={{ marginBottom: 10, color: "#1648b0" }}>Satıcı Başvuru Formu</h2>
+      <p style={{ color: "#555", fontSize: 14, marginBottom: 20 }}>
+        Lütfen tüm alanları eksiksiz doldurun ve belgeleri yükleyin. Eksik başvurular değerlendirmeye alınmaz.
+      </p>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <label>Firma Adı</label>
         <input type="text" value={firmaAdi} disabled />
 
         <label>Vergi No / TC</label>
-        <input type="text" value={vergiNo} onChange={(e) => setVergiNo(e.target.value)} />
+        <input type="text" required value={vergiNo} onChange={(e) => setVergiNo(e.target.value)} />
 
         <label>Telefon</label>
-        <input type="text" value={telefon} onChange={(e) => setTelefon(e.target.value)} />
+        <input type="text" required value={telefon} onChange={(e) => setTelefon(e.target.value)} />
 
         <label>Vergi Levhası (PDF/JPG)</label>
-        <input type="file" accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "vergi_levhasi")} />
+        <input type="file" required accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "vergi_levhasi")} />
 
         <label>Kimlik Belgesi (PDF/JPG)</label>
-        <input type="file" accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "kimlik")} />
+        <input type="file" required accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "kimlik")} />
 
         <label style={{ marginTop: 10 }}>
           <input
