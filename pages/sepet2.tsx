@@ -643,53 +643,50 @@ const { data, error } = await supabase
                     </h3>
 
                     {/* Ürün Özellikleri Düzenleme */}
-                    {(
-                      Object.entries(item.product?.ozellikler || {}).map(
-                        ([ozellik, _secenekler]) => {
-                          const seciliDeger = item.ozellikler?.[ozellik] || "";
-                          return [ozellik, seciliDeger];
-                        }
-                      )
-                    ).map(([ozellik, deger]) => (
-                      <div key={ozellik as string} style={{ marginBottom: 4 }}>
-                        <b>{ozellik}:</b>{" "}
-                        <select
-                          value={deger as string}
-                          onChange={async (e) => {
-                            const yeniDeger = e.target.value;
-                            const mevcutOzellikler =
-                              item.ozellikler &&
-                              Object.keys(item.ozellikler).length > 0
-                                ? item.ozellikler
-                                : {};
-                            const yeniOzellikler = {
-                              ...mevcutOzellikler,
-                              [ozellik as string]: yeniDeger,
-                            };
-                            await supabase
-                              .from("cart")
-                              .update({ ozellikler: yeniOzellikler })
-                              .eq("id", item.id);
-                            setCartItems((prev) =>
-                              prev.map((urun) =>
-                                urun.id === item.id
-                                  ? { ...urun, ozellikler: yeniOzellikler }
-                                  : urun
-                              )
-                            );
-                          }}
-                        >
-                          <option value="">Seçiniz</option>
-                          {(item.product?.ozellikler?.[ozellik as string] || [
-                            deger,
-                          ]).map((secenek: string) => (
-                            <option key={secenek} value={secenek}>
-                              {secenek}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
+                   {/* Ürün Özellikleri Sadece Giyim (3) ve Gıda (7) kategorilerinde */}
+{([3, 7].includes(item.product?.kategori_id) &&
+  Object.entries(item.product?.ozellikler || {}).map(([ozellik, _secenekler]) => {
+    const seciliDeger = item.ozellikler?.[ozellik] || "";
+    return (
+      <div key={ozellik as string} style={{ marginBottom: 4 }}>
+        <b>{ozellik}:</b>{" "}
+        <select
+          value={seciliDeger as string}
+          onChange={async (e) => {
+            const yeniDeger = e.target.value;
+            const mevcutOzellikler =
+              item.ozellikler && Object.keys(item.ozellikler).length > 0
+                ? item.ozellikler
+                : {};
+            const yeniOzellikler = {
+              ...mevcutOzellikler,
+              [ozellik as string]: yeniDeger,
+            };
+            await supabase
+              .from("cart")
+              .update({ ozellikler: yeniOzellikler })
+              .eq("id", item.id);
+            setCartItems((prev) =>
+              prev.map((urun) =>
+                urun.id === item.id
+                  ? { ...urun, ozellikler: yeniOzellikler }
+                  : urun
+              )
+            );
+          }}
+        >
+          <option value="">Seçiniz</option>
+          {(item.product?.ozellikler?.[ozellik as string] || [seciliDeger]).map(
+            (secenek: string) => (
+              <option key={secenek} value={secenek}>
+                {secenek}
+              </option>
+            )
+          )}
+        </select>
+      </div>
+    );
+  }))}
 
                     <div>
                       {indirimVar ? (
