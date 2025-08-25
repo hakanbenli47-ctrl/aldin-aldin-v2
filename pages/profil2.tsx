@@ -223,7 +223,7 @@ const handleProfileDelete = async () => {
 
 
   const specialItems = [
-    { id: "indirimKuponlarim", label: "İndirim Kuponlarım" },
+    
     { id: "favoriIlanlar", label: "Favori İlanlar" },
     { id: "takipEttigimMagazalar", label: "Takip Ettiğim Mağazalar" },
     { id: "trendyolElite", label: "Trendyol Elite" }
