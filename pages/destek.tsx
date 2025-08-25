@@ -115,18 +115,23 @@ export default function Destek() {
     }, 80);
 
   // 2) Mesaj gönder
-  const gonder = async () => {
-    if (!yeniMesaj.trim() || !sohbetId) return;
+ const gonder = async () => {
+  if (!yeniMesaj.trim() || !sohbetId) return;
 
-    const { error } = await supabase.from("destek_mesajlari").insert({
-      sohbet_id: sohbetId,
-      gonderen_email: userEmail,
-      mesaj_metni: yeniMesaj.trim(),
-      rol: "kullanici",
-    });
+  const { error } = await supabase.from("destek_mesajlari").insert({
+    sohbet_id: sohbetId,
+    gonderen_email: userEmail,
+    mesaj_metni: yeniMesaj.trim(),
+    rol: "kullanici",
+  });
 
-    if (!error) setYeniMesaj("");
-  };
+  if (error) {
+    console.error("Mesaj gönderilemedi:", error);
+    alert("Mesaj gönderilemedi: " + error.message);
+  } else {
+    setYeniMesaj("");
+  }
+};
 
   return (
     <div style={{ maxWidth: 640, margin: "20px auto", padding: 16 }}>
