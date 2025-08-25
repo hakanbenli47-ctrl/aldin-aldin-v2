@@ -33,6 +33,7 @@ export default function App({ Component, pageProps }: AppProps) {
     const app = initializeApp(firebaseConfig);
     const messaging = getMessaging(app);
 
+    
     // Token al
     getToken(messaging, {
       vapidKey:
