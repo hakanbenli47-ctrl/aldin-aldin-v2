@@ -214,7 +214,6 @@ const handleProfileDelete = async () => {
   const menuItems = [
   { id: "profilim", label: "Profilim" },
   { id: "siparislerim", label: "Siparişlerim" },
-  { id: "degerlendirmelerim", label: "Değerlendirmelerim" },
   { id: "saticiMesajlarim", label: "Satıcı Mesajlarım" },
   { id: "tekrarSatinAl", label: "Tekrar Satın Al" },
   { id: "adreslerim", label: "Adreslerim" },
@@ -226,7 +225,7 @@ const handleProfileDelete = async () => {
     
     { id: "favoriIlanlar", label: "Favori İlanlar" },
     { id: "takipEttigimMagazalar", label: "Takip Ettiğim Mağazalar" },
-    { id: "trendyolElite", label: "Trendyol Elite" }
+    
   ];
   const servicesItems = [
     { id: "krediler", label: "Krediler", badge: "%0 Faiz Fırsatı" },

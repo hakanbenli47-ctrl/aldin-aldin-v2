@@ -1,7 +1,8 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
@@ -16,6 +17,9 @@ const firebaseConfig = {
 };
 
 export default function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+  const [showButton, setShowButton] = useState(false);
+
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
@@ -62,6 +66,9 @@ export default function App({ Component, pageProps }: AppProps) {
         alert(payload.notification?.title || "Yeni bildirim!");
       }
     });
+
+    // Buton görünürlüğü (alıcıya göre filtre istersen buraya ekleriz)
+    setShowButton(true);
   }, []);
 
   return (
@@ -76,7 +83,36 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
+
       <Component {...pageProps} />
+
+      {showButton && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "20px",
+            right: "20px",
+            zIndex: 9999,
+          }}
+        >
+          <button
+            onClick={() => router.push("/destek")}
+            style={{
+              backgroundColor: "#1648b0",
+              color: "#fff",
+              border: "none",
+              borderRadius: "999px",
+              padding: "12px 18px",
+              fontWeight: "bold",
+              boxShadow: "0 0 8px rgba(0,0,0,0.2)",
+              cursor: "pointer",
+            }}
+          >
+            💬 Destek
+          </button>
+        </div>
+      )}
     </>
   );
 }
+
