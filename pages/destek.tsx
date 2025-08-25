@@ -16,89 +16,10 @@ export default function Destek() {
   const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
   const [userEmail, setUserEmail] = useState<string>("");
+  const [emailInput, setEmailInput] = useState("");
   const kutuRef = useRef<HTMLDivElement>(null);
 
-  // 1) Kullanıcıyı al, sohbeti bul/yoksa oluştur
-  useEffect(() => {
-    let channel: any;
-
-    (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) return;
-      const uid = auth.user.id;
-      const email = auth.user.email ?? "";
-      setUserEmail(email);
-
-      // Var olan pending/active sohbeti getir
-      const { data: existing, error: selErr } = await supabase
-        .from("destek_sohbetleri")
-        .select("id")
-        .eq("user_id", uid)
-        .in("status", ["pending", "active"])
-        .order("baslangic_tarihi", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      let currentId = existing?.id;
-
-      // Yoksa oluştur
-      if (!currentId) {
-        const { data: ins, error: insErr } = await supabase
-          .from("destek_sohbetleri")
-          .insert([
-            {
-              user_id: uid,
-              kullanici_email: email,
-              baslik: "Canlı destek talebi",
-              status: "pending",
-            },
-          ])
-          .select("id")
-          .single();
-        if (ins) currentId = ins.id as unknown as number;
-      }
-
-      if (!currentId) return;
-      setSohbetId(currentId);
-
-      // İlk mesajları çek
-      await loadMesajlar(currentId);
-
-      // Realtime dinle
-      channel = supabase
-        .channel("realtime-destek-mesajlari")
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "destek_mesajlari",
-            filter: `sohbet_id=eq.${currentId}`,
-          },
-          (payload) => {
-            const row = payload.new as any;
-            setMesajlar((prev) => [
-              ...prev,
-              {
-                id: row.id,
-                sohbet_id: row.sohbet_id,
-                gonderen_email: row.gonderen_email,
-                mesaj_metni: row.mesaj_metni,
-                gonderilme_tarihi: row.gonderilme_tarihi,
-                rol: row.rol,
-              },
-            ]);
-            scrollToBottom();
-          }
-        )
-        .subscribe();
-    })();
-
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, []);
-
+  // Var olan mesajları yükle
   const loadMesajlar = async (sid: number) => {
     const { data } = await supabase
       .from("destek_mesajlari")
@@ -114,25 +35,124 @@ export default function Destek() {
       kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight);
     }, 80);
 
-  // 2) Mesaj gönder
- const gonder = async () => {
-  if (!yeniMesaj.trim() || !sohbetId) return;
+  // Sohbet başlat
+  const baslatSohbet = async () => {
+    if (!emailInput.trim()) {
+      alert("Lütfen e-posta adresinizi girin.");
+      return;
+    }
 
-  const { error } = await supabase.from("destek_mesajlari").insert({
-    sohbet_id: sohbetId,
-    gonderen_email: userEmail,
-    mesaj_metni: yeniMesaj.trim(),
-    rol: "kullanici",
-  });
+    setUserEmail(emailInput);
 
-  if (error) {
-    console.error("Mesaj gönderilemedi:", error);
-    alert("Mesaj gönderilemedi: " + error.message);
-  } else {
-    setYeniMesaj("");
+    // Yeni sohbet oluştur
+    const { data: ins, error } = await supabase
+      .from("destek_sohbetleri")
+      .insert([
+        {
+          kullanici_email: emailInput,
+          baslik: "Canlı destek talebi",
+          status: "pending",
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error(error);
+      alert("Sohbet başlatılamadı.");
+      return;
+    }
+
+    setSohbetId(ins.id);
+    await loadMesajlar(ins.id);
+
+    // Realtime dinleme
+    supabase
+      .channel("realtime-destek-mesajlari")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "destek_mesajlari",
+          filter: `sohbet_id=eq.${ins.id}`,
+        },
+        (payload) => {
+          const row = payload.new as any;
+          setMesajlar((prev) => [
+            ...prev,
+            {
+              id: row.id,
+              sohbet_id: row.sohbet_id,
+              gonderen_email: row.gonderen_email,
+              mesaj_metni: row.mesaj_metni,
+              gonderilme_tarihi: row.gonderilme_tarihi,
+              rol: row.rol,
+            },
+          ]);
+          scrollToBottom();
+        }
+      )
+      .subscribe();
+  };
+
+  // Mesaj gönder
+  const gonder = async () => {
+    if (!yeniMesaj.trim() || !sohbetId) return;
+
+    const { error } = await supabase.from("destek_mesajlari").insert({
+      sohbet_id: sohbetId,
+      gonderen_email: userEmail,
+      mesaj_metni: yeniMesaj.trim(),
+      rol: "kullanici",
+    });
+
+    if (error) {
+      console.error("Mesaj gönderilemedi:", error);
+      alert("Mesaj gönderilemedi: " + error.message);
+    } else {
+      setYeniMesaj("");
+    }
+  };
+
+  // Eğer sohbet yoksa e-posta formunu göster
+  if (!sohbetId) {
+    return (
+      <div style={{ maxWidth: 400, margin: "40px auto", textAlign: "center" }}>
+        <h2 style={{ marginBottom: 20, color: "#1648b0" }}>💬 Canlı Destek Başlat</h2>
+        <input
+          type="email"
+          placeholder="E-posta adresiniz"
+          value={emailInput}
+          onChange={(e) => setEmailInput(e.target.value)}
+          style={{
+            width: "100%",
+            padding: 10,
+            borderRadius: 8,
+            border: "1px solid #d1d5db",
+            marginBottom: 12,
+          }}
+        />
+        <button
+          onClick={baslatSohbet}
+          style={{
+            background: "#1648b0",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "10px 16px",
+            border: "none",
+            fontWeight: 600,
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          Sohbeti Başlat
+        </button>
+      </div>
+    );
   }
-};
 
+  // Sohbet başladıysa mesajlaşma ekranını göster
   return (
     <div style={{ maxWidth: 640, margin: "20px auto", padding: 16 }}>
       <h2 style={{ color: "#1648b0", marginBottom: 8 }}>💬 Canlı Destek</h2>
