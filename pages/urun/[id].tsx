@@ -16,6 +16,7 @@ interface Ilan {
   doped?: boolean;
   desc?: string;
   ozellikler?: Record<string, string[]>;
+  kategori?: { ad: string }; 
 }
 
 function renderStars(rating: number, max = 5) {
@@ -35,10 +36,10 @@ export async function getServerSideProps(context: any) {
   const { id } = context.params;
 
   const { data: ilan, error } = await supabase
-    .from("ilan")
-    .select("*")
-    .eq("id", id)
-    .single();
+  .from("ilan")
+  .select("*, kategori(ad)")
+  .eq("id", id)
+  .single();
 
   if (error || !ilan) return { notFound: true };
 
@@ -325,27 +326,30 @@ useEffect(() => {
           )}
 
           {/* ÖZELLİKLER */}
-          {Object.keys(ozellikler).length > 0 && (
-            <div className="opts">
-              {Object.keys(ozellikler).map((ozellik) => (
-                <div key={ozellik} className="opt">
-                  <label className="optLabel">{ozellik}</label>
-                  <select
-                    value={secilenOzellikler[ozellik] || ""}
-                    onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
-                    className="optSelect"
-                  >
-                    <option value="">Seçiniz</option>
-                    {ozellikler[ozellik]?.map((deger: string, idx: number) => (
-                      <option key={idx} value={deger}>
-                        {deger}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* ÖZELLİKLER sadece gıda ve giyim için */}
+{ilan?.kategori?.ad &&
+ ["gıda", "giyim"].includes(ilan.kategori.ad.toLowerCase()) &&
+ Object.keys(ozellikler).length > 0 && (
+  <div className="opts">
+    {Object.keys(ozellikler).map((ozellik) => (
+      <div key={ozellik} className="opt">
+        <label className="optLabel">{ozellik}</label>
+        <select
+          value={secilenOzellikler[ozellik] || ""}
+          onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
+          className="optSelect"
+        >
+          <option value="">Seçiniz</option>
+          {ozellikler[ozellik]?.map((deger: string, idx: number) => (
+            <option key={idx} value={deger}>
+              {deger}
+            </option>
+          ))}
+        </select>
+      </div>
+    ))}
+  </div>
+)}
 
           {/* FİYAT */}
           <div className="price">{fiyatText}</div>
