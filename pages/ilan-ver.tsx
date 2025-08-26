@@ -38,7 +38,9 @@ export default function IlanVer() {
   const [kategoriId, setKategoriId] = useState<number>(1);
   const [kategoriler, setKategoriler] = useState<Kategori[]>([]);
   const [message, setMessage] = useState("");
-  const [user, setUser] = useState<any>(null);
+const [user, setUser] = useState<any>(null);
+const [csvProducts, setCsvProducts] = useState<CsvUrun[]>([]); // ✅ eklendi
+
 const [renkText, setRenkText] = useState("");
   // Dinamik özellikler (JSON)
   const [ozellikler, setOzellikler] = useState<any>({});
@@ -171,39 +173,43 @@ if (data.durum !== "approved") {
     }
     return urls;
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+  e.preventDefault();
+  setMessage("");
 
-    if (selectedFiles.length === 0) {
-      setMessage("En az bir fotoğraf eklemelisiniz.");
-      setLoading(false);
-      return;
-    }
-    if (!stok || stok < 1) {
-      setMessage("Stok adedi en az 1 olmalı.");
-      setLoading(false);
-      return;
-    }
+  if (csvProducts.length > 0) {
+    await handleBulkInsert();
+    return;
+  }
 
-    // Gıda/Giyim için basit doğrulama (isteğe bağlı)
-    if (seciliKategoriAd.includes("gıda")) {
-      if (!ozellikler.agirlikMiktar || !ozellikler.agirlikBirim) {
-        setMessage("Gıda için ağırlık ve birim alanları zorunlu.");
-        setLoading(false);
-        return;
-      }
-    }
-    if (seciliKategoriAd.includes("giyim")) {
-  if (!Array.isArray(ozellikler.beden) || ozellikler.beden.length === 0) {
-    setMessage("Giyim için en az bir beden seçmelisiniz.");
+  setLoading(true);
+
+  if (selectedFiles.length === 0) {
+    setMessage("En az bir fotoğraf eklemelisiniz.");
     setLoading(false);
     return;
   }
-  // renk istersen opsiyonel kalsın; zorunlu olsun istersen aynı kontrolü ekle
-}
+  if (!stok || stok < 1) {
+    setMessage("Stok adedi en az 1 olmalı.");
+    setLoading(false);
+    return;
+  }
+
+  if (seciliKategoriAd.includes("gıda")) {
+    if (!ozellikler.agirlikMiktar || !ozellikler.agirlikBirim) {
+      setMessage("Gıda için ağırlık ve birim alanları zorunlu.");
+      setLoading(false);
+      return;
+    }
+  }
+  if (seciliKategoriAd.includes("giyim")) {
+    if (!Array.isArray(ozellikler.beden) || ozellikler.beden.length === 0) {
+      setMessage("Giyim için en az bir beden seçmelisiniz.");
+      setLoading(false);
+      return;
+    }
+  }
+
 
 
     const photoUrls = await uploadImagesAndGetUrls();
@@ -256,6 +262,53 @@ const safeOzellikler = {
       setTimeout(() => router.push("/satici"), 1200);
     }
   };
+  const handleBulkInsert = async () => {
+  if (csvProducts.length === 0) {
+    setMessage("⚠️ Önce CSV yükleyin.");
+    return;
+  }
+  setLoading(true);
+
+  let errorRows: number[] = [];
+  let successCount = 0;
+
+  for (let i = 0; i < csvProducts.length; i++) {
+    const row = csvProducts[i];
+
+    const ozelliklerCsv: any = {};
+    if (row.beden) ozelliklerCsv.beden = parseCommaList(String(row.beden));
+    if (row.renk) ozelliklerCsv.renk = parseCommaList(String(row.renk));
+    if (row.agirlikMiktar) ozelliklerCsv.agirlikMiktar = Number(row.agirlikMiktar);
+    if (row.agirlikBirim) ozelliklerCsv.agirlikBirim = row.agirlikBirim;
+    if (row.sonTuketim) ozelliklerCsv.sonTuketim = row.sonTuketim;
+
+    const { error } = await supabase.from("ilan").insert([{
+      title: row.title,
+      desc: row.desc || "",
+      price: row.price,
+      stok: row.stok ? Number(row.stok) : 1,
+      kategori_id: Number(row.kategori_id),
+      resim_url: row.resim_url ? [row.resim_url] : [],
+      ozellikler: ozelliklerCsv,
+      user_email: user?.email,
+      user_id: user?.id,
+      created_at: new Date(),
+    }]);
+
+    if (error) errorRows.push(i + 2); else successCount++;
+  }
+
+  setLoading(false);
+
+  if (errorRows.length === 0) {
+    setMessage(`✅ ${successCount} ürün başarıyla eklendi!`);
+  } else {
+    setMessage(`⚠️ ${successCount} ürün eklendi, hatalı satırlar: ${errorRows.join(", ")}.`);
+  }
+
+  setCsvProducts([]);
+};
+
  if (message.startsWith("Başvurunuz")) {
   return (
     <div
@@ -309,119 +362,29 @@ const safeOzellikler = {
   );
 }
 
-// ---- SADECE GİYİMDE beden/renk gönder ----
-const giyimMi = isGiyimCat(kategoriId);
-let safeOzellikler: any = { ...ozellikler };
 
-if (giyimMi) {
-  // beden/renk mutlaka DİZİ
-  safeOzellikler.beden = Array.isArray(ozellikler?.beden)
-    ? ozellikler.beden
-    : ozellikler?.beden
-    ? [String(ozellikler.beden)]
-    : [];
-  safeOzellikler.renk = Array.isArray(ozellikler?.renk)
-    ? ozellikler.renk
-    : ozellikler?.renk
-    ? [String(ozellikler.renk)]
-    : [];
-} else {
-  // giyim değilse bu anahtarları hiç kaydetme
-  delete safeOzellikler.beden;
-  delete safeOzellikler.renk;
-}
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLoading(true);
-    setMessage("");
+  setMessage("");
+  Papa.parse(file, {
+    header: true,
+    complete: function (results: ParseResult<CsvUrun>) {
+      const cleanRows = results.data
+        .map(r => ({
+          ...r,
+          title: r.title?.toString().trim(),
+          price: r.price?.toString().trim(),
+        }))
+        .filter(r => r.title && r.price && r.kategori_id);
 
-    Papa.parse(file, {
-      header: true,
-      complete: async function (results: ParseResult<CsvUrun>) {
-        let errorRows: number[] = [];
-        let successCount = 0;
-
-        for (let i = 0; i < results.data.length; i++) {
-          const row = results.data[i];
-          if (!row.title || !row.price || !row.kategori_id) {
-            errorRows.push(i + 2);
-            continue;
-          }
-
-          // CSV'den ozellikler toparla (varsa)
-          // CSV'den ozellikler toparla (varsa) — beden/renk'i DİZİ yap
-const ozelliklerCsv: any = {};
-
-if (row.beden) {
-  ozelliklerCsv.beden = parseCommaList(String(row.beden));
-}
-if (row.renk) {
-  ozelliklerCsv.renk = parseCommaList(String(row.renk));
-}
-// Kategori adı "giyim" mi?
-const isGiyimCat = (id: number) => {
-  const ad = (kategoriler.find(k => k.id === id)?.ad || "").toLowerCase();
-  return ad.includes("giyim");
+      setCsvProducts(cleanRows);
+      setMessage(`✅ ${cleanRows.length} ürün hazır. "Ürünü Ekle" butonuna basınca eklenecek.`);
+    },
+  });
 };
 
-
-if (row.agirlikMiktar) ozelliklerCsv.agirlikMiktar = Number(row.agirlikMiktar);
-if (row.agirlikBirim) ozelliklerCsv.agirlikBirim = row.agirlikBirim;
-if (row.sonTuketim) ozelliklerCsv.sonTuketim = row.sonTuketim;
-// --- SADECE GİYİMDE varyantları gönder ---
-const giyimMi = isGiyimCat(kategoriId);
-let safeOzellikler: any = { ...ozellikler };
-
-if (giyimMi) {
-  // beden/renk mutlaka DİZİ
-  safeOzellikler.beden = Array.isArray(ozellikler?.beden)
-    ? ozellikler.beden
-    : ozellikler?.beden
-    ? [String(ozellikler.beden)]
-    : [];
-  safeOzellikler.renk = Array.isArray(ozellikler?.renk)
-    ? ozellikler.renk
-    : ozellikler?.renk
-    ? [String(ozellikler.renk)]
-    : [];
-} else {
-  // giyim değilse bu anahtarları hiç gönderme
-  delete safeOzellikler.beden;
-  delete safeOzellikler.renk;
-}
-
-          const { error } = await supabase.from("ilan").insert([
-            {
-              title: row.title,
-              desc: row.desc || "",
-              price: row.price,
-              stok: row.stok ? Number(row.stok) : 1,
-              kategori_id: Number(row.kategori_id),
-              resim_url: row.resim_url ? [row.resim_url] : [],
-              ozellikler: ozelliklerCsv,
-              user_email: user?.email,
-              user_id: user?.id,
-              created_at: new Date(),
-              
-            },
-          ]);
-          if (error) errorRows.push(i + 2);
-          else successCount++;
-        }
-
-        setLoading(false);
-        if (errorRows.length === 0) {
-          setMessage("✅ Toplu ürün yükleme başarılı! (" + successCount + " ürün)");
-        } else {
-          setMessage(
-            `Bazı satırlarda hata oluştu. Hatalı satırlar: ${errorRows.join(", ")}.`
-          );
-        }
-      },
-    });
-  };
 
   return (
     <div
@@ -834,26 +797,31 @@ if (giyimMi) {
           </div>
 
           <button
-            type="submit"
-            disabled={loading}
-            style={{
-              background: "linear-gradient(90deg, #199957 0%, #1648b0 90%)",
-              color: "#fff",
-              fontWeight: 700,
-              border: "none",
-              borderRadius: 8,
-              padding: "13px 0",
-              fontSize: 15,
-              cursor: "pointer",
-              opacity: loading ? 0.7 : 1,
-              letterSpacing: "0.2px",
-              marginTop: 15,
-              marginBottom: 4,
-              boxShadow: "0 2px 8px #1648b013",
-            }}
-          >
-            {loading ? "Kaydediliyor..." : "Ürünü Ekle"}
-          </button>
+  type="submit"
+  disabled={loading}
+  style={{
+    background: "linear-gradient(90deg, #199957 0%, #1648b0 90%)",
+    color: "#fff",
+    fontWeight: 700,
+    border: "none",
+    borderRadius: 8,
+    padding: "13px 0",
+    fontSize: 15,
+    cursor: "pointer",
+    opacity: loading ? 0.7 : 1,
+    letterSpacing: "0.2px",
+    marginTop: 15,
+    marginBottom: 4,
+    boxShadow: "0 2px 8px #1648b013",
+  }}
+>
+  {loading
+    ? "Kaydediliyor..."
+    : (csvProducts.length > 0
+        ? `📦 ${csvProducts.length} Ürünü Ekle`
+        : "Ürünü Ekle")}
+</button>
+
 
           {message && (
             <div
