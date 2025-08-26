@@ -159,6 +159,18 @@ export default function UrunDetay({
       cancelled = true;
     };
   }, [user?.id, ilan.id]);
+// ürün detay sayfası açıldığında görüntülenme sayısını +1 arttır
+useEffect(() => {
+  async function artir() {
+    if (!ilan?.id) return;
+    try {
+      await supabase.rpc("increment_views", { ilan_id: ilan.id });
+    } catch (e) {
+      console.error("Views update hatası:", e);
+    }
+  }
+  artir();
+}, [ilan?.id]);
 
   const sepeteEkle = async (urun: Ilan) => {
     if (!user) {
