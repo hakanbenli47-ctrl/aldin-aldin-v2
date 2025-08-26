@@ -27,7 +27,7 @@ async function ilanlaraOrtalamaPuanEkle(ilanlar: Ilan[]) {
       .from("yorumlar")
       .select("puan")
       .eq("urun_id", ilan.id);
-const puanArr = (yorumlar || []).map(y => y.puan);
+    const puanArr = (yorumlar || []).map(y => y.puan);
     const ortalama = puanArr.length
       ? puanArr.reduce((a, b) => a + b, 0) / puanArr.length
       : 0;
@@ -69,7 +69,7 @@ function FirmaBilgiSatiri({
   if (!info) return null;
 
   return (
-                      <div className="product-card standard" style={{
+    <div className="product-card standard" style={{
       display: 'flex',
       alignItems: 'center',
       gap: 10,
@@ -88,11 +88,11 @@ function FirmaBilgiSatiri({
       </span>
       {/* Yıldız */}
       <span>
-  {renderStars(info.puan)}
-  <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
-    ({info.puan.toFixed(1)})
-  </span>
-</span>
+        {renderStars(info.puan)}
+        <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
+          ({info.puan.toFixed(1)})
+        </span>
+      </span>
 
       {/* Yorumlar butonu */}
       <button
@@ -118,7 +118,7 @@ function FirmaBilgiSatiri({
 import {
   FiShoppingCart,
   FiSmartphone,
-    FiUsers,
+  FiUsers,
   FiBox,
   FiHeart,
   FiTag,
@@ -132,7 +132,7 @@ const iconMap: Record<string, ReactNode> = {
   'Elektronik': <FiSmartphone size={28} />,
   'Araçlar':     <FaCar size={28} />,
   'Giyim':       <FiMoreHorizontal size={20}/>,
-  'Ev Eşyaları':         <FiMoreHorizontal size={20}/>,
+  'Ev Eşyaları': <FiMoreHorizontal size={20}/>,
   'Spor & Outdoor': <FiUsers size={28} />,
   'Anne & Bebek':   <FiHeart size={28} />,
   'Evcil Hayvan':   <FiBox size={28} />,
@@ -154,8 +154,8 @@ type Ilan = {
   indirimli_fiyat?: string;
   views?: number;
   user_email: string;  // <-- BURAYA EKLE!
-   ortalamaPuan?: number;
-    ozellikler?: Record<string, string[]>;
+  ortalamaPuan?: number;
+  ozellikler?: Record<string, string[]>;
 };
 
 
@@ -180,7 +180,7 @@ function isYeni(created_at?: string) {
 const Index2: NextPage = () => {
   const [loginDropdown, setLoginDropdown] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false)
- const [firmaAdMap, setFirmaAdMap] = useState<Record<string, FirmaInfo>>({});
+  const [firmaAdMap, setFirmaAdMap] = useState<Record<string, FirmaInfo>>({});
   const [dbKategoriler, setDbKategoriler] = useState<Kategori[]>([]);
   const [populerIlanlar, setPopulerIlanlar] = useState<Ilan[]>([]);
   const [ilanlar, setIlanlar] = useState<Ilan[]>([]);
@@ -190,7 +190,7 @@ const Index2: NextPage = () => {
   const [loading, setLoading] = useState(true);
   const [dopedIlanlar, setDopedIlanlar] = useState<Ilan[]>([]);
   const router = useRouter()
-const { kategori } = router.query
+  const { kategori } = router.query
   const [aktifKategori, setAktifKategori] = useState<{ ad: string; id?: number | null }>({
     ad: 'Tümü',
     id: undefined
@@ -198,14 +198,14 @@ const { kategori } = router.query
   const [favoriler, setFavoriler] = useState<number[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   // ANDROID tespiti
-const [isAndroid, setIsAndroid] = useState(false);
-useEffect(() => {
-  if (typeof navigator !== 'undefined') {
-    setIsAndroid(/Android/i.test(navigator.userAgent));
-  }
-}, []);
+  const [isAndroid, setIsAndroid] = useState(false);
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      setIsAndroid(/Android/i.test(navigator.userAgent));
+    }
+  }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent)) {
       document.documentElement.classList.add('is-android');
       return () => {
@@ -215,34 +215,34 @@ useEffect(() => {
     }
   }, []);
   useEffect(() => {
-  async function fetchFirmaAdlari() {
-    // Email, firma_adi ve puan çekiyoruz
-    const { data: firmalar } = await supabase
-      .from("satici_firmalar")
-      .select("email, firma_adi, puan");
+    async function fetchFirmaAdlari() {
+      // Email, firma_adi ve puan çekiyoruz
+      const { data: firmalar } = await supabase
+        .from("satici_firmalar")
+        .select("email, firma_adi, puan");
 
-    // FirmaInfo tipinde map oluştur
-    const map: Record<string, FirmaInfo> = {};
+      // FirmaInfo tipinde map oluştur
+      const map: Record<string, FirmaInfo> = {};
 
-    firmalar?.forEach((f: any) => {
-      if (f.email && f.firma_adi) {
-        map[f.email] = {
-          ad: f.firma_adi,
-          puan: f.puan ?? 0,
-        };
-      }
-    });
+      firmalar?.forEach((f: any) => {
+        if (f.email && f.firma_adi) {
+          map[f.email] = {
+            ad: f.firma_adi,
+            puan: f.puan ?? 0,
+          };
+        }
+      });
 
-    setFirmaAdMap(map);
-  }
-  fetchFirmaAdlari();
-}, []);
-useEffect(() => {
-  if (kategori) {
-    const kat = dbKategoriler.find(k => String(k.id) === kategori)
-    if (kat) setAktifKategori({ ad: kat.ad, id: kat.id })
-  }
-}, [kategori, dbKategoriler])
+      setFirmaAdMap(map);
+    }
+    fetchFirmaAdlari();
+  }, []);
+  useEffect(() => {
+    if (kategori) {
+      const kat = dbKategoriler.find(k => String(k.id) === kategori)
+      if (kat) setAktifKategori({ ad: kat.ad, id: kat.id })
+    }
+  }, [kategori, dbKategoriler])
   useEffect(() => {
     async function fetchUserCartAndFavorites() {
       const { data: userData } = await supabase.auth.getUser();
@@ -283,74 +283,70 @@ useEffect(() => {
         .order('doped_expiration', { ascending: false });
       setDopedIlanlar(data || []);
     }
-     async function fetchData() {
-    const { data: katData } = await supabase.from('kategori').select('*');
-    setDbKategoriler(katData || []);
+    async function fetchData() {
+      const { data: katData } = await supabase.from('kategori').select('*');
+      setDbKategoriler(katData || []);
 
-    const { data: ilanData } = await supabase
-  .from('ilan')
-  .select(`
-    id, title, desc, price, kategori_id, resim_url, stok,
-    created_at, doped, doped_expiration, indirimli_fiyat,
-    views, user_email, ozellikler
-  `);
-    const ilanlarWithAvg = await ilanlaraOrtalamaPuanEkle(ilanData || []);
-    setIlanlar(ilanlarWithAvg);
+      const { data: ilanData } = await supabase
+        .from('ilan')
+        .select(`
+          id, title, desc, price, kategori_id, resim_url, stok,
+          created_at, doped, doped_expiration, indirimli_fiyat,
+          views, user_email, ozellikler
+        `);
+      const ilanlarWithAvg = await ilanlaraOrtalamaPuanEkle(ilanData || []);
+      setIlanlar(ilanlarWithAvg);
 
-    // --- BURASI YENİ EKLENDİ ---
-    const populer = (ilanlarWithAvg || [])
-      .filter(i => (i.ortalamaPuan ?? 0) > 0)
-      .sort((a, b) => (b.ortalamaPuan ?? 0) - (a.ortalamaPuan ?? 0))
-      .slice(0, 6);
-    setPopulerIlanlar(populer);
+      // --- POPÜLER ---
+      const populer = (ilanlarWithAvg || [])
+        .filter(i => (i.ortalamaPuan ?? 0) > 0)
+        .sort((a, b) => (b.ortalamaPuan ?? 0) - (a.ortalamaPuan ?? 0))
+        .slice(0, 6);
+      setPopulerIlanlar(populer);
 
-    setLoading(false);
-  }
-  fetchData();
-  fetchDopedIlanlar();
-}, []);
+      setLoading(false);
+    }
+    fetchData();
+    fetchDopedIlanlar();
+  }, []);
   const sepetteVarMi = (id: number) => cartItems.find((item) => item.product_id === id);
-// ✅ Özellikleri varsayılan olarak ayarla
-let defaultOzellikler: Record<string, string> = {};
+  // ✅ Özellikleri varsayılan olarak ayarla
+  let defaultOzellikler: Record<string, string> = {};
 
+  const sepeteEkle = async (urun: Ilan) => {
+    if (!isLoggedIn || !user) {
+      alert("Lütfen giriş yapınız!");
+      window.location.href = "/giris";
+      return;
+    }
 
+    // Varsayılan özellikler (boş obje)
+    const defaultOzellikler: Record<string, string> = {};
+    const sepette = sepetteVarMi(urun.id);
 
-const sepeteEkle = async (urun: Ilan) => {
-  if (!isLoggedIn || !user) {
-    alert("Lütfen giriş yapınız!");
-    window.location.href = "/giris";
-    return;
-  }
+    if (sepette) {
+      await supabase
+        .from("cart")
+        .update({ adet: sepette.adet + 1 })
+        .eq("id", sepette.id);
+    } else {
+      await supabase
+        .from("cart")
+        .insert([{
+          user_id: user.id,
+          product_id: urun.id,
+          adet: 1,
+          ozellikler: defaultOzellikler
+        }]);
+    }
 
-  // Varsayılan özellikler (boş obje)
-  const defaultOzellikler: Record<string, string> = {};
-  const sepette = sepetteVarMi(urun.id);
-
-  if (sepette) {
-    await supabase
+    const { data: cartData } = await supabase
       .from("cart")
-      .update({ adet: sepette.adet + 1 })
-      .eq("id", sepette.id);
-  } else {
-    await supabase
-      .from("cart")
-      .insert([{
-        user_id: user.id,
-        product_id: urun.id,
-        adet: 1,
-        ozellikler: defaultOzellikler
-      }]);
-  }
+      .select("id, adet, product_id, ozellikler")
+      .eq("user_id", user.id);
 
-  const { data: cartData } = await supabase
-    .from("cart")
-    .select("id, adet, product_id, ozellikler")
-    .eq("user_id", user.id);
-
-  setCartItems(cartData || []);
-};
-
-
+    setCartItems(cartData || []);
+  };
 
   const sepeteGit = () => {
     window.location.href = '/sepet2';
@@ -388,12 +384,40 @@ const sepeteEkle = async (urun: Ilan) => {
     return `Kalan süre: ${days} gün ${hours} saat`;
   };
 
-const findKategoriAd = (id: number | null | undefined): string => {
-  if (typeof id !== "number" || isNaN(id)) return "";
-  const kat = dbKategoriler.find((k) => k.id === id);
-  return kat?.ad || "";
-};
+  const findKategoriAd = (id: number | null | undefined): string => {
+    if (typeof id !== "number" || isNaN(id)) return "";
+    const kat = dbKategoriler.find((k) => k.id === id);
+    return kat?.ad || "";
+  };
 
+  // === YENİ: Trend kategoriler (ilan sayısına göre en çok kullanılan 8 kategori)
+  const trendKategoriler = React.useMemo(() => {
+    const counter: Record<number, number> = {};
+    (ilanlar || []).forEach(i => {
+      if (typeof i.kategori_id === "number") {
+        counter[i.kategori_id] = (counter[i.kategori_id] || 0) + 1;
+      }
+    });
+    return Object.entries(counter)
+      .map(([id, count]) => ({ id: Number(id), ad: findKategoriAd(Number(id)), count }))
+      .filter(k => !!k.ad)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+  }, [ilanlar, dbKategoriler]);
+
+  // === YENİ: Yeni eklenenler & Çok görüntülenenler
+  const yeniEklenenler = React.useMemo(() => {
+    return [...(ilanlar || [])]
+      .filter(i => !!i.created_at)
+      .sort((a, b) => (new Date(b.created_at || 0).getTime()) - (new Date(a.created_at || 0).getTime()))
+      .slice(0, 8);
+  }, [ilanlar]);
+
+  const cokGoruntulenenler = React.useMemo(() => {
+    return [...(ilanlar || [])]
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 8);
+  }, [ilanlar]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -418,7 +442,6 @@ const findKategoriAd = (id: number | null | undefined): string => {
 
   const normalIlanlar = filteredIlanlar;
 
-
   // İndirimli ürünleri belirle
   const indirimliUrunler = ilanlar.filter(x => x.indirimli_fiyat && x.indirimli_fiyat !== x.price).slice(0, 5);
 
@@ -439,336 +462,432 @@ const findKategoriAd = (id: number | null | undefined): string => {
         }}
       >
         {/* HEADER */}
-      <header className="pwa-header"
-  style={{
-    background: '#fff',
-    boxShadow: '0 2px 14px var(--brand-700, #1648b0)05',
-    position: 'sticky',
-    top: 0,
-    zIndex: 1000,
-    borderBottom: '1.5px solid var(--border, #e4e9ef)',
-    padding: 0
-  }}
->
+        <header className="pwa-header"
+          style={{
+            background: '#fff',
+            boxShadow: '0 2px 14px var(--brand-700, #1648b0)05',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1000,
+            borderBottom: '1.5px solid var(--border, #e4e9ef)',
+            padding: 0
+          }}
+        >
   
-  <div
-  className="header-inner"
-  style={{
-      maxWidth: 1200,
-      margin: '0 auto',
-      padding: '0 12px',
-      display: 'grid',
-      gridTemplateColumns: 'auto 1fr auto',
-      alignItems: 'center',
-      minHeight: 70,
-      gap: 10,
-    }}
-  >
-    {/* LEFT: Logo */}
-    <div className="header-left" style={{ display:'flex', alignItems:'center', gap:10 }}>
-      <Image src="/logo.png" alt="Aldın Aldın Logo" width={100} height={50} />
-    </div>
-
-    {/* MIDDLE: Categories + Search (fills space on mobile) */}
-    <div className="header-middle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%' }}>
-      {/* Categories button */}
-      <div style={{ position: 'relative' }}>
-        <button
-  onClick={() => setDropdownOpen(o => !o)}
-  style={{
-    background: dropdownOpen
-      ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
-      : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,var(--dropdown-active, #eef6fd) 100%)',
-    color: dropdownOpen ? '#fff' : 'var(--primary,#2563eb)',
-    border: '1.5px solid var(--dropdown-border, #dde7fa)',
-    fontWeight: 700,
-    fontSize: isAndroid ? 13 : 14,     // << küçüldü
-    padding: isAndroid ? '6px 10px' : '8px 12px', // << daraldı
-    borderRadius: isAndroid ? 8 : 10,   // << daha kompakt
-    display: 'flex',
-    alignItems: 'center',
-    gap: isAndroid ? 6 : 8,
-    cursor: 'pointer',
-    outline: 'none',
-    transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
-    position: 'relative'
-  }}
->
-  <FiTag size={isAndroid ? 16 : 18} />  {/* << ikon küçüldü */}
-  <span style={{ fontWeight:800, letterSpacing:'.3px' }}>Kategoriler</span>
-  <FiChevronDown size={isAndroid ? 14 : 16} />
-</button>
-
-
-        {dropdownOpen && (
-          <ul
+          <div
+            className="header-inner"
             style={{
-              position: 'absolute',
-              top: '110%',
-              left: 0,
-              marginTop: 6,
-              padding: '9px 0',
-              background: '#fff',
-              boxShadow: '0 10px 32px 0 #3479e311,0 2px 8px #22355518',
-              borderRadius: 11,
-              listStyle: 'none',
-              minWidth: 210,
-              zIndex: 2000,
-              border: '1.5px solid var(--panel-border, #e3e8f2)',
-              animation: 'dropdownShow .18s cubic-bezier(.6,.2,.17,1.08)'
+              maxWidth: 1200,
+              margin: '0 auto',
+              padding: '0 12px',
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr auto',
+              alignItems: 'center',
+              minHeight: 70,
+              gap: 10,
             }}
-            onMouseLeave={() => setDropdownOpen(false)}
           >
-            <li>
-              <button
-                style={{
-                  width: "100%",
-                  background: 'none',
-                  border: 'none',
-                  padding: '10px 19px',
-                  color: aktifKategori.ad === 'Tümü' ? 'var(--primary)' : 'var(--ink-900)',
-                  fontWeight: 700,
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: 15.5,
-                  backgroundColor: aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active)' : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  borderRadius: 7,
-                  transition: 'background .14s'
-                }}
-                onClick={() => {
-                  setAktifKategori({ ad: 'Tümü', id: undefined });
-                  setDropdownOpen(false);
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
-                onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active)' : 'transparent')}
-              >
-                {iconMap['Tümü'] || <FiMoreHorizontal size={20} />} Tümü
-              </button>
-            </li>
-            {dbKategoriler.map((kat) => (
-              <li key={kat.id}>
+            {/* LEFT: Logo */}
+            <div className="header-left" style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <Image src="/logo.png" alt="Aldın Aldın Logo" width={100} height={50} />
+            </div>
+
+            {/* MIDDLE: Categories + Search (fills space on mobile) */}
+            <div className="header-middle" style={{ display:'flex', alignItems:'center', gap:10, width:'100%' }}>
+              {/* Categories button */}
+              <div style={{ position: 'relative' }}>
                 <button
+                  onClick={() => setDropdownOpen(o => !o)}
                   style={{
-                    width: "100%",
-                    background: 'none',
-                    border: 'none',
-                    padding: '10px 19px',
-                    color: aktifKategori.id === kat.id ? 'var(--primary)' : 'var(--ink-900)',
+                    background: dropdownOpen
+                      ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
+                      : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,var(--dropdown-active, #eef6fd) 100%)',
+                    color: dropdownOpen ? '#fff' : 'var(--primary,#2563eb)',
+                    border: '1.5px solid var(--dropdown-border, #dde7fa)',
                     fontWeight: 700,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: 15.5,
-                    backgroundColor: aktifKategori.id === kat.id ? 'var(--dropdown-active)' : 'transparent',
+                    fontSize: isAndroid ? 13 : 14,
+                    padding: isAndroid ? '6px 10px' : '8px 12px',
+                    borderRadius: isAndroid ? 8 : 10,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 10,
-                    borderRadius: 7,
-                    transition: 'background .14s'
+                    gap: isAndroid ? 6 : 8,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    transition: 'all .19s cubic-bezier(.55,.01,.48,1.05)',
+                    position: 'relative'
                   }}
-                  onClick={() => {
-                    setAktifKategori({ ad: kat.ad, id: kat.id });
-                    setDropdownOpen(false);
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? 'var(--dropdown-active)' : 'transparent')}
                 >
-                  {iconMap[kat.ad] || <FiMoreHorizontal size={20} />} {kat.ad}
+                  <FiTag size={isAndroid ? 16 : 18} />
+                  <span style={{ fontWeight:800, letterSpacing:'.3px' }}>Kategoriler</span>
+                  <FiChevronDown size={isAndroid ? 14 : 16} />
                 </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
-      {/* Search input fills remaining space */}
-      <input
-  type="text"
-  placeholder="🔍 Ürün ara..."
-  value={search}
-  onChange={(e) => setSearch(e.target.value)}
-  style={{
-    flex: 1,
-    border: '1.5px solid var(--border-200, #e2e8f0)',
-    borderRadius: 10,
-    padding: '10px 14px',
-    fontSize: isAndroid ? 16 : 16,
-    height: isAndroid ? 48 : undefined,       // << daha yüksek
-    background: 'var(--surface, #f8fafc)',
-    outline: 'none',
-    color: 'var(--ink-900, #223555)',
-    minWidth: 0
-  }}
-/>
+                {dropdownOpen && (
+                  <ul
+                    style={{
+                      position: 'absolute',
+                      top: '110%',
+                      left: 0,
+                      marginTop: 6,
+                      padding: '9px 0',
+                      background: '#fff',
+                      boxShadow: '0 10px 32px 0 #3479e311,0 2px 8px #22355518',
+                      borderRadius: 11,
+                      listStyle: 'none',
+                      minWidth: 210,
+                      zIndex: 2000,
+                      border: '1.5px solid var(--panel-border, #e3e8f2)',
+                      animation: 'dropdownShow .18s cubic-bezier(.6,.2,.17,1.08)'
+                    }}
+                    onMouseLeave={() => setDropdownOpen(false)}
+                  >
+                    <li>
+                      <button
+                        style={{
+                          width: "100%",
+                          background: 'none',
+                          border: 'none',
+                          padding: '10px 19px',
+                          color: aktifKategori.ad === 'Tümü' ? 'var(--primary)' : 'var(--ink-900)',
+                          fontWeight: 700,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          fontSize: 15.5,
+                          backgroundColor: aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active)' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          borderRadius: 7,
+                          transition: 'background .14s'
+                        }}
+                        onClick={() => {
+                          setAktifKategori({ ad: 'Tümü', id: undefined });
+                          setDropdownOpen(false);
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active)' : 'transparent')}
+                      >
+                        {iconMap['Tümü'] || <FiMoreHorizontal size={20} />} Tümü
+                      </button>
+                    </li>
+                    {dbKategoriler.map((kat) => (
+                      <li key={kat.id}>
+                        <button
+                          style={{
+                            width: "100%",
+                            background: 'none',
+                            border: 'none',
+                            padding: '10px 19px',
+                            color: aktifKategori.id === kat.id ? 'var(--primary)' : 'var(--ink-900)',
+                            fontWeight: 700,
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            fontSize: 15.5,
+                            backgroundColor: aktifKategori.id === kat.id ? 'var(--dropdown-active)' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            borderRadius: 7,
+                            transition: 'background .14s'
+                          }}
+                          onClick={() => {
+                            setAktifKategori({ ad: kat.ad, id: kat.id });
+                            setDropdownOpen(false);
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? 'var(--dropdown-active)' : 'transparent')}
+                        >
+                          {iconMap[kat.ad] || <FiMoreHorizontal size={20} />} {kat.ad}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
-    </div>
+              {/* Search input fills remaining space */}
+              <div style={{ position: "relative", flex: 1 }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Ürün ara..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    border: "1.5px solid var(--border-200, #e2e8f0)",
+                    borderRadius: 10,
+                    padding: "10px 14px",
+                    fontSize: isAndroid ? 16 : 16,
+                    height: isAndroid ? 48 : undefined,
+                    background: "var(--surface, #f8fafc)",
+                    outline: "none",
+                    color: "var(--ink-900, #223555)",
+                    zIndex: 50,
+                    position: "relative"
+                  }}
+                />
 
-    {/* RIGHT: Cart + Auth */}
-    <div className="header-actions" style={{ display:'flex', alignItems:'center', gap:10 }}>
-      <div
-        onClick={sepeteGit}
-        style={{
-          position: "relative",
-          cursor: "pointer",
-          padding: 8,
-          background: "var(--surface, #f8fafc)",
-          borderRadius: 9,
-          boxShadow: "0 1px 7px rgba(27,189,138,.09)",
-          display: "flex",
-          alignItems: "center"
-        }}
-        title="Sepetim"
-      >
-        <FiShoppingCart size={26} color="var(--accent, #1bbd8a)" />
-        {cartItems.length > 0 && (
-          <span style={{
-            position: "absolute",
-            top: -4,
-            right: -7,
-            fontSize: 12,
-            fontWeight: 800,
-            color: "#fff",
-            background: "var(--success-500, #22c55e)",
-            borderRadius: 16,
-            padding: "2px 6px",
-            minWidth: 18,
-            textAlign: "center"
-          }}>
-            {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
-          </span>
-        )}
-      </div>
+                {/* ✅ Arama sonuç kutusu */}
+                {search && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "105%",
+                      left: 0,
+                      width: "100%",
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                      boxShadow: "0 4px 16px rgba(0,0,0,.1)",
+                      zIndex: 100,
+                      maxHeight: 300,
+                      overflowY: "auto"
+                    }}
+                  >
+                    {ilanlar
+                      .filter((i) =>
+                        (i.title || "").toLowerCase().includes(search.toLowerCase())
+                      )
+                      .slice(0, 6) // en fazla 6 öneri
+                      .map((i) => (
+                        <div
+                          key={i.id}
+                          style={{
+                            padding: "10px 14px",
+                            cursor: "pointer",
+                            borderBottom: "1px solid #f0f0f0"
+                          }}
+                          onClick={() => (window.location.href = `/urun/${i.id}?from=search`)}
+                        >
+                          {i.title}
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </div>
 
-      {!isLoggedIn ? (
-        <>
-         <div style={{ position: "relative" }}>
-  <button
-    onClick={() => setLoginDropdown(prev => !prev)}
-    style={{
-      background: 'var(--primary, #2563eb)',
-      color: '#fff',
-      padding: '8px 14px',
-      borderRadius: 10,
-      border: 'none',
-      fontWeight: 700,
-      fontSize: 14,
-      cursor: 'pointer'
-    }}
-  >
-    Giriş Yap
-  </button>
+            {/* RIGHT: Cart + Auth */}
+            <div className="header-actions" style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div
+                onClick={sepeteGit}
+                style={{
+                  position: "relative",
+                  cursor: "pointer",
+                  padding: 8,
+                  background: "var(--surface, #f8fafc)",
+                  borderRadius: 9,
+                  boxShadow: "0 1px 7px rgba(27,189,138,.09)",
+                  display: "flex",
+                  alignItems: "center"
+                }}
+                title="Sepetim"
+              >
+                <FiShoppingCart size={26} color="var(--accent, #1bbd8a)" />
+                {cartItems.length > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -7,
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: "#fff",
+                    background: "var(--success-500, #22c55e)",
+                    borderRadius: 16,
+                    padding: "2px 6px",
+                    minWidth: 18,
+                    textAlign: "center"
+                  }}>
+                    {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
+                  </span>
+                )}
+              </div>
 
-  {loginDropdown && (
-    <div
-      style={{
-        position: "absolute",
-        top: "110%",
-        right: 0,
-        background: "#fff",
-        border: "1px solid #e2e8f0",
-        borderRadius: 8,
-        boxShadow: "0 4px 12px rgba(0,0,0,.08)",
-        zIndex: 999,
-        minWidth: 160
-      }}
-    >
-      <button
-        onClick={() => window.location.href = '/giris'}
-        style={{
-          display: "block",
-          width: "100%",
-          padding: "10px 14px",
-          background: "none",
-          border: "none",
-          textAlign: "left",
-          cursor: "pointer",
-          fontWeight: 600,
-          fontSize: 14,
-          color: "#223555"
-        }}
-      >
-        👤 Alıcı Giriş
-      </button>
-      <button
-        onClick={() => window.location.href = '/giris-satici'}
-        style={{
-          display: "block",
-          width: "100%",
-          padding: "10px 14px",
-          background: "none",
-          border: "none",
-          textAlign: "left",
-          cursor: "pointer",
-          fontWeight: 600,
-          fontSize: 14,
-          color: "#223555"
-        }}
-      >
-        🛒 Satıcı Giriş
-      </button>
-    </div>
-  )}
-</div>
+              {!isLoggedIn ? (
+                <>
+                  <div style={{ position: "relative" }}>
+                    <button
+                      onClick={() => setLoginDropdown(prev => !prev)}
+                      style={{
+                        background: 'var(--primary, #2563eb)',
+                        color: '#fff',
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: 14,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Giriş Yap
+                    </button>
 
-          <button
-            onClick={() => window.location.href = '/kayit'}
-            style={{
-              background: 'var(--accent, #1bbd8a)',
-              color: '#fff',
-              padding: '8px 14px',
-              borderRadius: 10,
-              border: 'none',
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: 'pointer'
-            }}
-          >
-            Kaydol
-          </button>
-        </>
-      ) : (
-        <>
-          <button
-            onClick={() => window.location.href = '/profil2'}
-            style={{
-              background: 'var(--surface, #f3f4f6)',
-              color: 'var(--primary, #2563eb)',
-              border: '1px solid rgba(37,99,235,.15)',
-              padding: '8px 14px',
-              borderRadius: 10,
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: 'pointer'
-            }}
-          >
-            👤 Profilim
-          </button>
-          <button
-            onClick={handleLogout}
-            style={{
-              background: 'var(--danger, #e11d48)',
-              color: '#fff',
-              padding: '8px 14px',
-              borderRadius: 10,
-              border: 'none',
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: 'pointer'
-            }}
-          >
-            Çıkış
-          </button>
-        </>
-      )}
-    </div>
-  </div>
+                    {loginDropdown && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "110%",
+                          right: 0,
+                          background: "#fff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 8,
+                          boxShadow: "0 4px 12px rgba(0,0,0,.08)",
+                          zIndex: 999,
+                          minWidth: 160
+                        }}
+                      >
+                        <button
+                          onClick={() => window.location.href = '/giris'}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "10px 14px",
+                            background: "none",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            fontSize: 14,
+                            color: "#223555"
+                          }}
+                        >
+                          👤 Alıcı Giriş
+                        </button>
+                        <button
+                          onClick={() => window.location.href = '/giris-satici'}
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            padding: "10px 14px",
+                            background: "none",
+                            border: "none",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            fontSize: 14,
+                            color: "#223555"
+                          }}
+                        >
+                          🛒 Satıcı Giriş
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-</header>
-<SloganBar />
+                  <button
+                    onClick={() => window.location.href = '/kayit'}
+                    style={{
+                      background: 'var(--accent, #1bbd8a)',
+                      color: '#fff',
+                      padding: '8px 14px',
+                      borderRadius: 10,
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Kaydol
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => window.location.href = '/profil2'}
+                    style={{
+                      background: 'var(--surface, #f3f4f6)',
+                      color: 'var(--primary, #2563eb)',
+                      border: '1px solid rgba(37,99,235,.15)',
+                      padding: '8px 14px',
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    👤 Profilim
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      background: 'var(--danger, #e11d48)',
+                      color: '#fff',
+                      padding: '8px 14px',
+                      borderRadius: 10,
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Çıkış
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+        </header>
+
+        <SloganBar />
+
+        {/* === YENİ: HERO (kampanya + CTA) === */}
+        <section
+          id="hero"
+          style={{
+            maxWidth: 1200,
+            margin: '16px auto 22px',
+            padding: '22px 18px',
+            borderRadius: 18,
+            background: 'linear-gradient(90deg,#e0f7f4 0%, #fef3c7 100%)',
+            border: '1.5px solid #e8efe8',
+            boxShadow: '0 8px 26px rgba(0,0,0,.06)'
+          }}
+        >
+          <div style={{ display:'grid', gridTemplateColumns:'1.2fr .8fr', gap:18, alignItems:'center' }}>
+            <div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
+                <span style={{ background:'#fff', border:'1px solid #e5e7eb', padding:'4px 10px', borderRadius:999, fontWeight:800, fontSize:12, color:'#0f766e' }}>Ücretsiz İade</span>
+                <span style={{ background:'#fff', border:'1px solid #e5e7eb', padding:'4px 10px', borderRadius:999, fontWeight:800, fontSize:12, color:'#a16207' }}>Güvenli Ödeme</span>
+                <span style={{ background:'#fff', border:'1px solid #e5e7eb', padding:'4px 10px', borderRadius:999, fontWeight:800, fontSize:12, color:'#2563eb' }}>Hızlı Teslimat</span>
+              </div>
+              <h1 style={{ fontSize:28, fontWeight:900, color:'#0f172a', lineHeight:1.15, margin:'0 0 8px' }}>
+                Binlerce üründe <span style={{ color:'#16a34a' }}>fırsatlar</span> ve <span style={{ color:'#ef4444' }}>indirimler</span> seni bekliyor!
+              </h1>
+              <p style={{ color:'#334155', fontWeight:600, margin:'6px 0 14px' }}>
+                Popüler ürünler, yeni eklenenler ve öne çıkanlar tek ekranda.
+              </p>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                <a href="#featured" style={{ background:'#16a34a', color:'#fff', padding:'10px 16px', borderRadius:10, fontWeight:800, textDecoration:'none', boxShadow:'0 2px 10px rgba(22,163,74,.24)' }}>🚀 Fırsatları Göster</a>
+                <a href="#yeni" style={{ background:'#fff', color:'#111827', padding:'10px 16px', borderRadius:10, fontWeight:800, textDecoration:'none', border:'1.5px solid #e5e7eb' }}>🆕 Yeni Eklenenler</a>
+              </div>
+            </div>
+            <div style={{ display:'none' }} />
+          </div>
+        </section>
+
+        {/* === YENİ: Güven Rozetleri (Trust strip) === */}
+        <section
+          style={{
+            maxWidth:1200, margin:'0 auto 18px', display:'grid',
+            gridTemplateColumns:'repeat(4, minmax(0,1fr))', gap:12, padding:'0 8px'
+          }}
+        >
+          {[
+            {t:'Kolay İade', s:'14 gün içinde değişim/iade'},
+            {t:'Canlı Destek', s:'7/24 desteğe bağlan'},
+            {t:'Güvenli Ödeme', s:'3D Secure ile koruma'},
+            {t:'Hızlı Teslimat', s:'Aynı gün kargo seçenekleri'},
+          ].map((b, i)=>(
+            <div key={i} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:'12px 14px', boxShadow:'0 2px 10px rgba(0,0,0,.04)' }}>
+              <div style={{ fontWeight:800, color:'#0f172a', marginBottom:4 }}>{b.t}</div>
+              <div style={{ color:'#64748b', fontWeight:600, fontSize:13.5 }}>{b.s}</div>
+            </div>
+          ))}
+        </section>
+
         {/* Layout: Sol reklam, ana, sağ reklam */}
-         <div className="layout-3col"
+        <div className="layout-3col"
           style={{
             display: 'flex',
             width: '100%',
@@ -782,7 +901,7 @@ const findKategoriAd = (id: number | null | undefined): string => {
         >
           {/* SOL REKLAM */}
           {!isAndroid && (
-          <aside className="ads-left" style={{
+            <aside className="ads-left" style={{
               width: 150,
               minWidth: 100,
               maxWidth: 170,
@@ -799,32 +918,31 @@ const findKategoriAd = (id: number | null | undefined): string => {
               top: 92,
               zIndex: 10
             }}
-            
-          >
-            <span
-              style={{
-                marginBottom: 8,
-                fontSize: 13,
-                color: 'var(--slate-600, #475569)',
-                fontWeight: 600,
-                textAlign: 'center'
-              }}
             >
-              Sponsorlu Reklam
-            </span>
-            <img
-              src="/300x250.png"
-              alt="Reklam"
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 10,
-                objectFit: 'cover',
-                boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
-              }}
-            />
-          </aside>
-)}
+              <span
+                style={{
+                  marginBottom: 8,
+                  fontSize: 13,
+                  color: 'var(--slate-600, #475569)',
+                  fontWeight: 600,
+                  textAlign: 'center'
+                }}
+              >
+                Sponsorlu Reklam
+              </span>
+              <img
+                src="/300x250.png"
+                alt="Reklam"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: 10,
+                  objectFit: 'cover',
+                  boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
+                }}
+              />
+            </aside>
+          )}
           {/* ANA İÇERİK */}
           <main className="main-col" style={{
             maxWidth: 950,
@@ -832,8 +950,35 @@ const findKategoriAd = (id: number | null | undefined): string => {
             padding: '0 10px',
             flexGrow: 1,
           }}>
-              {/* ÖNE ÇIKANLAR */}
-            <section
+            {/* === YENİ: Trend Kategoriler === */}
+            {trendKategoriler.length > 0 && (
+              <section className="section-block" style={{
+                background:'#fff', borderRadius:18, padding:'20px 16px', marginBottom:24,
+                border:'1.5px solid var(--border-200, #e2e8f0)', boxShadow:'0 2px 14px rgba(0,0,0,.04)'
+              }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🔥 Trend Kategoriler</h2>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12 }}>
+                  {trendKategoriler.map(k=>(
+                    <button
+                      key={k.id}
+                      onClick={()=> setAktifKategori({ ad: k.ad, id: k.id })}
+                      style={{
+                        display:'flex', alignItems:'center', gap:10, padding:'10px 12px',
+                        background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12,
+                        cursor:'pointer', textAlign:'left'
+                      }}
+                    >
+                      <span>{iconMap[k.ad] || <FiMoreHorizontal size={20} />}</span>
+                      <span style={{ fontWeight:800, color:'#0f172a' }}>{k.ad}</span>
+                      <span style={{ marginLeft:'auto', fontWeight:800, color:'#2563eb' }}>{k.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ÖNE ÇIKANLAR */}
+            <section id="featured"
               style={{
                 background: '#fff',
                 padding: '30px 24px',
@@ -919,45 +1064,45 @@ const findKategoriAd = (id: number | null | undefined): string => {
                         {product.title}
                       </h3>
                       <FirmaBilgiSatiri
-  email={product.user_email}
-  firmaAdMap={firmaAdMap}
-  onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
-/>{product.ortalamaPuan !== undefined && (
-  <span style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
-    {renderStars(product.ortalamaPuan ?? 0)}
-    <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
-      ({(product.ortalamaPuan ?? 0).toFixed(1)})
-    </span>
-  </span>
-)}
+                        email={product.user_email}
+                        firmaAdMap={firmaAdMap}
+                        onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+                      />
+                      {product.ortalamaPuan !== undefined && (
+                        <span style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                          {renderStars(product.ortalamaPuan ?? 0)}
+                          <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
+                            ({(product.ortalamaPuan ?? 0).toFixed(1)})
+                          </span>
+                        </span>
+                      )}
 
-
-                 <div
-  style={{
-    fontSize: 16,
-    fontWeight: 600,
-    color: product.indirimli_fiyat ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
-    marginBottom: 4
-  }}
->
-  {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
-    <>
-      <span style={{
-        textDecoration: "line-through",
-        color: "var(--ink-300, #d1d5db)",
-        fontWeight: 500,
-        marginRight: 7
-      }}>
-        {product.price} ₺
-      </span>
-      <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
-        {product.indirimli_fiyat} ₺
-      </span>
-    </>
-  ) : (
-    `${product.price} ₺`
-  )}
-</div>
+                      <div
+                        style={{
+                          fontSize: 16,
+                          fontWeight: 600,
+                          color: product.indirimli_fiyat ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
+                          marginBottom: 4
+                        }}
+                      >
+                        {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+                          <>
+                            <span style={{
+                              textDecoration: "line-through",
+                              color: "var(--ink-300, #d1d5db)",
+                              fontWeight: 500,
+                              marginRight: 7
+                            }}>
+                              {product.price} ₺
+                            </span>
+                            <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
+                              {product.indirimli_fiyat} ₺
+                            </span>
+                          </>
+                        ) : (
+                          `${product.price} ₺`
+                        )}
+                      </div>
 
                       <div
                         style={{ fontSize: 13, color: '#555', marginTop: 4 }}
@@ -973,86 +1118,147 @@ const findKategoriAd = (id: number | null | undefined): string => {
               )}
             </section>
 
-            {populerIlanlar.length > 0 && (
-  <section className="section-block" style={{ marginBottom: 32 }}>
-    <h2 style={{
-      fontSize: 24,
-      fontWeight: 900,
-      color: '#1d8cf8',
-      marginBottom: 12,
-      letterSpacing: ".2px"
-    }}>
-      ⭐ EN POPÜLER ÜRÜNLER
-    </h2>
-    <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
-      {populerIlanlar.map((product, idx) => (
-        <div key={idx}
-          style={{
-            minWidth: 200,
-            maxWidth: 220,
-            background: "var(--surface-200, #f1f5f9)",
-            borderRadius: 13,
-            boxShadow: "0 2px 13px #1d8cf80b",
-            border: "1.5px solid var(--border, #e4e9ef)",
-            marginRight: 5,
-            cursor: "pointer",
-            padding: "13px 9px",
-            position: "relative"
-          }}
-          onClick={() => window.location.href = `/urun/${product.id}?from=populer`}
-        >
-          <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
-            alt={product.title}
-            style={{
-              width: "100%",
-              height: 92,
-              objectFit: "cover",
-              borderRadius: 8,
-              border: "1px solid var(--border-soft, #e0e7ef)"
-            }} />
-          <div style={{
-            fontWeight: 700, fontSize: 15,
-            color: "var(--ink-900, #223555)", marginTop: 5
-          }}>{product.title}</div>
-          {/* Ortalama yıldız */}
-          <div style={{
-            color: "var(--warning, #f59e0b)", fontWeight: 600, fontSize: 18
-          }}>
-            {renderStars(product.ortalamaPuan ?? 0)}
-            <span style={{ fontWeight: 500, fontSize: 14, color: "var(--ink-500, #64748b)", marginLeft: 5 }}>
-              ({(product.ortalamaPuan ?? 0).toFixed(1)})
-            </span>
-          </div>
-          {/* Fiyat (indirimli ise aynı mantıkla göster) */}
-          <div style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
-            marginBottom: 4
-          }}>
-            {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
-              <>
-                <span style={{
-                  textDecoration: "line-through",
-                  color: "var(--ink-300, #d1d5db)",
-                  fontWeight: 500,
-                  marginRight: 7
-                }}>
-                  {product.price} ₺
-                </span>
-                <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
-                  {product.indirimli_fiyat} ₺
-                </span>
-              </>
-            ) : (
-              `${product.price} ₺`
+            {/* === YENİ: Yeni Eklenenler === */}
+            {yeniEklenenler.length > 0 && (
+              <section id="yeni" className="section-block" style={{
+                background:'#fff', borderRadius:18, padding:'22px 16px', marginBottom:28,
+                border:'1.5px solid var(--border-200, #e2e8f0)', boxShadow:'0 2px 14px rgba(0,0,0,.04)'
+              }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🆕 Yeni Eklenenler</h2>
+                <div style={{ display:'flex', gap:16, overflowX:'auto', paddingBottom:6 }}>
+                  {yeniEklenenler.map((p)=>(
+                    <div key={p.id}
+                      onClick={()=> window.location.href = `/urun/${p.id}?from=yeni`}
+                      style={{
+                        minWidth:220, maxWidth:240, cursor:'pointer',
+                        background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12, padding:'12px 10px'
+                      }}
+                    >
+                      <img
+                        src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:110, objectFit:'cover', borderRadius:8, border:'1px solid #e5e7eb' }}
+                      />
+                      <div style={{ fontWeight:800, color:'#0f172a', marginTop:6, fontSize:15 }}>{p.title}</div>
+                      <div style={{ fontWeight:700, marginTop:2, color:'#16a34a' }}>{p.indirimli_fiyat ? p.indirimli_fiyat : p.price} ₺</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
-          </div>
-        </div>
-      ))}
-    </div>
-  </section>
-)}
+
+            {/* === YENİ: En Çok Görüntülenenler === */}
+            {cokGoruntulenenler.length > 0 && (
+              <section id="trend" className="section-block" style={{
+                background:'#fff', borderRadius:18, padding:'22px 16px', marginBottom:28,
+                border:'1.5px solid var(--border-200, #e2e8f0)', boxShadow:'0 2px 14px rgba(0,0,0,.04)'
+              }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>📈 En Çok Görüntülenenler</h2>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:16 }}>
+                  {cokGoruntulenenler.map((p)=>(
+                    <div key={p.id}
+                      onClick={()=> window.location.href = `/urun/${p.id}?from=views`}
+                      style={{
+                        cursor:'pointer', background:'#ffffff', border:'1px solid #e2e8f0',
+                        borderRadius:12, padding:12, boxShadow:'0 2px 12px rgba(0,0,0,.03)'
+                      }}
+                    >
+                      <img
+                        src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:130, objectFit:'cover', borderRadius:10, border:'1px solid #eef2f7' }}
+                      />
+                      <div style={{ fontWeight:800, color:'#0f172a', marginTop:6, fontSize:15 }}>{p.title}</div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, color:'#2563eb', fontWeight:800, marginTop:2 }}>
+                        👀 {(p.views || 0).toLocaleString('tr-TR')}
+                        <span style={{ marginLeft:'auto', color:'#16a34a' }}>{p.indirimli_fiyat ? p.indirimli_fiyat : p.price} ₺</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {populerIlanlar.length > 0 && (
+              <section className="section-block" style={{ marginBottom: 32 }}>
+                <h2 style={{
+                  fontSize: 24,
+                  fontWeight: 900,
+                  color: '#1d8cf8',
+                  marginBottom: 12,
+                  letterSpacing: ".2px"
+                }}>
+                  ⭐ EN POPÜLER ÜRÜNLER
+                </h2>
+                <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
+                  {populerIlanlar.map((product, idx) => (
+                    <div key={idx}
+                      style={{
+                        minWidth: 200,
+                        maxWidth: 220,
+                        background: "var(--surface-200, #f1f5f9)",
+                        borderRadius: 13,
+                        boxShadow: "0 2px 13px #1d8cf80b",
+                        border: "1.5px solid var(--border, #e4e9ef)",
+                        marginRight: 5,
+                        cursor: "pointer",
+                        padding: "13px 9px",
+                        position: "relative"
+                      }}
+                      onClick={() => window.location.href = `/urun/${product.id}?from=populer`}
+                    >
+                      <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
+                        alt={product.title}
+                        style={{
+                          width: "100%",
+                          height: 92,
+                          objectFit: "cover",
+                          borderRadius: 8,
+                          border: "1px solid var(--border-soft, #e0e7ef)"
+                        }} />
+                      <div style={{
+                        fontWeight: 700, fontSize: 15,
+                        color: "var(--ink-900, #223555)", marginTop: 5
+                      }}>{product.title}</div>
+                      {/* Ortalama yıldız */}
+                      <div style={{
+                        color: "var(--warning, #f59e0b)", fontWeight: 600, fontSize: 18
+                      }}>
+                        {renderStars(product.ortalamaPuan ?? 0)}
+                        <span style={{ fontWeight: 500, fontSize: 14, color: "var(--ink-500, #64748b)", marginLeft: 5 }}>
+                          ({(product.ortalamaPuan ?? 0).toFixed(1)})
+                        </span>
+                      </div>
+                      {/* Fiyat (indirimli ise aynı mantıkla göster) */}
+                      <div style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
+                        marginBottom: 4
+                      }}>
+                        {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+                          <>
+                            <span style={{
+                              textDecoration: "line-through",
+                              color: "var(--ink-300, #d1d5db)",
+                              fontWeight: 500,
+                              marginRight: 7
+                            }}>
+                              {product.price} ₺
+                            </span>
+                            <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
+                              {product.indirimli_fiyat} ₺
+                            </span>
+                          </>
+                        ) : (
+                          `${product.price} ₺`
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
             <section className="section-block" style={{ marginBottom: 32 }}>
@@ -1066,7 +1272,6 @@ const findKategoriAd = (id: number | null | undefined): string => {
                 alignItems: "center",
                 gap: 11
               }}>
-                
                 <span style={{fontSize: 28, marginTop: -4}}>🔥</span>
                 Ayın İndirimleri Başladı!
                 <span style={{
@@ -1161,7 +1366,6 @@ const findKategoriAd = (id: number | null | undefined): string => {
               </div>
             </section>
 
-          
             {/* Standart İlan Kartları */}
             <section className="section-block">
               <h2
@@ -1283,36 +1487,36 @@ const findKategoriAd = (id: number | null | undefined): string => {
                           {product.title}
                         </h3>
                         <FirmaBilgiSatiri
-  email={product.user_email}
-  firmaAdMap={firmaAdMap}
-  onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
-/>
-<div
-  style={{
-    fontSize: 16,
-    fontWeight: 600,
-    color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
-    marginBottom: 4
-  }}
->
-  {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
-    <>
-      <span style={{
-        textDecoration: "line-through",
-        color: "var(--ink-300, #d1d5db)",
-        fontWeight: 500,
-        marginRight: 7
-      }}>
-        {product.price} ₺
-      </span>
-      <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
-        {product.indirimli_fiyat} ₺
-      </span>
-    </>
-  ) : (
-    `${product.price} ₺`
-  )}
-</div>
+                          email={product.user_email}
+                          firmaAdMap={firmaAdMap}
+                          onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+                        />
+                        <div
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 600,
+                            color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
+                            marginBottom: 4
+                          }}
+                        >
+                          {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+                            <>
+                              <span style={{
+                                textDecoration: "line-through",
+                                color: "var(--ink-300, #d1d5db)",
+                                fontWeight: 500,
+                                marginRight: 7
+                              }}>
+                                {product.price} ₺
+                              </span>
+                              <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
+                                {product.indirimli_fiyat} ₺
+                              </span>
+                            </>
+                          ) : (
+                            `${product.price} ₺`
+                          )}
+                        </div>
 
                         <span
                           style={{
@@ -1380,8 +1584,8 @@ const findKategoriAd = (id: number | null | undefined): string => {
           </main>
 
           {/* SAĞ REKLAM */}
-        {!isAndroid && (
-        <aside className="ads-right" style={{
+          {!isAndroid && (
+            <aside className="ads-right" style={{
               width: 150,
               minWidth: 100,
               maxWidth: 170,
@@ -1398,36 +1602,36 @@ const findKategoriAd = (id: number | null | undefined): string => {
               top: 92,
               zIndex: 10
             }}
-          >
-            <span
-              style={{
-                marginBottom: 8,
-                fontSize: 13,
-                color: 'var(--slate-600, #475569)',
-                fontWeight: 600,
-                textAlign: 'center'
-              }}
             >
-              Sponsorlu Reklam
-            </span>
-            <img
-              src="/300x250.png"
-              alt="Reklam"
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 10,
-                objectFit: 'cover',
-                boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
-              }}
-            />
-          </aside>
+              <span
+                style={{
+                  marginBottom: 8,
+                  fontSize: 13,
+                  color: 'var(--slate-600, #475569)',
+                  fontWeight: 600,
+                  textAlign: 'center'
+                }}
+              >
+                Sponsorlu Reklam
+              </span>
+              <img
+                src="/300x250.png"
+                alt="Reklam"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: 10,
+                  objectFit: 'cover',
+                  boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
+                }}
+              />
+            </aside>
           )}
         </div>
 
         {/* Responsive düzen için */}
 
-<style jsx global>{`
+        <style jsx global>{`
   /* PWA / çentik güvenli alanları */
   body { padding-bottom: env(safe-area-inset-bottom); }
   .pwa-header{
@@ -1710,9 +1914,7 @@ img, video { max-width: 100%; height: auto; display: block; }
     width:100% !important;
   }
 }
-
-
-`}</style>
+        `}</style>
       </div></div>
     </>
   );
