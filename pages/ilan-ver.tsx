@@ -371,7 +371,7 @@ if (data.durum !== "approved") {
         .filter(r => r.title && r.price && r.kategori_id);
 
       setCsvProducts(cleanRows);
-      setMessage(`✅ ${cleanRows.length} ürün hazır. "Ürünü Ekle" butonuna basınca eklenecek.`);
+      setMessage(`✅ ${cleanRows.length} ürün hazır. "Toplu Ürünleri Ekle" butonuna basın.`);
     },
   });
 };
@@ -806,12 +806,9 @@ if (data.durum !== "approved") {
     boxShadow: "0 2px 8px #1648b013",
   }}
 >
-  {loading
-    ? "Kaydediliyor..."
-    : (csvProducts.length > 0
-        ? `📦 ${csvProducts.length} Ürünü Ekle`
-        : "Ürünü Ekle")}
+  {loading ? "Kaydediliyor..." : "Ürünü Ekle"}
 </button>
+
 
 
           {message && (
@@ -832,57 +829,73 @@ if (data.durum !== "approved") {
           )}
 
           {/* CSV BÖLÜMÜ */}
-          <div style={{ marginTop: 22, padding: "10px 0 0 0", borderTop: "1px dashed #c1c8d8" }}>
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 14,
-                color: "#1648b0",
-                marginBottom: 7,
-                letterSpacing: ".1px",
-              }}
-            >
-              <FiUploadCloud size={15} style={{ marginRight: 4 }} />
-              Toplu Ürün Yükle (.csv)
-            </div>
-{csvProducts.length > 0 && (
-  <button
-    type="button"
-    onClick={handleBulkInsert}
-    disabled={loading}
+          {/* CSV BÖLÜMÜ */}
+<div style={{ marginTop: 22, padding: "10px 0 0 0", borderTop: "1px dashed #c1c8d8" }}>
+  <div
     style={{
-      background: "linear-gradient(90deg, #199957 0%, #1648b0 90%)",
-      color: "#fff",
       fontWeight: 700,
-      border: "none",
-      borderRadius: 8,
-      padding: "13px 0",
-      fontSize: 15,
-      cursor: "pointer",
-      opacity: loading ? 0.7 : 1,
-      letterSpacing: "0.2px",
-      marginTop: 12,
-      boxShadow: "0 2px 8px #1648b013",
-      width: "100%",
+      fontSize: 14,
+      color: "#1648b0",
+      marginBottom: 7,
+      letterSpacing: ".1px",
     }}
-    title="CSV'deki tüm ürünleri ekle"
   >
-    {loading ? "Ekleniyor..." : `📦 Toplu Ürünleri Ekle (${csvProducts.length})`}
-  </button>
-)}
+    <FiUploadCloud size={15} style={{ marginRight: 4 }} />
+    Toplu Ürün Yükle (.csv)
+  </div>
 
-            <a
-              href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
-              download="urun-sablon.csv"
-              style={{ color: "#199957", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}
-            >
-              Şablonu indir
-            </a>
-            <input type="file" accept=".csv" onChange={handleCSVUpload} style={{ fontSize: 13, marginLeft: 8, marginTop: 3 }} />
-            <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
-              Eksik/hatalı satırlar kullanıcıya bildirilir.
-            </div>
-          </div>
+  <a
+    href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
+    download="urun-sablon.csv"
+    style={{ color: "#199957", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}
+  >
+    Şablonu indir
+  </a>
+
+  <input
+    type="file"
+    accept=".csv"
+    onChange={handleCSVUpload}
+    style={{ fontSize: 13, marginLeft: 8, marginTop: 3 }}
+  />
+
+  {csvProducts.length > 0 && (
+    <>
+      <div style={{ fontSize: 12, color: "#374151", marginTop: 10 }}>
+        {csvProducts.length} ürün hazır. İçeri aktarmak için aşağıdaki butona basın.
+      </div>
+
+      <button
+        type="button"
+        onClick={handleBulkInsert}
+        disabled={loading}
+        style={{
+          background: "linear-gradient(90deg, #199957 0%, #1648b0 90%)",
+          color: "#fff",
+          fontWeight: 700,
+          border: "none",
+          borderRadius: 8,
+          padding: "13px 0",
+          fontSize: 15,
+          cursor: "pointer",
+          opacity: loading ? 0.7 : 1,
+          letterSpacing: "0.2px",
+          marginTop: 12,
+          boxShadow: "0 2px 8px #1648b013",
+          width: "100%",
+        }}
+        title="CSV'deki tüm ürünleri ekle"
+      >
+        {loading ? "Ekleniyor..." : `📦 Toplu Ürünleri Ekle (${csvProducts.length})`}
+      </button>
+    </>
+  )}
+
+  <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
+    Eksik/hatalı satırlar kullanıcıya bildirilir.
+  </div>
+</div>
+
         </form>
       </div>
 
