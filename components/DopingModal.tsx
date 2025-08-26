@@ -10,9 +10,9 @@ type Props = {
 
 // Paket tanımları (fiyat / gün)
 const PAKETLER = {
-  gunluk:   { label: "1 Günlük",  price: 10, days: 1 },
-  haftalik: { label: "1 Haftalık", price: 30, days: 7 },
-  aylik:    { label: "1 Aylık",    price: 75, days: 30 },
+  gunluk:   { label: "1 Günlük",  price: 500, days: 1 },
+  haftalik: { label: "1 Haftalık", price: 800, days: 7 },
+  aylik:    { label: "1 Aylık",    price: 1250, days: 30 },
 } as const;
 type PaketKey = keyof typeof PAKETLER;
 
