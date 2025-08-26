@@ -33,13 +33,14 @@ function renderStars(rating: number, max = 5) {
 }
 
 export async function getServerSideProps(context: any) {
-  const { id } = context.params;
+  const idParam = Array.isArray(context.params?.id) ? context.params.id[0] : context.params?.id;
+const idNum = Number(idParam);
 
-  const { data: ilan, error } = await supabase
+const { data: ilan, error } = await supabase
   .from("ilan")
-  .select("*, kategori(ad)")
-  .eq("id", id)
-  .single();
+  .select("*, kategori:kategori_id (ad)") // ← JOIN’u FK alias ile yap
+  .eq("id", idNum)                        // ← id sayıya çevrildi
+  .maybeSingle();                         // ← 406 yerine null döner
 
   if (error || !ilan) return { notFound: true };
 
