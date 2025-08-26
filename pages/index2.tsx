@@ -584,66 +584,24 @@ const findKategoriAd = (id: number | null | undefined): string => {
       </div>
 
       {/* Search input fills remaining space */}
-    <div style={{ position: "relative", flex: 1 }}>
-  <input
-    type="text"
-    placeholder="🔍 Ürün ara..."
-    value={search}
-    onChange={(e) => setSearch(e.target.value)}
-    style={{
-      width: "100%",
-      border: "1.5px solid var(--border-200, #e2e8f0)",
-      borderRadius: 10,
-      padding: "10px 14px",
-      fontSize: isAndroid ? 16 : 16,
-      height: isAndroid ? 48 : undefined,
-      background: "var(--surface, #f8fafc)",
-      outline: "none",
-      color: "var(--ink-900, #223555)",
-      zIndex: 50,                     // ✅ öne al
-      position: "relative"
-    }}
-  />
-
-  {/* ✅ Arama sonuç kutusu */}
-  {search && (
-    <div
-      style={{
-        position: "absolute",
-        top: "105%",
-        left: 0,
-        width: "100%",
-        background: "#fff",
-        border: "1px solid #e2e8f0",
-        borderRadius: 10,
-        boxShadow: "0 4px 16px rgba(0,0,0,.1)",
-        zIndex: 100,   // ✅ her şeyin üstünde
-        maxHeight: 300,
-        overflowY: "auto"
-      }}
-    >
-      {ilanlar
-        .filter((i) =>
-          (i.title || "").toLowerCase().includes(search.toLowerCase())
-        )
-        .slice(0, 6) // en fazla 6 öneri
-        .map((i) => (
-          <div
-            key={i.id}
-            style={{
-              padding: "10px 14px",
-              cursor: "pointer",
-              borderBottom: "1px solid #f0f0f0"
-            }}
-            onClick={() => (window.location.href = `/urun/${i.id}?from=search`)}
-          >
-            {i.title}
-          </div>
-        ))}
-    </div>
-  )}
-</div>
-
+      <input
+  type="text"
+  placeholder="🔍 Ürün ara..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  style={{
+    flex: 1,
+    border: '1.5px solid var(--border-200, #e2e8f0)',
+    borderRadius: 10,
+    padding: '10px 14px',
+    fontSize: isAndroid ? 16 : 16,
+    height: isAndroid ? 48 : undefined,       // << daha yüksek
+    background: 'var(--surface, #f8fafc)',
+    outline: 'none',
+    color: 'var(--ink-900, #223555)',
+    minWidth: 0
+  }}
+/>
 
     </div>
 
