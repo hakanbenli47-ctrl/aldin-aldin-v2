@@ -1,4 +1,3 @@
-
 /* Add to globals.css for compact featured grid on phones:
 @media (max-width: 640px){
   .featuredGrid{ grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
@@ -191,6 +190,13 @@ const Index2: NextPage = () => {
   const [dopedIlanlar, setDopedIlanlar] = useState<Ilan[]>([]);
   const router = useRouter()
   const { kategori } = router.query
+
+  // === YENİ: tek yerden güvenli yönlendirme
+  const goto = (href: string) => {
+    router.push(href);
+  };
+  const gotoUrun = (id: number, from: string) => goto(`/urun/${id}?from=${from}`);
+
   const [aktifKategori, setAktifKategori] = useState<{ ad: string; id?: number | null }>({
     ad: 'Tümü',
     id: undefined
@@ -316,7 +322,7 @@ const Index2: NextPage = () => {
   const sepeteEkle = async (urun: Ilan) => {
     if (!isLoggedIn || !user) {
       alert("Lütfen giriş yapınız!");
-      window.location.href = "/giris";
+      goto('/giris');
       return;
     }
 
@@ -349,13 +355,13 @@ const Index2: NextPage = () => {
   };
 
   const sepeteGit = () => {
-    window.location.href = '/sepet2';
+    goto('/sepet2');
   };
 
   const toggleFavori = async (ilanId: number) => {
     if (!isLoggedIn || !user) {
       alert("Lütfen giriş yapınız!");
-      window.location.href = "/giris";
+      goto('/giris');
       return;
     }
     if (favoriler.includes(ilanId)) {
@@ -423,7 +429,7 @@ const Index2: NextPage = () => {
     await supabase.auth.signOut();
     setIsLoggedIn(false);
     setUser(null);
-    window.location.href = '/';
+    goto('/');
   };
 
   const filteredIlanlar = ilanlar.filter((i) => {
@@ -657,7 +663,7 @@ const Index2: NextPage = () => {
                             cursor: "pointer",
                             borderBottom: "1px solid #f0f0f0"
                           }}
-                          onClick={() => (window.location.href = `/urun/${i.id}?from=search`)}
+                          onClick={() => gotoUrun(i.id, 'search')}
                         >
                           {i.title}
                         </div>
@@ -737,7 +743,7 @@ const Index2: NextPage = () => {
                         }}
                       >
                         <button
-                          onClick={() => window.location.href = '/giris'}
+                          onClick={() => goto('/giris')}
                           style={{
                             display: "block",
                             width: "100%",
@@ -754,7 +760,7 @@ const Index2: NextPage = () => {
                           👤 Alıcı Giriş
                         </button>
                         <button
-                          onClick={() => window.location.href = '/giris-satici'}
+                          onClick={() => goto('/giris-satici')}
                           style={{
                             display: "block",
                             width: "100%",
@@ -775,7 +781,7 @@ const Index2: NextPage = () => {
                   </div>
 
                   <button
-                    onClick={() => window.location.href = '/kayit'}
+                    onClick={() => goto('/kayit')}
                     style={{
                       background: 'var(--accent, #1bbd8a)',
                       color: '#fff',
@@ -793,7 +799,7 @@ const Index2: NextPage = () => {
               ) : (
                 <>
                   <button
-                    onClick={() => window.location.href = '/profil2'}
+                    onClick={() => goto('/profil2')}
                     style={{
                       background: 'var(--surface, #f3f4f6)',
                       color: 'var(--primary, #2563eb)',
@@ -1022,8 +1028,12 @@ const Index2: NextPage = () => {
                   }}
                 >
                   {dopedIlanlar.map((product) => (
-                    <div className="product-card featured"
+                    <div
+                      className="product-card featured card-tap"
                       key={product.id}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && gotoUrun(product.id,'index2')}
                       style={{
                         background: 'var(--highlight, #fef08a)',
                         borderRadius: 15,
@@ -1033,7 +1043,7 @@ const Index2: NextPage = () => {
                         cursor: 'pointer',
                         border: "1.5px solid var(--highlight-border, #fbe192)"
                       }}
-                      onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                      onClick={() => gotoUrun(product.id,'index2')}
                       onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
                       onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                     >
@@ -1066,7 +1076,7 @@ const Index2: NextPage = () => {
                       <FirmaBilgiSatiri
                         email={product.user_email}
                         firmaAdMap={firmaAdMap}
-                        onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+                        onYorumClick={() => goto(`/firma-yorumlar/${product.user_email}`)}
                       />
                       {product.ortalamaPuan !== undefined && (
                         <span style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
@@ -1128,7 +1138,11 @@ const Index2: NextPage = () => {
                 <div style={{ display:'flex', gap:16, overflowX:'auto', paddingBottom:6 }}>
                   {yeniEklenenler.map((p)=>(
                     <div key={p.id}
-                      onClick={()=> window.location.href = `/urun/${p.id}?from=yeni`}
+                      className="card-tap"
+                      onClick={()=> gotoUrun(p.id,'yeni')}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && gotoUrun(p.id,'yeni')}
                       style={{
                         minWidth:220, maxWidth:240, cursor:'pointer',
                         background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:12, padding:'12px 10px'
@@ -1157,7 +1171,11 @@ const Index2: NextPage = () => {
                 <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px,1fr))', gap:16 }}>
                   {cokGoruntulenenler.map((p)=>(
                     <div key={p.id}
-                      onClick={()=> window.location.href = `/urun/${p.id}?from=views`}
+                      className="card-tap"
+                      onClick={()=> gotoUrun(p.id,'views')}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && gotoUrun(p.id,'views')}
                       style={{
                         cursor:'pointer', background:'#ffffff', border:'1px solid #e2e8f0',
                         borderRadius:12, padding:12, boxShadow:'0 2px 12px rgba(0,0,0,.03)'
@@ -1193,6 +1211,11 @@ const Index2: NextPage = () => {
                 <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
                   {populerIlanlar.map((product, idx) => (
                     <div key={idx}
+                      className="card-tap"
+                      onClick={() => gotoUrun(product.id,'populer')}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && gotoUrun(product.id,'populer')}
                       style={{
                         minWidth: 200,
                         maxWidth: 220,
@@ -1205,7 +1228,6 @@ const Index2: NextPage = () => {
                         padding: "13px 9px",
                         position: "relative"
                       }}
-                      onClick={() => window.location.href = `/urun/${product.id}?from=populer`}
                     >
                       <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
                         alt={product.title}
@@ -1297,7 +1319,11 @@ const Index2: NextPage = () => {
               </p>
               <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
                 {indirimliUrunler.slice(0, 6).map((p, idx) => (
-                  <div className="product-card discount" key={idx}
+                  <div className="product-card discount card-tap" key={idx}
+                    onClick={() => gotoUrun(p.id,'populer')}
+                    role="link"
+                    tabIndex={0}
+                    onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && gotoUrun(p.id,'populer')}
                     style={{
                       minWidth: 200,
                       maxWidth: 220,
@@ -1310,7 +1336,6 @@ const Index2: NextPage = () => {
                       padding: "13px 9px",
                       position: "relative"
                     }}
-                    onClick={() => window.location.href = `/urun/${p.id}?from=populer`}
                   >
                     {/* İNDİRİMDE ROZETİ */}
                     {p.indirimli_fiyat &&
@@ -1411,6 +1436,10 @@ const Index2: NextPage = () => {
                     return (
                       <div
                         key={product.id}
+                        className="card-tap"
+                        role="link"
+                        tabIndex={0}
+                        onKeyDown={(e)=> (e.key==='Enter'||e.key===' ') && gotoUrun(product.id,'index2')}
                         style={{
                           background: '#fff',
                           borderRadius: 15,
@@ -1421,7 +1450,7 @@ const Index2: NextPage = () => {
                           position: 'relative',
                           border: "1.5px solid var(--border, #e4e9ef)"
                         }}
-                        onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                        onClick={() => gotoUrun(product.id,'index2')}
                         onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
                         onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                       >
@@ -1489,7 +1518,7 @@ const Index2: NextPage = () => {
                         <FirmaBilgiSatiri
                           email={product.user_email}
                           firmaAdMap={firmaAdMap}
-                          onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+                          onYorumClick={() => goto(`/firma-yorumlar/${product.user_email}`)}
                         />
                         <div
                           style={{
@@ -1640,6 +1669,12 @@ const Index2: NextPage = () => {
     min-height: calc(70px + env(safe-area-inset-top));
   }
 
+  /* Tıklanabilir kartlarda mobil yanıtı iyileştir */
+  .card-tap{
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
   /* Tablet ve aşağısı: reklamları gizle, layout tek kolona düşsün */
   @media (max-width: 1024px) {
     .layout-3col {
@@ -1665,6 +1700,14 @@ const Index2: NextPage = () => {
 
   /* Telefon: tam genişlik görünüm + 1 sütun grid */
   @media (max-width: 640px) {
+    /* HERO başlığı tek satır, taşarsa elipsis */
+    #hero h1{
+      font-size: clamp(16px, 6vw, 22px) !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
     /* Header iç divini kenardan kenara yap */
     .header-inner{
       max-width: none !important;
