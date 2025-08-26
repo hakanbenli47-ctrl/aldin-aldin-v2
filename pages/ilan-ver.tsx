@@ -173,16 +173,54 @@ if (data.durum !== "approved") {
     }
     return urls;
   };
-  const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setMessage("");
-
-  if (csvProducts.length > 0) {
-    await handleBulkInsert();
+  const handleBulkInsert = async () => {
+  if (csvProducts.length === 0) {
+    setMessage("⚠️ Önce CSV yükleyin.");
     return;
   }
 
   setLoading(true);
+
+  const rows = csvProducts.map((row) => {
+    const ozelliklerCsv: any = {};
+    if (row.beden) ozelliklerCsv.beden = parseCommaList(String(row.beden));
+    if (row.renk) ozelliklerCsv.renk = parseCommaList(String(row.renk));
+    if (row.agirlikMiktar) ozelliklerCsv.agirlikMiktar = Number(row.agirlikMiktar);
+    if (row.agirlikBirim) ozelliklerCsv.agirlikBirim = row.agirlikBirim;
+    if (row.sonTuketim) ozelliklerCsv.sonTuketim = row.sonTuketim;
+
+    return {
+      title: row.title,
+      desc: row.desc || "",
+      price: row.price,
+      stok: row.stok ? Number(row.stok) : 1,
+      kategori_id: Number(row.kategori_id),
+      resim_url: row.resim_url ? [row.resim_url] : [],
+      ozellikler: ozelliklerCsv,
+      user_email: user?.email,
+      user_id: user?.id,
+      created_at: new Date(),
+    };
+  });
+
+  const { error } = await supabase.from("ilan").insert(rows);
+
+  setLoading(false);
+
+  if (error) {
+    setMessage("Toplu eklemede hata: " + error.message);
+    return;
+  }
+
+  setMessage(`✅ ${rows.length} ürün başarıyla eklendi!`);
+  setCsvProducts([]);
+  router.push("/satici");
+};
+
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage("");
 
   if (selectedFiles.length === 0) {
     setMessage("En az bir fotoğraf eklemelisiniz.");
@@ -210,105 +248,58 @@ if (data.durum !== "approved") {
     }
   }
 
-
-
-    const photoUrls = await uploadImagesAndGetUrls();
-    if (photoUrls.length === 0) {
-      setLoading(false);
-      return;
-    }
-// Dizileri garantiye al (beden/renk her zaman dizi olsun)
-const safeOzellikler = {
-  ...ozellikler,
-  beden: Array.isArray(ozellikler?.beden)
-    ? ozellikler.beden
-    : ozellikler?.beden
-    ? [String(ozellikler.beden)]
-    : [],
-  renk: Array.isArray(ozellikler?.renk)
-    ? ozellikler.renk
-    : ozellikler?.renk
-    ? [String(ozellikler.renk)]
-    : [],
-};
-
-    const { error } = await supabase.from("ilan").insert([
-      {
-        title,
-        desc,
-        price,
-        stok,
-        kategori_id: kategoriId,
-        resim_url: photoUrls,
-        ozellikler: safeOzellikler, // ✅ her zaman dizi
-        user_email: user?.email,
-        user_id: user?.id,
-        created_at: new Date(),
-      },
-    ]);
-
+  const photoUrls = await uploadImagesAndGetUrls();
+  if (photoUrls.length === 0) {
     setLoading(false);
-    if (error) {
-      setMessage("İlan kaydedilemedi: " + error.message);
-    } else {
-      setMessage("✅ İlan başarıyla kaydedildi!");
-      setTitle("");
-      setDesc("");
-      setPrice("");
-      setStok(1);
-      setSelectedFiles([]);
-      setPreviewUrls([]);
-      setOzellikler({});
-      setTimeout(() => router.push("/satici"), 1200);
-    }
-  };
-  const handleBulkInsert = async () => {
-  if (csvProducts.length === 0) {
-    setMessage("⚠️ Önce CSV yükleyin.");
     return;
   }
-  setLoading(true);
 
-  let errorRows: number[] = [];
-  let successCount = 0;
+  const safeOzellikler = {
+    ...ozellikler,
+    beden: Array.isArray(ozellikler?.beden)
+      ? ozellikler.beden
+      : ozellikler?.beden
+      ? [String(ozellikler.beden)]
+      : [],
+    renk: Array.isArray(ozellikler?.renk)
+      ? ozellikler.renk
+      : ozellikler?.renk
+      ? [String(ozellikler.renk)]
+      : [],
+  };
 
-  for (let i = 0; i < csvProducts.length; i++) {
-    const row = csvProducts[i];
-
-    const ozelliklerCsv: any = {};
-    if (row.beden) ozelliklerCsv.beden = parseCommaList(String(row.beden));
-    if (row.renk) ozelliklerCsv.renk = parseCommaList(String(row.renk));
-    if (row.agirlikMiktar) ozelliklerCsv.agirlikMiktar = Number(row.agirlikMiktar);
-    if (row.agirlikBirim) ozelliklerCsv.agirlikBirim = row.agirlikBirim;
-    if (row.sonTuketim) ozelliklerCsv.sonTuketim = row.sonTuketim;
-
-    const { error } = await supabase.from("ilan").insert([{
-      title: row.title,
-      desc: row.desc || "",
-      price: row.price,
-      stok: row.stok ? Number(row.stok) : 1,
-      kategori_id: Number(row.kategori_id),
-      resim_url: row.resim_url ? [row.resim_url] : [],
-      ozellikler: ozelliklerCsv,
+  const { error } = await supabase.from("ilan").insert([
+    {
+      title,
+      desc,
+      price,
+      stok,
+      kategori_id: kategoriId,
+      resim_url: photoUrls,
+      ozellikler: safeOzellikler,
       user_email: user?.email,
       user_id: user?.id,
       created_at: new Date(),
-    }]);
-
-    if (error) errorRows.push(i + 2); else successCount++;
-  }
+    },
+  ]);
 
   setLoading(false);
-
-  if (errorRows.length === 0) {
-    setMessage(`✅ ${successCount} ürün başarıyla eklendi!`);
+  if (error) {
+    setMessage("İlan kaydedilemedi: " + error.message);
   } else {
-    setMessage(`⚠️ ${successCount} ürün eklendi, hatalı satırlar: ${errorRows.join(", ")}.`);
+    setMessage("✅ İlan başarıyla kaydedildi!");
+    setTitle("");
+    setDesc("");
+    setPrice("");
+    setStok(1);
+    setSelectedFiles([]);
+    setPreviewUrls([]);
+    setOzellikler({});
+    setTimeout(() => router.push("/satici"), 1200);
   }
-
-  setCsvProducts([]);
 };
 
+ 
  if (message.startsWith("Başvurunuz")) {
   return (
     <div
@@ -854,6 +845,31 @@ const safeOzellikler = {
               <FiUploadCloud size={15} style={{ marginRight: 4 }} />
               Toplu Ürün Yükle (.csv)
             </div>
+{csvProducts.length > 0 && (
+  <button
+    type="button"
+    onClick={handleBulkInsert}
+    disabled={loading}
+    style={{
+      background: "linear-gradient(90deg, #199957 0%, #1648b0 90%)",
+      color: "#fff",
+      fontWeight: 700,
+      border: "none",
+      borderRadius: 8,
+      padding: "13px 0",
+      fontSize: 15,
+      cursor: "pointer",
+      opacity: loading ? 0.7 : 1,
+      letterSpacing: "0.2px",
+      marginTop: 12,
+      boxShadow: "0 2px 8px #1648b013",
+      width: "100%",
+    }}
+    title="CSV'deki tüm ürünleri ekle"
+  >
+    {loading ? "Ekleniyor..." : `📦 Toplu Ürünleri Ekle (${csvProducts.length})`}
+  </button>
+)}
 
             <a
               href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
