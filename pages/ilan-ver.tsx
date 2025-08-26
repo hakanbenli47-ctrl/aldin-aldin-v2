@@ -357,6 +357,19 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
       </div>
     );
   }
+// 🔽 IlanVer() içinde, return'den önce
+const handleDownloadExcelTemplate = () => {
+  const rows = [
+    ["title","desc","price","stok","kategori_id","resim_url","beden","renk","agirlikMiktar","agirlikBirim","sonTuketim"],
+    ["Tişört","Harika tişört","199","50","1","https://site.com/tisort.jpg","M","Siyah","","",""],
+    ["Ayakkabı","Şık ayakkabı","399","20","2","https://site.com/ayakkabi.jpg","","","","",""],
+    ["Pirinç","5 kg baldo pirinç","289","100","3","https://site.com/pirinc.jpg","","","5","kg","2026-01-01"],
+  ];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, "Urunler");
+  XLSX.writeFile(wb, "urun-sablon.xlsx");
+};
 
   // CSV/Excel YÜKLEME
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -891,6 +904,33 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
             >
               CSV şablonunu indir
             </a>
+{/* CSV/EXCEL BÖLÜMÜ başlığı altında, CSV linkinin hemen yanına */}
+<a
+  href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
+  download="urun-sablon.csv"
+  style={{ color: "#199957", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}
+>
+  CSV şablonunu indir
+</a>
+
+<button
+  type="button"
+  onClick={handleDownloadExcelTemplate}
+  style={{
+    marginLeft: 10,
+    padding: "6px 10px",
+    borderRadius: 6,
+    border: "1px solid #e4e9ef",
+    background: "#fff",
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#1648b0",
+  }}
+  title="Excel şablonunu .xlsx olarak indir"
+>
+  Excel şablonunu indir
+</button>
 
             <input
               type="file"
