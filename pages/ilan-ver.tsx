@@ -7,6 +7,12 @@ import Papa, { ParseResult } from "papaparse";
 import * as XLSX from "xlsx"; // ← Excel desteği
 import { FiImage, FiTag, FiBox, FiLayers, FiHash, FiUploadCloud } from "react-icons/fi";
 
+const ONECIKAR_PLANS = {
+  "7g":  { price: 49.90, days: 7,  label: "7 Gün"  },
+  "14g": { price: 79.90, days: 14, label: "14 Gün" },
+} as const;
+type PlanKey = keyof typeof ONECIKAR_PLANS;
+
 type Kategori = { id: number; ad: string };
 type CsvUrun = {
   title: string;
@@ -43,6 +49,17 @@ export default function IlanVer() {
   const [csvProducts, setCsvProducts] = useState<CsvUrun[]>([]); // toplu yükleme listesi
 
   const [renkText, setRenkText] = useState("");
+  const [featurePlan, setFeaturePlan] = useState<PlanKey>("7g");
+
+  // basit kart alanları
+  const [ccName, setCcName] = useState("");
+  const [ccNumber, setCcNumber] = useState("");
+  const [ccExpiry, setCcExpiry] = useState(""); // "MM/YY"
+  const [ccCvv, setCcCvv] = useState("");
+
+  // yeni: son eklenen ilanın ID'si (öne çıkarma ödemesi için)
+  const [lastInsertedIlanId, setLastInsertedIlanId] = useState<number | null>(null);
+
   // Dinamik özellikler (JSON)
   const [ozellikler, setOzellikler] = useState<any>({});
   const setOzellik = (key: string, value: any) =>
@@ -63,7 +80,6 @@ export default function IlanVer() {
   };
 
   // "kırmızı, mavi, siyah" => ["kırmızı","mavi","siyah"]
-  // Virgül, nokta, noktalı virgül ve satır sonuna göre ayır (hepsini destekler)
   const parseCommaList = (s: string) =>
     s.split(/[,\n;.\u00B7]+/).map(v => v.trim()).filter(Boolean);
 
@@ -83,7 +99,6 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
   const addRenk = (input: string) => {
     const tokens = parseCommaList(input);
     if (!tokens.length) return;
-
     setOzellikler((prev: any) => {
       const arr = Array.isArray(prev?.renk) ? [...prev.renk] : [];
       for (const t of tokens) if (!arr.includes(t)) arr.push(t);
@@ -91,7 +106,6 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
     });
   };
 
-  // Listedeki bir rengi sil
   const removeRenk = (value: string) => {
     setOzellikler((prev: any) => ({
       ...prev,
@@ -117,7 +131,6 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
         .single();
 
       if (error || !data) {
-        // hiç başvuru yok → başvuru formuna yönlendir
         router.push("/satici-basvuru");
         return;
       }
@@ -129,7 +142,6 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
         } else if (data.durum === "rejected") {
           durumMesaj = "Başvurunuz reddedildi. Tekrar başvuruda bulunun.";
         }
-
         setMessage(durumMesaj);
         return;
       }
@@ -273,26 +285,33 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
         : [],
     };
 
-    const { error } = await supabase.from("ilan").insert([
-      {
-        title,
-        desc,
-        price,
-        stok,
-        kategori_id: kategoriId,
-        resim_url: photoUrls,
-        ozellikler: safeOzellikler,
-        user_email: user?.email,
-        user_id: user?.id,
-        created_at: new Date(),
-      },
-    ]);
+    // ↓↓↓ BURADA ID'yi dönecek şekilde insert ediyoruz
+    const { data: inserted, error } = await supabase
+      .from("ilan")
+      .insert([
+        {
+          title,
+          desc,
+          price,
+          stok,
+          kategori_id: kategoriId,
+          resim_url: photoUrls,
+          ozellikler: safeOzellikler,
+          user_email: user?.email,
+          user_id: user?.id,
+          created_at: new Date(),
+        },
+      ])
+      .select("id")
+      .single();
 
     setLoading(false);
     if (error) {
       setMessage("İlan kaydedilemedi: " + error.message);
     } else {
-      setMessage("✅ İlan başarıyla kaydedildi!");
+      setLastInsertedIlanId(inserted!.id); // << ID kaydedildi
+      setMessage("✅ İlan başarıyla kaydedildi! İstersen hemen öne çıkarabilirsin.");
+      // Formu temizlemek istersen:
       setTitle("");
       setDesc("");
       setPrice("");
@@ -300,7 +319,7 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
       setSelectedFiles([]);
       setPreviewUrls([]);
       setOzellikler({});
-      setTimeout(() => router.push("/satici"), 1200);
+      // NOT: yönlendirmeyi kaldırdık ki kullanıcı hemen alttan öne çıkarma ödemesi yapabilsin.
     }
   };
 
@@ -357,19 +376,20 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
       </div>
     );
   }
-// 🔽 IlanVer() içinde, return'den önce
-const handleDownloadExcelTemplate = () => {
-  const rows = [
-    ["title","desc","price","stok","kategori_id","resim_url","beden","renk","agirlikMiktar","agirlikBirim","sonTuketim"],
-    ["Tişört","Harika tişört","199","50","1","https://site.com/tisort.jpg","M","Siyah","","",""],
-    ["Ayakkabı","Şık ayakkabı","399","20","2","https://site.com/ayakkabi.jpg","","","","",""],
-    ["Pirinç","5 kg baldo pirinç","289","100","3","https://site.com/pirinc.jpg","","","5","kg","2026-01-01"],
-  ];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws, "Urunler");
-  XLSX.writeFile(wb, "urun-sablon.xlsx");
-};
+
+  // Excel şablonu indirme
+  const handleDownloadExcelTemplate = () => {
+    const rows = [
+      ["title","desc","price","stok","kategori_id","resim_url","beden","renk","agirlikMiktar","agirlikBirim","sonTuketim"],
+      ["Tişört","Harika tişört","199","50","1","https://site.com/tisort.jpg","M","Siyah","","",""],
+      ["Ayakkabı","Şık ayakkabı","399","20","2","https://site.com/ayakkabi.jpg","","","","",""],
+      ["Pirinç","5 kg baldo pirinç","289","100","3","https://site.com/pirinc.jpg","","","5","kg","2026-01-01"],
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, "Urunler");
+    XLSX.writeFile(wb, "urun-sablon.xlsx");
+  };
 
   // CSV/Excel YÜKLEME
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -433,6 +453,76 @@ const handleDownloadExcelTemplate = () => {
 
     setMessage("Desteklenmeyen dosya türü. Lütfen CSV, XLSX veya XLS yükleyin.");
   };
+
+  // --- ÖDEME: İlanı öne çıkar (İyzico /api/payment payRaw çağrısı)
+  async function handleFeaturePayment(ilanId: number) {
+    try {
+      const amount = ONECIKAR_PLANS[featurePlan].price;
+
+      if (!ccName || !ccNumber || !ccExpiry || !ccCvv) {
+        alert("Kart bilgilerini doldurun.");
+        return;
+      }
+
+      const payRes = await fetch("/api/payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "payRaw",
+          amount,
+          card: {
+            name_on_card: ccName,
+            card_number: ccNumber.replace(/\s/g, ""),
+            expiry: ccExpiry,
+            cvv: ccCvv,
+          },
+          buyer: {
+            id: user?.id,
+            name: user?.email?.split("@")[0] || "User",
+            surname: "User",
+            email: user?.email || "test@example.com",
+            gsmNumber: "+905555555555",
+          },
+          address: {
+            address: "Feature",
+            city: "Istanbul",
+            country: "Turkey",
+            postal_code: "",
+          },
+          basketItems: [
+            {
+              id: `feature-${ilanId}`,
+              name: `Öne Çıkar (${ONECIKAR_PLANS[featurePlan].label}) - #${ilanId}`,
+              category1: "Feature",
+              price: amount,
+            },
+          ],
+        }),
+      });
+      const payJson = await payRes.json();
+      if (!payJson?.success) {
+        alert("💳 Ödeme başarısız: " + (payJson?.message || "bilinmeyen hata"));
+        return;
+      }
+
+      const until = new Date(Date.now() + ONECIKAR_PLANS[featurePlan].days * 86400 * 1000);
+      const { error: upErr } = await supabase
+        .from("ilan")
+        .update({ is_featured: true, featured_until: until.toISOString() })
+        .eq("id", ilanId);
+
+      if (upErr) {
+        alert("Ödeme alındı ama ilan işaretlenemedi: " + upErr.message);
+        return;
+      }
+
+      alert("✅ Ödeme alındı ve ilan öne çıkarıldı.");
+      router.push("/satici");
+    } catch (e: any) {
+      console.error(e);
+      alert("Ödeme sırasında hata: " + (e?.message || "bilinmeyen hata"));
+    }
+  }
 
   return (
     <div
@@ -882,6 +972,82 @@ const handleDownloadExcelTemplate = () => {
             </div>
           )}
 
+          {/* --- ÖNE ÇIKAR BÖLÜMÜ (CSV/EXCEL BÖLÜMÜNDEN ÖNCE) --- */}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed #e2e8f0" }}>
+            <div style={{ fontWeight: 700, color: "#1648b0", marginBottom: 8 }}>
+              ⭐ İlanı Öne Çıkar
+            </div>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+              <select
+                value={featurePlan}
+                onChange={(e) => setFeaturePlan(e.target.value as PlanKey)}
+                style={{ ...inputStyle, maxWidth: 200 }}
+              >
+                <option value="7g">7 Gün — {ONECIKAR_PLANS["7g"].price} ₺</option>
+                <option value="14g">14 Gün — {ONECIKAR_PLANS["14g"].price} ₺</option>
+              </select>
+              <div style={{ fontSize: 13, color: "#64748b" }}>
+                Tutar: <b>{ONECIKAR_PLANS[featurePlan].price.toFixed(2)} ₺</b>
+              </div>
+            </div>
+
+            <input
+              type="text"
+              placeholder="Kart üzerindeki isim"
+              value={ccName}
+              onChange={(e) => setCcName(e.target.value)}
+              style={inputStyle}
+            />
+            <input
+              type="text"
+              placeholder="Kart numarası (16 hane)"
+              value={ccNumber}
+              onChange={(e) => setCcNumber(e.target.value)}
+              style={inputStyle}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                placeholder="SKT (AA/YY)"
+                value={ccExpiry}
+                onChange={(e) => setCcExpiry(e.target.value)}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <input
+                type="text"
+                placeholder="CVV"
+                value={ccCvv}
+                onChange={(e) => setCcCvv(e.target.value)}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!lastInsertedIlanId) {
+                  alert("Önce ilanı kaydedin, sonra öne çıkarın.");
+                  return;
+                }
+                handleFeaturePayment(lastInsertedIlanId);
+              }}
+              style={{
+                background: "linear-gradient(90deg,#f59e0b,#ef4444)",
+                color: "#fff",
+                fontWeight: 700,
+                border: "none",
+                borderRadius: 8,
+                padding: "12px 0",
+                fontSize: 15,
+                cursor: "pointer",
+                marginTop: 8,
+              }}
+            >
+              💳 Öne Çıkar & Öde
+            </button>
+          </div>
+
           {/* CSV/EXCEL BÖLÜMÜ */}
           <div style={{ marginTop: 22, padding: "10px 0 0 0", borderTop: "1px dashed #c1c8d8" }}>
             <div
@@ -904,33 +1070,25 @@ const handleDownloadExcelTemplate = () => {
             >
               CSV şablonunu indir
             </a>
-{/* CSV/EXCEL BÖLÜMÜ başlığı altında, CSV linkinin hemen yanına */}
-<a
-  href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
-  download="urun-sablon.csv"
-  style={{ color: "#199957", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}
->
-  CSV şablonunu indir
-</a>
 
-<button
-  type="button"
-  onClick={handleDownloadExcelTemplate}
-  style={{
-    marginLeft: 10,
-    padding: "6px 10px",
-    borderRadius: 6,
-    border: "1px solid #e4e9ef",
-    background: "#fff",
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#1648b0",
-  }}
-  title="Excel şablonunu .xlsx olarak indir"
->
-  Excel şablonunu indir
-</button>
+            <button
+              type="button"
+              onClick={handleDownloadExcelTemplate}
+              style={{
+                marginLeft: 10,
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: "1px solid #e4e9ef",
+                background: "#fff",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#1648b0",
+              }}
+              title="Excel şablonunu .xlsx olarak indir"
+            >
+              Excel şablonunu indir
+            </button>
 
             <input
               type="file"
