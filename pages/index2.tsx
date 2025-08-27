@@ -390,10 +390,10 @@ useEffect(() => {
 },
       {
         id: "h2",
-        title: "Kışa Hazırlık",
+        title: "En Güçlü DonanımlarS",
         sub: giyim?.[2]?.title || "Giyim Ürünleri",
         cta: "İlham Al",
-        href: giyim?.[2] ? `/urun/${giyim[2].id}` : "/?kategori=Giyim",
+        href: giyim?.[2] ? `/urun/${giyim[2].id}` : "/?kategori=Elekronik",
         img: Array.isArray(giyim?.[2]?.resim_url)
           ? giyim[2].resim_url[0]
           : giyim?.[2]?.resim_url || "/banner-2.jpg",
