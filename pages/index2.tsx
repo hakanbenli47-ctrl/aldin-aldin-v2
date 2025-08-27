@@ -1095,7 +1095,7 @@ useEffect(() => {
             </div>
 
             {/* Kategori çipleri */}
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12, padding:'0 12px' }}>
+           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12, width:'100%', justifyContent:'center' }}>
               {kategoriSayilari.slice(0,12).map(k=>(
                 <button key={k.id}
                   onClick={()=> setAktifKategori({ ad:k.ad, id:k.id })}
@@ -1140,7 +1140,7 @@ useEffect(() => {
                 <section className="section-block"
                   style={{
                     background:'#fff',
-                    padding:'22px 18px',
+                    padding:'22px 0px',
                     borderRadius:0,
                     margin:'24px 0',
                     border:'1.5px solid #fde68a',
@@ -1741,7 +1741,18 @@ useEffect(() => {
           </div>
 
           {/* Global Styles */}
-          <style jsx global>{`
+          <style jsx global>{`.section-block {
+  width: 100vw !important;
+  margin-left: calc(-50vw + 50%); /* container kırpıyorsa tam ekrana zorlar */
+}
+
+.category-chips,
+.trending-terms {
+  width: 100vw !important;
+  margin-left: calc(-50vw + 50%);
+  padding: 0 10px;
+}
+
           .hero-slide {
   position: relative;
   min-height: 180px;
