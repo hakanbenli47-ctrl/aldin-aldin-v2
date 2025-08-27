@@ -1442,9 +1442,9 @@ const Index2: NextPage = () => {
                 </div>
               </section>
 
-              {/* STANDART İLANLAR */}
+              {/* STANDART İLANLAR (MERKEZLENDİ) */}
               <section className="section-block full-bleed">
-                <div className="inner">
+                <div className="inner inner--center">
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--ink-900, #223555)', marginBottom: 10 }}>
                       {aktifKategori.ad === 'Tümü' ? 'Tüm İlanlar' : `${aktifKategori.ad} İlanları`}
@@ -1689,10 +1689,10 @@ const Index2: NextPage = () => {
                 </div>
               </section>
 
-              {/* TOP MAĞAZALAR */}
+              {/* TOP MAĞAZALAR (MERKEZLENDİ) */}
               {topMagazalar.length > 0 && (
                 <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
-                  <div className="inner">
+                  <div className="inner inner--center">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
                       {topMagazalar.map(m=>(
@@ -1719,10 +1719,10 @@ const Index2: NextPage = () => {
                 </section>
               )}
 
-              {/* ÇOK GÖRÜNTÜLENENLER */}
+              {/* ÇOK GÖRÜNTÜLENENLER (MERKEZLENDİ) */}
               {cokGoruntulenenler.length > 0 && (
                 <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
-                  <div className="inner">
+                  <div className="inner inner--center">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>👀 Çok Görüntülenenler</h2>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
                       {cokGoruntulenenler.map(p=>(
@@ -1741,10 +1741,10 @@ const Index2: NextPage = () => {
                 </section>
               )}
 
-              {/* SON BAKTIKLARIN */}
+              {/* SON BAKTIKLARIN (MERKEZLENDİ) */}
               {recentlyViewed.length > 0 && (
                 <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
-                  <div className="inner">
+                  <div className="inner inner--center">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🕒 Son Baktıkların</h2>
                     <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
                       {recentlyViewed.map(p=>(
@@ -1775,6 +1775,13 @@ const Index2: NextPage = () => {
 .full-bleed > .inner{
   padding-left:clamp(8px, 2.2vw, 24px);
   padding-right:clamp(8px, 2.2vw, 24px);
+}
+/* Merkezli container: Tüm İlanlar ve altı için */
+.inner--center{
+  width:100%;
+  max-width: 1200px;
+  margin-left:auto;
+  margin-right:auto;
 }
 
 /* Section’ları da yatayda sıfırla */
