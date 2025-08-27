@@ -33,17 +33,34 @@ function renderStars(rating: number, max = 5) {
 }
 
 export async function getServerSideProps(context: any) {
+  // id’yi güvenli sayıya çevir
   const idParam = Array.isArray(context.params?.id) ? context.params.id[0] : context.params?.id;
-const idNum = Number(idParam);
+  const idNum = Number(idParam);
 
-const { data: ilan, error } = await supabase
-  .from("ilan")
-  .select("*, kategori:kategori_id (ad)") // ← JOIN’u FK alias ile yap
-  .eq("id", idNum)                        // ← id sayıya çevrildi
-  .maybeSingle();                         // ← 406 yerine null döner
+  // İlanı ilişkili tablo olmadan çek
+  const { data: ilanRaw, error: ilanErr } = await supabase
+    .from("ilan")
+    .select("id, title, price, resim_url, kategori_id, user_email, doped, desc, ozellikler")
+    .eq("id", idNum)
+    .maybeSingle();
 
-  if (error || !ilan) return { notFound: true };
+  if (ilanErr || !ilanRaw) return { notFound: true };
 
+  // Kategori adını ayrı sorgu ile al
+  let kategoriAd: string | null = null;
+  if (ilanRaw.kategori_id != null) {
+    const { data: kat } = await supabase
+      .from("kategori")
+      .select("ad")
+      .eq("id", ilanRaw.kategori_id)
+      .maybeSingle();
+    kategoriAd = kat?.ad ?? null;
+  }
+
+  // UI ile uyum için { kategori: { ad } } şeklinde ekle
+  const ilan = { ...ilanRaw, kategori: kategoriAd ? { ad: kategoriAd } : null };
+
+  // Firma bilgisi
   let firmaAdi: string | null = null;
   let firmaPuan = 0;
   if (ilan.user_email) {
@@ -51,14 +68,15 @@ const { data: ilan, error } = await supabase
       .from("satici_firmalar")
       .select("firma_adi, puan")
       .eq("email", ilan.user_email)
-      .single();
-    firmaAdi = firma?.firma_adi || null;
+      .maybeSingle();
+    firmaAdi = firma?.firma_adi ?? null;
     firmaPuan = firma?.puan ?? 0;
   }
 
+  // Benzer ürünler
   const { data: benzerler } = await supabase
     .from("ilan")
-    .select("*")
+    .select("id, title, price, resim_url")
     .eq("kategori_id", ilan.kategori_id)
     .neq("id", ilan.id)
     .limit(8);
@@ -72,6 +90,7 @@ const { data: ilan, error } = await supabase
     },
   };
 }
+
 
 export default function UrunDetay({
   ilan,
