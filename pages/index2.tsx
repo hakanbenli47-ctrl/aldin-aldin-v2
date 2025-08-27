@@ -1076,10 +1076,13 @@ useEffect(() => {
             </div>
 
             {/* Avantaj barı (full width card grid) */}
-            <div style={{
-              display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',
-              gap:12, marginTop:12, padding:'0 12px'
-            }}>
+            <div className="full-bleed">
+  <div className="inner" style={{
+    display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',
+    gap:12, marginTop:12
+  }}>
+    
+  </div>
               <div style={{ background:'#9cdd84ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
                 <FiTruck size={22} /><div><div style={{fontWeight:800}}>Hızlı Kargo</div><div style={{fontSize:13, color:'#6b7280'}}>Seçili ürünlerde aynı gün</div></div>
               </div>
@@ -1095,7 +1098,8 @@ useEffect(() => {
             </div>
 
             {/* Kategori çipleri */}
-           <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12, width:'100%', justifyContent:'center' }}>
+            <div className="full-bleed">
+  <div className="inner" style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
               {kategoriSayilari.slice(0,12).map(k=>(
                 <button key={k.id}
                   onClick={()=> setAktifKategori({ ad:k.ad, id:k.id })}
@@ -1106,11 +1110,13 @@ useEffect(() => {
                   {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad} <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
                 </button>
               ))}
+            </div> 
             </div>
-
             {/* Trend aramalar */}
             {trendingTerms.length > 0 && (
-              <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', padding:'0 12px' }}>
+              <div className="full-bleed">
+  <div className="inner" style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+  </div>
                 <span style={{ fontWeight:900, color:'#334155', fontSize:14 }}>Trend Aramalar:</span>
                 {trendingTerms.map(t=>(
                   <button key={t}
@@ -1140,7 +1146,7 @@ useEffect(() => {
                 <section className="section-block"
                   style={{
                     background:'#fff',
-                    padding:'22px 0px',
+                    padding:'22px 18px',
                     borderRadius:0,
                     margin:'24px 0',
                     border:'1.5px solid #fde68a',
@@ -1173,7 +1179,7 @@ useEffect(() => {
               )}
 
               {/* ÖNE ÇIKANLAR */}
-              <section style={{
+              <section className="section-block full-bleed" style={{
                 background: '#fff',
                 padding: '30px 12px',
                 borderRadius: 0,
@@ -1741,16 +1747,23 @@ useEffect(() => {
           </div>
 
           {/* Global Styles */}
-          <style jsx global>{`.section-block {
-  width: 100vw !important;
-  margin-left: calc(-50vw + 50%); /* container kırpıyorsa tam ekrana zorlar */
+          <style jsx global>{`/* FULL-BLEED yardımcıları */
+.full-bleed{
+  width:100vw;
+  margin-left:calc(50% - 50vw);
+  margin-right:calc(50% - 50vw);
+}
+.full-bleed > .inner{
+  /* Kenara yapışmasın diye responsive iç boşluk */
+  padding-left:clamp(8px, 2.2vw, 24px);
+  padding-right:clamp(8px, 2.2vw, 24px);
 }
 
-.category-chips,
-.trending-terms {
-  width: 100vw !important;
-  margin-left: calc(-50vw + 50%);
-  padding: 0 10px;
+/* Section’ları da yatayda sıfırla */
+.section-block{
+  padding-left:0 !important;
+  padding-right:0 !important;
+  border-radius:0 !important;
 }
 
           .hero-slide {
