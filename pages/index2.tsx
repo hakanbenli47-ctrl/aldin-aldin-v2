@@ -207,9 +207,9 @@ const Index2: NextPage = () => {
   const [loading, setLoading] = useState(true);
   const [dopedIlanlar, setDopedIlanlar] = useState<Ilan[]>([]);
   // Hero için state
-const [heroSlides, setHeroSlides] = useState<any[]>([]);
+  const [heroSlides, setHeroSlides] = useState<any[]>([]);
   const router = useRouter()
-  const { kategori } = router.query
+  const { kategori } = router.query as { kategori?: string };
   const [aktifKategori, setAktifKategori] = useState<{ ad: string; id?: number | null }>({
     ad: 'Tümü',
     id: undefined
@@ -246,14 +246,14 @@ const [heroSlides, setHeroSlides] = useState<any[]>([]);
     if (!heroPause) {
       heroTimer.current = setInterval(() => {
         setHeroIndex(i => {
-          const next = (i + 1) % heroSlides.length;
+          const next = (i + 1) % Math.max(1, heroSlides.length);
           requestAnimationFrame(() => scrollHero(next));
           return next;
         });
       }, 3500);
     }
     return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
-  }, [heroPause]);
+  }, [heroPause, heroSlides.length]);
 
   useEffect(() => { scrollHero(heroIndex); }, [heroIndex]);
 
@@ -354,65 +354,66 @@ const [heroSlides, setHeroSlides] = useState<any[]>([]);
     fetchData();
     fetchDopedIlanlar();
   }, []);
-useEffect(() => {
-  async function fetchHeroSlides() {
-    // Elektronik
-    const { data: elektronik } = await supabase
-      .from("ilan")
-      .select("id, title, resim_url")
-      .eq("kategori_id", 1)
-      .limit(3);
+  
+  useEffect(() => {
+    async function fetchHeroSlides() {
+      // Elektronik
+      const { data: elektronik } = await supabase
+        .from("ilan")
+        .select("id, title, resim_url")
+        .eq("kategori_id", 1)
+        .limit(3);
 
-    // Giyim
-    const { data: giyim } = await supabase
-      .from("ilan")
-      .select("id, title, resim_url")
-      .eq("kategori_id", 2)
-      .limit(3);
+      // Giyim
+      const { data: giyim } = await supabase
+        .from("ilan")
+        .select("id, title, resim_url")
+        .eq("kategori_id", 2)
+        .limit(3);
 
-    // Spor
-    const { data: spor } = await supabase
-      .from("ilan")
-      .select("id, title, resim_url")
-      .eq("kategori_id", 3)
-      .limit(3);
+      // Spor
+      const { data: spor } = await supabase
+        .from("ilan")
+        .select("id, title, resim_url")
+        .eq("kategori_id", 3)
+        .limit(3);
 
-    setHeroSlides([
-      {
-  id: "h1",
-  title: "Mega Kampanya",
-  sub: elektronik?.[1]?.title || "Elektronik Ürünler",
-  cta: "Fırsatları Gör",
-  href: elektronik?.[1] ? `/urun/${elektronik[1].id}` : "/?kategori=Elektronik",
-  img: Array.isArray(elektronik?.[1]?.resim_url)
-    ? elektronik[1].resim_url[0]
-    : elektronik?.[1]?.resim_url || "/banner-1.jpg",
-},
-      {
-        id: "h2",
-        title: "En Güçlü DonanımlarS",
-        sub: elektronik?.[2]?.title || "Elektronik Ürünleri",
-        cta: "İlham Al",
-        href: elektronik?.[2] ? `/urun/${elektronik[2].id}` : "/?kategori=Elekronik",
-        img: Array.isArray(elektronik?.[2]?.resim_url)
-          ? elektronik[2].resim_url[0]
-          : elektronik?.[2]?.resim_url || "/banner-2.jpg",
-      },
-      {
-        id: "h3",
-        title: "Süper Fırsat",
-        sub: spor?.[0]?.title || "Spor & Outdoor",
-        cta: "Keşfet",
-        href: spor?.[0] ? `/urun/${spor[0].id}` : "/?kategori=Spor%20&%20Outdoor",
-        img: Array.isArray(spor?.[0]?.resim_url)
-          ? spor[0].resim_url[0]
-          : spor?.[0]?.resim_url || "/banner-3.jpg",
-      },
-    ]);
-  }
+      setHeroSlides([
+        {
+          id: "h1",
+          title: "Mega Kampanya",
+          sub: elektronik?.[1]?.title || "Elektronik Ürünler",
+          cta: "Fırsatları Gör",
+          href: elektronik?.[1] ? `/urun/${elektronik[1].id}` : "/?kategori=Elektronik",
+          img: Array.isArray(elektronik?.[1]?.resim_url)
+            ? elektronik[1].resim_url[0]
+            : elektronik?.[1]?.resim_url || "/banner-1.jpg",
+        },
+        {
+          id: "h2",
+          title: "En Güçlü Donanımlar",
+          sub: elektronik?.[2]?.title || "Elektronik Ürünleri",
+          cta: "İlham Al",
+          href: elektronik?.[2] ? `/urun/${elektronik[2].id}` : "/?kategori=Elektronik",
+          img: Array.isArray(elektronik?.[2]?.resim_url)
+            ? elektronik[2].resim_url[0]
+            : elektronik?.[2]?.resim_url || "/banner-2.jpg",
+        },
+        {
+          id: "h3",
+          title: "Süper Fırsat",
+          sub: spor?.[0]?.title || "Spor & Outdoor",
+          cta: "Keşfet",
+          href: spor?.[0] ? `/urun/${spor[0].id}` : "/?kategori=Spor%20&%20Outdoor",
+          img: Array.isArray(spor?.[0]?.resim_url)
+            ? spor[0].resim_url[0]
+            : spor?.[0]?.resim_url || "/banner-3.jpg",
+        },
+      ]);
+    }
 
-  fetchHeroSlides();
-}, []);
+    fetchHeroSlides();
+  }, []);
 
 
   // Son bakılanlar
@@ -1041,21 +1042,21 @@ useEffect(() => {
                 borderRadius:0, // full-bleed
                 width:'100vw',
               }}>
-              {heroSlides.map((s)=>( 
-  <div key={s.id} className="hero-slide">
-    <img src={s.img} alt={s.title}
-      onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }} />
-    <div className="hero-content">
-      <div>
-        <div className="hero-title">{s.title}</div>
-        <div className="hero-sub">{s.sub}</div>
-        <button onClick={()=> window.location.href = s.href} className="hero-btn">
-          {s.cta} →
-        </button>
-      </div>
-    </div>
-  </div>
-))}
+              {heroSlides.map((s)=>(
+                <div key={s.id} className="hero-slide">
+                  <img src={s.img} alt={s.title}
+                    onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }} />
+                  <div className="hero-content">
+                    <div>
+                      <div className="hero-title">{s.title}</div>
+                      <div className="hero-sub">{s.sub}</div>
+                      <button onClick={()=> window.location.href = s.href} className="hero-btn">
+                        {s.cta} →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="hero-dots">
               {heroSlides.map((_, i)=>(
@@ -1077,54 +1078,57 @@ useEffect(() => {
 
             {/* Avantaj barı (full width card grid) */}
             <div className="full-bleed">
-  <div className="inner" style={{
-    display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',
-    gap:12, marginTop:12
-  }}>
-    
-  </div>
-              <div style={{ background:'#9cdd84ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
-                <FiTruck size={22} /><div><div style={{fontWeight:800}}>Hızlı Kargo</div><div style={{fontSize:13, color:'#6b7280'}}>Seçili ürünlerde aynı gün</div></div>
-              </div>
-              <div style={{ background:'#77c0c5ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
-                <FiShield size={22} /><div><div style={{fontWeight:800}}>Güvenli Ödeme</div><div style={{fontSize:13, color:'#6b7280'}}>3D Secure & koruma</div></div>
-              </div>
-              <div style={{ background:'#ed3a3aff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
-                <FiRefreshCw size={22} /><div><div style={{fontWeight:800}}>Kolay İade</div><div style={{fontSize:13, color:'#6b7280'}}>14 gün koşulsuz</div></div>
-              </div>
-              <div style={{ background:'#ee87d3ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
-                <FiTrendingUp size={22} /><div><div style={{fontWeight:800}}>Trend Ürünler</div><div style={{fontSize:13, color:'#6b7280'}}>Her gün güncellenir</div></div>
+              <div className="inner">
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:12, marginTop:12 }}>
+                  <div style={{ background:'#9cdd84ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+                    <FiTruck size={22} /><div><div style={{fontWeight:800}}>Hızlı Kargo</div><div style={{fontSize:13, color:'#6b7280'}}>Seçili ürünlerde aynı gün</div></div>
+                  </div>
+                  <div style={{ background:'#77c0c5ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+                    <FiShield size={22} /><div><div style={{fontWeight:800}}>Güvenli Ödeme</div><div style={{fontSize:13, color:'#6b7280'}}>3D Secure & koruma</div></div>
+                  </div>
+                  <div style={{ background:'#ed3a3aff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+                    <FiRefreshCw size={22} /><div><div style={{fontWeight:800}}>Kolay İade</div><div style={{fontSize:13, color:'#6b7280'}}>14 gün koşulsuz</div></div>
+                  </div>
+                  <div style={{ background:'#ee87d3ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+                    <FiTrendingUp size={22} /><div><div style={{fontWeight:800}}>Trend Ürünler</div><div style={{fontSize:13, color:'#6b7280'}}>Her gün güncellenir</div></div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Kategori çipleri */}
             <div className="full-bleed">
-  <div className="inner" style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
-              {kategoriSayilari.slice(0,12).map(k=>(
-                <button key={k.id}
-                  onClick={()=> setAktifKategori({ ad:k.ad, id:k.id })}
-                  style={{
-                    border:'1px solid #e5e7eb', background:'#fff', borderRadius:999, padding:'6px 12px', cursor:'pointer',
-                    fontWeight:800, fontSize:13, display:'flex', alignItems:'center', gap:8
-                  }}>
-                  {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad} <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
-                </button>
-              ))}
-            </div> 
+              <div className="inner">
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
+                  {kategoriSayilari.slice(0,12).map(k=>(
+                    <button key={k.id}
+                      onClick={()=> setAktifKategori({ ad:k.ad, id:k.id })}
+                      style={{
+                        border:'1px solid #e5e7eb', background:'#fff', borderRadius:999, padding:'6px 12px', cursor:'pointer',
+                        fontWeight:800, fontSize:13, display:'flex', alignItems:'center', gap:8
+                      }}>
+                      {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad} <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
+
             {/* Trend aramalar */}
             {trendingTerms.length > 0 && (
               <div className="full-bleed">
-  <div className="inner" style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-  </div>
-                <span style={{ fontWeight:900, color:'#334155', fontSize:14 }}>Trend Aramalar:</span>
-                {trendingTerms.map(t=>(
-                  <button key={t}
-                    onClick={()=> setSearch(t)}
-                    style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:999, padding:'4px 10px', fontWeight:800, fontSize:12, cursor:'pointer' }}>
-                    #{t}
-                  </button>
-                ))}
+                <div className="inner">
+                  <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <span style={{ fontWeight:900, color:'#334155', fontSize:14 }}>Trend Aramalar:</span>
+                    {trendingTerms.map(t=>(
+                      <button key={t}
+                        onClick={()=> setSearch(t)}
+                        style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:999, padding:'4px 10px', fontWeight:800, fontSize:12, cursor:'pointer' }}>
+                        #{t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </section>
@@ -1143,20 +1147,20 @@ useEffect(() => {
             <main className="main-col" style={{ width: "100%", padding: 0, flexGrow: 1 }}>
               {/* FLASH DEALS */}
               {indirimliUrunler.length > 0 && (
-                <section className="section-block"
+                <section className="section-block full-bleed"
                   style={{
                     background:'#fff',
-                    padding:'22px 18px',
+                    padding:'22px 0',
                     borderRadius:0,
                     margin:'24px 0',
                     border:'1.5px solid #fde68a',
                     boxShadow:'0 4px 16px rgba(234,179,8,.15)'
                   }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap', padding:'0 12px' }}>
+                  <div className="inner" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#78350f' }}>⚡ Flash Deals</h2>
                     <div style={{ fontWeight:900, fontSize:16, color:'#b45309' }}>Bitişe: {HH}:{MM}:{SS}</div>
                   </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px,1fr))', gap:14, marginTop:12, padding:'0 12px' }}>
+                  <div className="inner" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px,1fr))', gap:14, marginTop:12 }}>
                     {indirimliUrunler.slice(0,8).map(p=>(
                       <div key={p.id}
                         onClick={()=> goToProduct(p.id,'flash')}
@@ -1181,565 +1185,579 @@ useEffect(() => {
               {/* ÖNE ÇIKANLAR */}
               <section className="section-block full-bleed" style={{
                 background: '#fff',
-                padding: '30px 12px',
+                padding: '30px 0',
                 borderRadius: 0,
                 margin: '0 0 42px',
                 boxShadow: '0 4px 22px #f59e0b18',
                 border: '1.5px solid var(--border-200, #e2e8f0)'
               }}>
-                <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--amber-700, #b45309)', marginBottom: 20, letterSpacing: ".2px", padding:'0 12px' }}>
-                  🚀 Öne Çıkanlar
-                </h2>
-                {dopedIlanlar.length === 0 ? (
-                  <div style={{
-                    background: 'var(--note-bg, #fef9c3)',
-                    padding: 40,
-                    textAlign: 'center',
-                    borderRadius: 13,
-                    color: 'var(--note-fg, #92400e)',
-                    fontWeight: 500,
-                    fontSize: 16
-                  }}>
-                    Şu anda öne çıkarılan bir ilan yok.
-                  </div>
-                ) : (
-                  <div className="featuredGrid"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
-                      gap: 23
+                <div className="inner">
+                  <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--amber-700, #b45309)', marginBottom: 20, letterSpacing: ".2px" }}>
+                    🚀 Öne Çıkanlar
+                  </h2>
+                  {dopedIlanlar.length === 0 ? (
+                    <div style={{
+                      background: 'var(--note-bg, #fef9c3)',
+                      padding: 40,
+                      textAlign: 'center',
+                      borderRadius: 13,
+                      color: 'var(--note-fg, #92400e)',
+                      fontWeight: 500,
+                      fontSize: 16
                     }}>
-                    {dopedIlanlar.map((product) => (
-                      <div className="product-card featured"
-                        key={product.id}
-                        style={{
-                          background: 'var(--highlight, #fef08a)',
-                          borderRadius: 15,
-                          padding: 15,
-                          boxShadow: '0 4px 17px #eab3082b',
-                          transition: 'transform 0.15s, box-shadow 0.18s',
-                          cursor: 'pointer',
-                          border: "1.5px solid var(--highlight-border, #fbe192)"
-                        }}
-                        onClick={() => goToProduct(product.id,'featured')}
-                        onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
-                        onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
-                      >
-                        <img
-                          src={Array.isArray(product.resim_url) ? product.resim_url[0] || '/placeholder.jpg' : product.resim_url || '/placeholder.jpg'}
-                          alt={product.title}
+                      Şu anda öne çıkarılan bir ilan yok.
+                    </div>
+                  ) : (
+                    <div className="featuredGrid"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
+                        gap: 23
+                      }}>
+                      {dopedIlanlar.map((product) => (
+                        <div className="product-card featured"
+                          key={product.id}
                           style={{
-                            width: '100%',
-                            height: 160,
-                            objectFit: 'cover',
-                            borderRadius: 10,
-                            marginBottom: 12,
-                            border: "1.5px solid var(--highlight-img-border, #fae27a)"
+                            background: 'var(--highlight, #fef08a)',
+                            borderRadius: 15,
+                            padding: 15,
+                            boxShadow: '0 4px 17px #eab3082b',
+                            transition: 'transform 0.15s, box-shadow 0.18s',
+                            cursor: 'pointer',
+                            border: "1.5px solid var(--highlight-border, #fbe192)"
                           }}
-                        />
-                        <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--amber-900, #78350f)', marginBottom: 6 }}>
-                          {product.title}
-                        </h3>
-                        <FirmaBilgiSatiri
-                          email={product.user_email}
-                          firmaAdMap={firmaAdMap}
-                          onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
-                        />
-                        {product.ortalamaPuan !== undefined && (
-                          <span style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
-                            {renderStars(product.ortalamaPuan ?? 0)}
-                            <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
-                              ({(product.ortalamaPuan ?? 0).toFixed(1)})
+                          onClick={() => goToProduct(product.id,'featured')}
+                          onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
+                          onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
+                        >
+                          <img
+                            src={Array.isArray(product.resim_url) ? product.resim_url[0] || '/placeholder.jpg' : product.resim_url || '/placeholder.jpg'}
+                            alt={product.title}
+                            style={{
+                              width: '100%',
+                              height: 160,
+                              objectFit: 'cover',
+                              borderRadius: 10,
+                              marginBottom: 12,
+                              border: "1.5px solid var(--highlight-img-border, #fae27a)"
+                            }}
+                          />
+                          <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--amber-900, #78350f)', marginBottom: 6 }}>
+                            {product.title}
+                          </h3>
+                          <FirmaBilgiSatiri
+                            email={product.user_email}
+                            firmaAdMap={firmaAdMap}
+                            onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+                          />
+                          {product.ortalamaPuan !== undefined && (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 5 }}>
+                              {renderStars(product.ortalamaPuan ?? 0)}
+                              <span style={{ color: "var(--ink-500, #64748b)", fontSize: 13, marginLeft: 5 }}>
+                                ({(product.ortalamaPuan ?? 0).toFixed(1)})
+                              </span>
                             </span>
+                          )}
+
+                          <div style={{
+                            fontSize: 16,
+                            fontWeight: 600,
+                            color: product.indirimli_fiyat ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
+                            marginBottom: 4
+                          }}>
+                            {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+                              <>
+                                <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 500, marginRight: 7 }}>
+                                  {product.price} ₺
+                                </span>
+                                <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
+                                  {product.indirimli_fiyat} ₺
+                                </span>
+                              </>
+                            ) : (`${product.price} ₺`)}
+                          </div>
+
+                          <div style={{ fontSize: 13, color: '#555', marginTop: 4 }}>
+                            {getRemainingTime(product.doped_expiration)}
+                          </div>
+                          <span style={{ fontSize: 14, color: '#a16207' }}>
+                            {findKategoriAd(product.kategori_id)}
                           </span>
-                        )}
-
-                        <div style={{
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: product.indirimli_fiyat ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
-                          marginBottom: 4
-                        }}>
-                          {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
-                            <>
-                              <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 500, marginRight: 7 }}>
-                                {product.price} ₺
-                              </span>
-                              <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
-                                {product.indirimli_fiyat} ₺
-                              </span>
-                            </>
-                          ) : (`${product.price} ₺`)}
                         </div>
-
-                        <div style={{ fontSize: 13, color: '#555', marginTop: 4 }}>
-                          {getRemainingTime(product.doped_expiration)}
-                        </div>
-                        <span style={{ fontSize: 14, color: '#a16207' }}>
-                          {findKategoriAd(product.kategori_id)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </section>
 
               {populerIlanlar.length > 0 && (
-                <section className="section-block" style={{ margin: '0 0 32px', padding:'0 12px' }}>
-                  <h2 style={{ fontSize: 24, fontWeight: 900, color: '#1d8cf8', marginBottom: 12, letterSpacing: ".2px" }}>
-                    ⭐ EN POPÜLER ÜRÜNLER
+                <section className="section-block full-bleed" style={{ margin: '0 0 32px', padding:'0' }}>
+                  <div className="inner">
+                    <h2 style={{ fontSize: 24, fontWeight: 900, color: '#1d8cf8', marginBottom: 12, letterSpacing: ".2px" }}>
+                      ⭐ EN POPÜLER ÜRÜNLER
+                    </h2>
+                    <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
+                      {populerIlanlar.map((product, idx) => (
+                        <div key={idx}
+                          style={{
+                            minWidth: 200,
+                            maxWidth: 220,
+                            background: "var(--surface-200, #f1f5f9)",
+                            borderRadius: 13,
+                            boxShadow: "0 2px 13px #1d8cf80b",
+                            border: "1.5px solid var(--border, #e4e9ef)",
+                            marginRight: 5,
+                            cursor: "pointer",
+                            padding: "13px 9px",
+                            position: "relative"
+                          }}
+                          onClick={() => goToProduct(product.id,'populer')}
+                        >
+                          <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
+                            alt={product.title}
+                            style={{
+                              width: "100%",
+                              height: 92,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              border: "1px solid var(--border-soft, #e0e7ef)"
+                            }} />
+                          <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink-900, #223555)", marginTop: 5 }}>{product.title}</div>
+                          <div style={{ color: "var(--warning, #f59e0b)", fontWeight: 600, fontSize: 18 }}>
+                            {renderStars(product.ortalamaPuan ?? 0)}
+                            <span style={{ fontWeight: 500, fontSize: 14, color: "var(--ink-500, #64748b)", marginLeft: 5 }}>
+                              ({(product.ortalamaPuan ?? 0).toFixed(1)})
+                            </span>
+                          </div>
+                          <div style={{
+                            fontSize: 16,
+                            fontWeight: 600,
+                            color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
+                            marginBottom: 4
+                          }}>
+                            {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+                              <>
+                                <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 500, marginRight: 7 }}>
+                                  {product.price} ₺
+                                </span>
+                                <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
+                                  {product.indirimli_fiyat} ₺
+                                </span>
+                              </>
+                            ) : (`${product.price} ₺`)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
+              <section className="section-block full-bleed" style={{ margin: '0 0 32px', padding:'0' }}>
+                <div className="inner">
+                  <h2 style={{
+                    fontSize: 24,
+                    fontWeight: 900,
+                    color: 'var(--danger, #e11d48)',
+                    marginBottom: 8,
+                    letterSpacing: ".2px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 11
+                  }}>
+                    <span style={{fontSize: 28, marginTop: -4}}>🔥</span>
+                    Ayın İndirimleri Başladı!
+                    <span style={{
+                      background: "var(--success-500, #22c55e)",
+                      color: "#fff",
+                      borderRadius: 7,
+                      fontSize: 14,
+                      padding: "2px 12px",
+                      marginLeft: 8,
+                      fontWeight: 700
+                    }}>
+                      Haftanın Fırsatları
+                    </span>
                   </h2>
+                  <p style={{ fontWeight: 600, fontSize: 15.5, color: '#444', marginBottom: 12, marginLeft: 3 }}>
+                    Sezonun en popüler ve indirimli ürünleri burada! Acele et, stoklar sınırlı.
+                  </p>
                   <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
-                    {populerIlanlar.map((product, idx) => (
-                      <div key={idx}
+                    {indirimliUrunler.slice(0, 6).map((p, idx) => (
+                      <div className="product-card discount" key={idx}
                         style={{
                           minWidth: 200,
                           maxWidth: 220,
-                          background: "var(--surface-200, #f1f5f9)",
+                          background: "#fff6",
                           borderRadius: 13,
-                          boxShadow: "0 2px 13px #1d8cf80b",
+                          boxShadow: "0 2px 13px #f871710b",
                           border: "1.5px solid var(--border, #e4e9ef)",
                           marginRight: 5,
                           cursor: "pointer",
                           padding: "13px 9px",
                           position: "relative"
                         }}
-                        onClick={() => goToProduct(product.id,'populer')}
+                        onClick={() => goToProduct(p.id,'populer')}
                       >
-                        <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
-                          alt={product.title}
+                        {p.indirimli_fiyat &&
+                          <span style={{
+                            position: "absolute", top: 11, left: 11,
+                            background: "var(--price-discount, #ef4444)", color: "#fff",
+                            fontWeight: 800, fontSize: 12, borderRadius: 7, padding: "2px 10px", boxShadow: "0 1px 5px #ef44441a"
+                          }}>İNDİRİMDE</span>}
+                        {idx < 3 &&
+                          <span style={{
+                            position: "absolute", top: 11, right: 11,
+                            background: "var(--warning, #f59e0b)", color: "#fff", fontWeight: 800,
+                            fontSize: 12, borderRadius: 7, padding: "2px 10px"
+                          }}>Çok Satan</span>}
+                        <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                          alt={p.title}
                           style={{
                             width: "100%",
                             height: 92,
                             objectFit: "cover",
                             borderRadius: 8,
-                            border: "1px solid var(--border-soft, #e0e7ef)"
+                            border: "1px solid var(--yellow-300, #fde68a)"
                           }} />
-                        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink-900, #223555)", marginTop: 5 }}>{product.title}</div>
-                        <div style={{ color: "var(--warning, #f59e0b)", fontWeight: 600, fontSize: 18 }}>
-                          {renderStars(product.ortalamaPuan ?? 0)}
-                          <span style={{ fontWeight: 500, fontSize: 14, color: "var(--ink-500, #64748b)", marginLeft: 5 }}>
-                            ({(product.ortalamaPuan ?? 0).toFixed(1)})
-                          </span>
-                        </div>
-                        <div style={{
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
-                          marginBottom: 4
-                        }}>
-                          {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+                        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--danger, #e11d48)", marginTop: 5 }}>{p.title}</div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--success-500, #22c55e)" }}>
+                          {p.indirimli_fiyat ? (
                             <>
-                              <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 500, marginRight: 7 }}>
-                                {product.price} ₺
+                              <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 600, marginRight: 4 }}>
+                                {p.price}₺
                               </span>
-                              <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
-                                {product.indirimli_fiyat} ₺
-                              </span>
+                              <span style={{ color: "var(--price-discount, #ef4444)" }}>{p.indirimli_fiyat}₺</span>
                             </>
-                          ) : (`${product.price} ₺`)}
+                          ) : (`${p.price}₺`)}
                         </div>
+                        {p.stok && p.stok < 5 &&
+                          <div style={{ color: "var(--danger, #e11d48)", fontWeight: 700, fontSize: 13, marginTop: 2 }}>
+                            Son {p.stok} ürün!
+                          </div>}
                       </div>
                     ))}
                   </div>
-                </section>
-              )}
-
-              {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
-              <section className="section-block" style={{ margin: '0 0 32px', padding:'0 12px' }}>
-                <h2 style={{
-                  fontSize: 24,
-                  fontWeight: 900,
-                  color: 'var(--danger, #e11d48)',
-                  marginBottom: 8,
-                  letterSpacing: ".2px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 11
-                }}>
-                  <span style={{fontSize: 28, marginTop: -4}}>🔥</span>
-                  Ayın İndirimleri Başladı!
-                  <span style={{
-                    background: "var(--success-500, #22c55e)",
-                    color: "#fff",
-                    borderRadius: 7,
-                    fontSize: 14,
-                    padding: "2px 12px",
-                    marginLeft: 8,
-                    fontWeight: 700
-                  }}>
-                    Haftanın Fırsatları
-                  </span>
-                </h2>
-                <p style={{ fontWeight: 600, fontSize: 15.5, color: '#444', marginBottom: 12, marginLeft: 3 }}>
-                  Sezonun en popüler ve indirimli ürünleri burada! Acele et, stoklar sınırlı.
-                </p>
-                <div style={{ display: "flex", gap: 16, overflowX: "auto", paddingBottom: 7 }}>
-                  {indirimliUrunler.slice(0, 6).map((p, idx) => (
-                    <div className="product-card discount" key={idx}
-                      style={{
-                        minWidth: 200,
-                        maxWidth: 220,
-                        background: "#fff6",
-                        borderRadius: 13,
-                        boxShadow: "0 2px 13px #f871710b",
-                        border: "1.5px solid var(--border, #e4e9ef)",
-                        marginRight: 5,
-                        cursor: "pointer",
-                        padding: "13px 9px",
-                        position: "relative"
-                      }}
-                      onClick={() => goToProduct(p.id,'populer')}
-                    >
-                      {p.indirimli_fiyat &&
-                        <span style={{
-                          position: "absolute", top: 11, left: 11,
-                          background: "var(--price-discount, #ef4444)", color: "#fff",
-                          fontWeight: 800, fontSize: 12, borderRadius: 7, padding: "2px 10px", boxShadow: "0 1px 5px #ef44441a"
-                        }}>İNDİRİMDE</span>}
-                      {idx < 3 &&
-                        <span style={{
-                          position: "absolute", top: 11, right: 11,
-                          background: "var(--warning, #f59e0b)", color: "#fff", fontWeight: 800,
-                          fontSize: 12, borderRadius: 7, padding: "2px 10px"
-                        }}>Çok Satan</span>}
-                      <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
-                        alt={p.title}
-                        style={{
-                          width: "100%",
-                          height: 92,
-                          objectFit: "cover",
-                          borderRadius: 8,
-                          border: "1px solid var(--yellow-300, #fde68a)"
-                        }} />
-                      <div style={{ fontWeight: 700, fontSize: 15, color: "var(--danger, #e11d48)", marginTop: 5 }}>{p.title}</div>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: "var(--success-500, #22c55e)" }}>
-                        {p.indirimli_fiyat ? (
-                          <>
-                            <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 600, marginRight: 4 }}>
-                              {p.price}₺
-                            </span>
-                            <span style={{ color: "var(--price-discount, #ef4444)" }}>{p.indirimli_fiyat}₺</span>
-                          </>
-                        ) : (`${p.price}₺`)}
-                      </div>
-                      {p.stok && p.stok < 5 &&
-                        <div style={{ color: "var(--danger, #e11d48)", fontWeight: 700, fontSize: 13, marginTop: 2 }}>
-                          Son {p.stok} ürün!
-                        </div>}
-                    </div>
-                  ))}
                 </div>
               </section>
 
               {/* STANDART İLANLAR */}
-              <section className="section-block" style={{ padding:'0 12px' }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-                  <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--ink-900, #223555)', marginBottom: 10 }}>
-                    {aktifKategori.ad === 'Tümü' ? 'Tüm İlanlar' : `${aktifKategori.ad} İlanları`}
-                  </h2>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <label style={{ fontSize:13, color:'#64748b', fontWeight:700 }}>Sırala:</label>
-                    <select
-                      value={sortKey}
-                      onChange={(e)=> setSortKey(e.target.value as any)}
-                      style={{ padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8, fontWeight:700 }}
-                    >
-                      <option value="relevance">Alaka</option>
-                      <option value="priceAsc">Fiyat Artan</option>
-                      <option value="priceDesc">Fiyat Azalan</option>
-                      <option value="rating">Puan</option>
-                      <option value="newest">En Yeni</option>
-                      <option value="viewsDesc">Görüntülenme</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Hızlı filtreler */}
-                <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', margin:'6px 0 14px' }}>
-                  <button onClick={()=> setOnlyDiscounted(v=>!v)}
-                    style={{
-                      padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
-                      background: onlyDiscounted ? '#fde68a' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
-                    }}>İndirimli</button>
-
-                  <button onClick={()=> setOnlyInStock(v=>!v)}
-                    style={{
-                      padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
-                      background: onlyInStock ? '#dcfce7' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
-                    }}>Stokta</button>
-
-                  <button onClick={()=> setOnlyNew(v=>!v)}
-                    style={{
-                      padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
-                      background: onlyNew ? '#e0e7ff' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
-                    }}>Yeni</button>
-
-                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <input value={minPrice} onChange={e=>setMinPrice(e.target.value)} placeholder="Min ₺"
-                      style={{ width:90, padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8 }} />
-                    <span style={{ color:'#94a3b8' }}>–</span>
-                    <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value)} placeholder="Max ₺"
-                      style={{ width:90, padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8 }} />
+              <section className="section-block full-bleed">
+                <div className="inner">
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                    <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--ink-900, #223555)', marginBottom: 10 }}>
+                      {aktifKategori.ad === 'Tümü' ? 'Tüm İlanlar' : `${aktifKategori.ad} İlanları`}
+                    </h2>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <label style={{ fontSize:13, color:'#64748b', fontWeight:700 }}>Sırala:</label>
+                      <select
+                        value={sortKey}
+                        onChange={(e)=> setSortKey(e.target.value as any)}
+                        style={{ padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8, fontWeight:700 }}
+                      >
+                        <option value="relevance">Alaka</option>
+                        <option value="priceAsc">Fiyat Artan</option>
+                        <option value="priceDesc">Fiyat Azalan</option>
+                        <option value="rating">Puan</option>
+                        <option value="newest">En Yeni</option>
+                        <option value="viewsDesc">Görüntülenme</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {(onlyDiscounted || onlyInStock || onlyNew || minPrice || maxPrice || debouncedSearch) && (
-                    <button
-                      onClick={()=>{
-                        setOnlyDiscounted(false); setOnlyInStock(false); setOnlyNew(false);
-                        setMinPrice(''); setMaxPrice(''); setSearch(''); setVisibleCount(12);
-                      }}
-                      style={{ padding:'8px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', fontWeight:800, fontSize:13, cursor:'pointer' }}
-                    >
-                      Temizle
-                    </button>
-                  )}
-                </div>
-
-                {normalIlanlar.length === 0 ? (
-                  <div style={{
-                    background: 'var(--surface, #f8fafc)',
-                    padding: 40,
-                    textAlign: 'center',
-                    borderRadius: 13,
-                    color: 'var(--ink-500, #64748b)',
-                    fontWeight: 500,
-                    fontSize: 16
-                  }}>
-                    {aktifKategori.ad === 'Tümü'
-                      ? 'Sonuç bulunamadı. Filtreleri gevşetmeyi deneyin.'
-                      : `${aktifKategori.ad} kategorisinde uygun sonuç yok.`}
-                  </div>
-                ) : (
-                  <>
-                    <div className="ilanGrid"
+                  {/* Hızlı filtreler */}
+                  <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', margin:'6px 0 14px' }}>
+                    <button onClick={()=> setOnlyDiscounted(v=>!v)}
                       style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
-                        gap: 23
-                      }}>
-                      {normalIlanlar.map((product) => {
-                        const sepette = sepetteVarMi(product.id);
-                        return (
-                          <div
-                            key={product.id}
-                            style={{
-                              background: '#fff',
-                              borderRadius: 15,
-                              padding: 15,
-                              boxShadow: '0 3px 16px #16a34a24',
-                              transition: 'transform 0.16s',
-                              cursor: 'pointer',
-                              position: 'relative',
-                              border: "1.5px solid var(--border, #e4e9ef)"
-                            }}
-                            onClick={() => goToProduct(product.id,'index2')}
-                            onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
-                            onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
-                          >
-                            {isYeni(product.created_at) && (
-                              <span
-                                style={{
-                                  position: 'absolute',
-                                  top: 13, left: 13,
-                                  background: 'var(--success, #16a34a)',
-                                  color: '#fff',
-                                  fontWeight: 800,
-                                  fontSize: 13,
-                                  borderRadius: 8,
-                                  padding: '4px 13px',
-                                  boxShadow: '0 2px 8px #16a34a33',
-                                  zIndex: 1
-                                }}>
-                                Yeni
-                              </span>
-                            )}
-                            <span
-                              onClick={e => { e.stopPropagation(); toggleFavori(product.id); }}
-                              title={favoriler.includes(product.id) ? "Favorilerden çıkar" : "Favorilere ekle"}
-                              style={{
-                                position: 'absolute',
-                                top: 12, right: 14,
-                                fontSize: 22,
-                                color: favoriler.includes(product.id) ? "var(--attention, #fb8500)" : "#bbb",
-                                cursor: 'pointer',
-                                userSelect: 'none',
-                                zIndex: 2,
-                                transition: 'color 0.2s'
-                              }}>
-                              {favoriler.includes(product.id) ? "❤️" : "🤍"}
-                            </span>
-                            <img
-                              src={Array.isArray(product.resim_url) ? product.resim_url[0] || '/placeholder.jpg' : product.resim_url || '/placeholder.jpg'}
-                              alt={product.title}
-                              style={{
-                                width: '100%',
-                                height: 155,
-                                objectFit: 'cover',
-                                borderRadius: 10,
-                                marginBottom: 12,
-                                background: '#f0fdf4',
-                                border: "1px solid var(--border, #e4e9ef)"
-                              }}
-                            />
-                            <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink-800, #1e293b)', marginBottom: 6 }}>
-                              {product.title}
-                            </h3>
-                            <FirmaBilgiSatiri
-                              email={product.user_email}
-                              firmaAdMap={firmaAdMap}
-                              onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
-                            />
-                            <div style={{
-                              fontSize: 16,
-                              fontWeight: 600,
-                              color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
-                              marginBottom: 4
-                            }}>
-                              {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
-                                <>
-                                  <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 500, marginRight: 7 }}>
-                                    {product.price} ₺
-                                  </span>
-                                  <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
-                                    {product.indirimli_fiyat} ₺
-                                  </span>
-                                </>
-                              ) : (`${product.price} ₺`)}
-                            </div>
-                            <span style={{ fontSize: 14, color: 'var(--ink-500, #64748b)' }}>
-                              {findKategoriAd(product.kategori_id)}
-                            </span>
+                        padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
+                        background: onlyDiscounted ? '#fde68a' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
+                      }}>İndirimli</button>
 
-                            {!sepette ? (
-                              <button
-                                style={{
-                                  marginTop: 13,
-                                  background: 'linear-gradient(90deg, var(--accent, #16a34a) 0%, #22c55e 90%)',
-                                  color: '#fff',
-                                  padding: '10px 0',
-                                  borderRadius: 10,
-                                  border: 'none',
-                                  fontWeight: 700,
-                                  fontSize: 15,
-                                  cursor: 'pointer',
-                                  width: '100%',
-                                  boxShadow: '0 2px 8px #10b98122',
-                                  letterSpacing: 0.5,
-                                  transition: 'background 0.18s'
-                                }}
-                                onClick={async e => { e.stopPropagation(); await sepeteEkle(product); }}
-                              >
-                                🛒 Sepete Ekle
-                              </button>
-                            ) : (
-                              <button
-                                style={{
-                                  marginTop: 13,
-                                  background: 'linear-gradient(90deg, var(--attention, #fb8500) 0%, var(--attention-300, #ffbc38) 80%)',
-                                  color: '#fff',
-                                  padding: '10px 0',
-                                  borderRadius: 10,
-                                  border: 'none',
-                                  fontWeight: 700,
-                                  fontSize: 15,
-                                  cursor: 'pointer',
-                                  width: '100%',
-                                  boxShadow: '0 2px 8px #fb850022',
-                                  letterSpacing: 0.5,
-                                  transition: 'background 0.18s'
-                                }}
-                                onClick={e => { e.stopPropagation(); sepeteGit(); }}
-                              >
-                                Sepete Git
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
+                    <button onClick={()=> setOnlyInStock(v=>!v)}
+                      style={{
+                        padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
+                        background: onlyInStock ? '#dcfce7' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
+                      }}>Stokta</button>
+
+                    <button onClick={()=> setOnlyNew(v=>!v)}
+                      style={{
+                        padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
+                        background: onlyNew ? '#e0e7ff' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
+                      }}>Yeni</button>
+
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <input value={minPrice} onChange={e=>setMinPrice(e.target.value)} placeholder="Min ₺"
+                        style={{ width:90, padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8 }} />
+                      <span style={{ color:'#94a3b8' }}>–</span>
+                      <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value)} placeholder="Max ₺"
+                        style={{ width:90, padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8 }} />
                     </div>
 
-                    {/* Daha Fazla Yükle */}
-                    {normalIlanlar.length < totalAfterFilters && (
-                      <div style={{ display:'flex', justifyContent:'center', marginTop:16 }}>
-                        <button
-                          onClick={()=> setVisibleCount(c=> c + 12)}
-                          style={{
-                            background:'#fff', border:'1px solid #e2e8f0', borderRadius:10,
-                            padding:'10px 16px', fontWeight:800, cursor:'pointer'
-                          }}
-                        >
-                          Daha Fazla Yükle ({totalAfterFilters - normalIlanlar.length} kaldı)
-                        </button>
-                      </div>
+                    {(onlyDiscounted || onlyInStock || onlyNew || minPrice || maxPrice || debouncedSearch) && (
+                      <button
+                        onClick={()=>{
+                          setOnlyDiscounted(false); setOnlyInStock(false); setOnlyNew(false);
+                          setMinPrice(''); setMaxPrice(''); setSearch(''); setVisibleCount(12);
+                        }}
+                        style={{ padding:'8px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', fontWeight:800, fontSize:13, cursor:'pointer' }}
+                      >
+                        Temizle
+                      </button>
                     )}
-                  </>
-                )}
+                  </div>
+
+                  {normalIlanlar.length === 0 ? (
+                    <div style={{
+                      background: 'var(--surface, #f8fafc)',
+                      padding: 40,
+                      textAlign: 'center',
+                      borderRadius: 13,
+                      color: 'var(--ink-500, #64748b)',
+                      fontWeight: 500,
+                      fontSize: 16
+                    }}>
+                      {aktifKategori.ad === 'Tümü'
+                        ? 'Sonuç bulunamadı. Filtreleri gevşetmeyi deneyin.'
+                        : `${aktifKategori.ad} kategorisinde uygun sonuç yok.`}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="ilanGrid"
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
+                          gap: 23
+                        }}>
+                        {normalIlanlar.map((product) => {
+                          const sepette = sepetteVarMi(product.id);
+                          return (
+                            <div
+                              key={product.id}
+                              style={{
+                                background: '#fff',
+                                borderRadius: 15,
+                                padding: 15,
+                                boxShadow: '0 3px 16px #16a34a24',
+                                transition: 'transform 0.16s',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                border: "1.5px solid var(--border, #e4e9ef)"
+                              }}
+                              onClick={() => goToProduct(product.id,'index2')}
+                              onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
+                              onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
+                            >
+                              {isYeni(product.created_at) && (
+                                <span
+                                  style={{
+                                    position: 'absolute',
+                                    top: 13, left: 13,
+                                    background: 'var(--success, #16a34a)',
+                                    color: '#fff',
+                                    fontWeight: 800,
+                                    fontSize: 13,
+                                    borderRadius: 8,
+                                    padding: '4px 13px',
+                                    boxShadow: '0 2px 8px #16a34a33',
+                                    zIndex: 1
+                                  }}>
+                                  Yeni
+                                </span>
+                              )}
+                              <span
+                                onClick={e => { e.stopPropagation(); toggleFavori(product.id); }}
+                                title={favoriler.includes(product.id) ? "Favorilerden çıkar" : "Favorilere ekle"}
+                                style={{
+                                  position: 'absolute',
+                                  top: 12, right: 14,
+                                  fontSize: 22,
+                                  color: favoriler.includes(product.id) ? "var(--attention, #fb8500)" : "#bbb",
+                                  cursor: 'pointer',
+                                  userSelect: 'none',
+                                  zIndex: 2,
+                                  transition: 'color 0.2s'
+                                }}>
+                                {favoriler.includes(product.id) ? "❤️" : "🤍"}
+                              </span>
+                              <img
+                                src={Array.isArray(product.resim_url) ? product.resim_url[0] || '/placeholder.jpg' : product.resim_url || '/placeholder.jpg'}
+                                alt={product.title}
+                                style={{
+                                  width: '100%',
+                                  height: 155,
+                                  objectFit: 'cover',
+                                  borderRadius: 10,
+                                  marginBottom: 12,
+                                  background: '#f0fdf4',
+                                  border: "1px solid var(--border, #e4e9ef)"
+                                }}
+                              />
+                              <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink-800, #1e293b)', marginBottom: 6 }}>
+                                {product.title}
+                              </h3>
+                              <FirmaBilgiSatiri
+                                email={product.user_email}
+                                firmaAdMap={firmaAdMap}
+                                onYorumClick={() => window.location.href = `/firma-yorumlar/${product.user_email}`}
+                              />
+                              <div style={{
+                                fontSize: 16,
+                                fontWeight: 600,
+                                color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
+                                marginBottom: 4
+                              }}>
+                                {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
+                                  <>
+                                    <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 500, marginRight: 7 }}>
+                                      {product.price} ₺
+                                    </span>
+                                    <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
+                                      {product.indirimli_fiyat} ₺
+                                    </span>
+                                  </>
+                                ) : (`${product.price} ₺`)}
+                              </div>
+                              <span style={{ fontSize: 14, color: 'var(--ink-500, #64748b)' }}>
+                                {findKategoriAd(product.kategori_id)}
+                              </span>
+
+                              {!sepette ? (
+                                <button
+                                  style={{
+                                    marginTop: 13,
+                                    background: 'linear-gradient(90deg, var(--accent, #16a34a) 0%, #22c55e 90%)',
+                                    color: '#fff',
+                                    padding: '10px 0',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    fontWeight: 700,
+                                    fontSize: 15,
+                                    cursor: 'pointer',
+                                    width: '100%',
+                                    boxShadow: '0 2px 8px #10b98122',
+                                    letterSpacing: 0.5,
+                                    transition: 'background 0.18s'
+                                  }}
+                                  onClick={async e => { e.stopPropagation(); await sepeteEkle(product); }}
+                                >
+                                  🛒 Sepete Ekle
+                                </button>
+                              ) : (
+                                <button
+                                  style={{
+                                    marginTop: 13,
+                                    background: 'linear-gradient(90deg, var(--attention, #fb8500) 0%, var(--attention-300, #ffbc38) 80%)',
+                                    color: '#fff',
+                                    padding: '10px 0',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    fontWeight: 700,
+                                    fontSize: 15,
+                                    cursor: 'pointer',
+                                    width: '100%',
+                                    boxShadow: '0 2px 8px #fb850022',
+                                    letterSpacing: 0.5,
+                                    transition: 'background 0.18s'
+                                  }}
+                                  onClick={e => { e.stopPropagation(); sepeteGit(); }}
+                                >
+                                  Sepete Git
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Daha Fazla Yükle */}
+                      {normalIlanlar.length < totalAfterFilters && (
+                        <div style={{ display:'flex', justifyContent:'center', marginTop:16 }}>
+                          <button
+                            onClick={()=> setVisibleCount(c=> c + 12)}
+                            style={{
+                              background:'#fff', border:'1px solid #e2e8f0', borderRadius:10,
+                              padding:'10px 16px', fontWeight:800, cursor:'pointer'
+                            }}
+                          >
+                            Daha Fazla Yükle ({totalAfterFilters - normalIlanlar.length} kaldı)
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </section>
 
               {/* TOP MAĞAZALAR */}
               {topMagazalar.length > 0 && (
-                <section className="section-block" style={{ marginTop:24, padding:'0 12px' }}>
-                  <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
-                    {topMagazalar.map(m=>(
-                      <div key={m.email}
-                        onClick={()=> window.location.href=`/firma-yorumlar/${m.email}`}
-                        style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
-                        <div style={{
-                          width:44, height:44, borderRadius:12, background:'#eef2ff', display:'grid', placeItems:'center',
-                          fontWeight:900, color:'#334155'
-                        }}>
-                          {m.ad?.slice(0,2).toUpperCase()}
-                        </div>
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontWeight:800, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.ad}</div>
-                          <div style={{ fontSize:12, color:'#6b7280' }}>{m.urun} ürün</div>
-                          <div style={{ display:'flex', alignItems:'center', gap:4, color:'#f59e0b', fontSize:14 }}>
-                            <FiStar /> {m.puan.toFixed(1)}
+                <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
+                  <div className="inner">
+                    <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
+                      {topMagazalar.map(m=>(
+                        <div key={m.email}
+                          onClick={()=> window.location.href=`/firma-yorumlar/${m.email}`}
+                          style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+                          <div style={{
+                            width:44, height:44, borderRadius:12, background:'#eef2ff', display:'grid', placeItems:'center',
+                            fontWeight:900, color:'#334155'
+                          }}>
+                            {m.ad?.slice(0,2).toUpperCase()}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:800, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.ad}</div>
+                            <div style={{ fontSize:12, color:'#6b7280' }}>{m.urun} ürün</div>
+                            <div style={{ display:'flex', alignItems:'center', gap:4, color:'#f59e0b', fontSize:14 }}>
+                              <FiStar /> {m.puan.toFixed(1)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </section>
               )}
 
               {/* ÇOK GÖRÜNTÜLENENLER */}
               {cokGoruntulenenler.length > 0 && (
-                <section className="section-block" style={{ marginTop:24, padding:'0 12px' }}>
-                  <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>👀 Çok Görüntülenenler</h2>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
-                    {cokGoruntulenenler.map(p=>(
-                      <div key={p.id}
-                        onClick={()=> goToProduct(p.id,'most_viewed')}
-                        style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:10 }}>
-                        <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
-                          alt={p.title}
-                          style={{ width:'100%', height:110, objectFit:'cover', borderRadius:8, border:'1px solid #eef2f7' }} />
-                        <div style={{ fontWeight:800, marginTop:6, fontSize:14 }}>{p.title}</div>
-                        <div style={{ color:'#64748b', fontSize:12 }}>{findKategoriAd(p.kategori_id)}</div>
-                      </div>
-                    ))}
+                <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
+                  <div className="inner">
+                    <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>👀 Çok Görüntülenenler</h2>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
+                      {cokGoruntulenenler.map(p=>(
+                        <div key={p.id}
+                          onClick={()=> goToProduct(p.id,'most_viewed')}
+                          style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:10 }}>
+                          <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                            alt={p.title}
+                            style={{ width:'100%', height:110, objectFit:'cover', borderRadius:8, border:'1px solid #eef2f7' }} />
+                          <div style={{ fontWeight:800, marginTop:6, fontSize:14 }}>{p.title}</div>
+                          <div style={{ color:'#64748b', fontSize:12 }}>{findKategoriAd(p.kategori_id)}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </section>
               )}
 
               {/* SON BAKTIKLARIN */}
               {recentlyViewed.length > 0 && (
-                <section className="section-block" style={{ marginTop:24, padding:'0 12px' }}>
-                  <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🕒 Son Baktıkların</h2>
-                  <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
-                    {recentlyViewed.map(p=>(
-                      <div key={p.id}
-                        onClick={()=> goToProduct(p.id,'recent')}
-                        style={{ minWidth:200, border:'1px solid #e5e7eb', background:'#fff', borderRadius:12, padding:10, cursor:'pointer' }}>
-                        <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
-                          alt={p.title}
-                          style={{ width:'100%', height:90, objectFit:'cover', borderRadius:8 }} />
-                        <div style={{ fontWeight:800, fontSize:14, marginTop:6 }}>{p.title}</div>
-                      </div>
-                    ))}
+                <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
+                  <div className="inner">
+                    <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🕒 Son Baktıkların</h2>
+                    <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
+                      {recentlyViewed.map(p=>(
+                        <div key={p.id}
+                          onClick={()=> goToProduct(p.id,'recent')}
+                          style={{ minWidth:200, border:'1px solid #e5e7eb', background:'#fff', borderRadius:12, padding:10, cursor:'pointer' }}>
+                          <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                            alt={p.title}
+                            style={{ width:'100%', height:90, objectFit:'cover', borderRadius:8 }} />
+                          <div style={{ fontWeight:800, fontSize:14, marginTop:6 }}>{p.title}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </section>
               )}
@@ -1747,14 +1765,14 @@ useEffect(() => {
           </div>
 
           {/* Global Styles */}
-          <style jsx global>{`/* FULL-BLEED yardımcıları */
+          <style jsx global>{`
+/* === FULL-BLEED yardımcıları === */
 .full-bleed{
   width:100vw;
   margin-left:calc(50% - 50vw);
   margin-right:calc(50% - 50vw);
 }
 .full-bleed > .inner{
-  /* Kenara yapışmasın diye responsive iç boşluk */
   padding-left:clamp(8px, 2.2vw, 24px);
   padding-right:clamp(8px, 2.2vw, 24px);
 }
@@ -1766,7 +1784,15 @@ useEffect(() => {
   border-radius:0 !important;
 }
 
-          .hero-slide {
+/* Telefonlarda Öne Çıkanlar için kompakt grid */
+@media (max-width: 640px){
+  .featuredGrid{ grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
+  .featuredGrid .product-card{ padding: 10px !important; }
+  .featuredGrid img{ height: 90px !important; }
+  .featuredGrid h3{ font-size: 14px !important; }
+}
+
+.hero-slide {
   position: relative;
   min-height: 180px;
   max-height: 420px;
@@ -1776,14 +1802,12 @@ useEffect(() => {
   overflow: hidden;
   scroll-snap-align: start;
 }
-
 .hero-slide img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   opacity: .9;
 }
-
 .hero-content {
   position: absolute;
   inset: 0;
@@ -1791,7 +1815,6 @@ useEffect(() => {
   align-items: center;
   padding: 0 20px;
 }
-
 .hero-title {
   font-weight: 900;
   font-size: 28px;
