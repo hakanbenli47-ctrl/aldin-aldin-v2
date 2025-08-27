@@ -391,12 +391,12 @@ useEffect(() => {
       {
         id: "h2",
         title: "En Güçlü DonanımlarS",
-        sub: giyim?.[2]?.title || "Giyim Ürünleri",
+        sub: elektronik?.[2]?.title || "Elektronik Ürünleri",
         cta: "İlham Al",
-        href: giyim?.[2] ? `/urun/${giyim[2].id}` : "/?kategori=Elekronik",
-        img: Array.isArray(giyim?.[2]?.resim_url)
-          ? giyim[2].resim_url[0]
-          : giyim?.[2]?.resim_url || "/banner-2.jpg",
+        href: elektronik?.[2] ? `/urun/${elektronik[2].id}` : "/?kategori=Elekronik",
+        img: Array.isArray(elektronik?.[2]?.resim_url)
+          ? elektronik[2].resim_url[0]
+          : elektronik?.[2]?.resim_url || "/banner-2.jpg",
       },
       {
         id: "h3",
