@@ -244,9 +244,11 @@ const heroTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 const scrollHero = (idx: number) => {
   const el = heroRef.current;
   if (!el) return;
-  const w = el.clientWidth; // her slide %100 genişlik
-  el.scrollTo({ left: idx * w, behavior: 'smooth' });
+  const target = el.children[idx] as HTMLElement | undefined;
+  const left = target ? target.offsetLeft : idx * el.clientWidth;
+  el.scrollTo({ left, behavior: 'smooth' });
 };
+
 
 // autoplay: pause değilse 3.5sn'de bir kaydır
 useEffect(() => {
@@ -270,13 +272,20 @@ useEffect(() => { scrollHero(heroIndex); }, [heroIndex]);
 useEffect(() => {
   const el = heroRef.current;
   if (!el) return;
-  const onScroll = () => {
-    const i = Math.round(el.scrollLeft / el.clientWidth);
-    if (i !== heroIndex) setHeroIndex(Math.max(0, Math.min(heroSlides.length - 1, i)));
-  };
+const onScroll = () => {
+  const children = Array.from(el.children) as HTMLElement[];
+  let nearest = 0, best = Infinity;
+  children.forEach((c, i) => {
+    const d = Math.abs(c.offsetLeft - el.scrollLeft);
+    if (d < best) { best = d; nearest = i; }
+  });
+  setHeroIndex(nearest);
+};
+
   el.addEventListener('scroll', onScroll, { passive: true });
-  return () => el.removeEventListener('scroll', onScroll as any);
-}, [heroIndex]);
+  return () => el.removeEventListener('scroll', onScroll);
+}, []);
+
 
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
@@ -1060,16 +1069,24 @@ useEffect(() => {
         {/* ---- YENİ: HERO SLIDER + Avantaj Barı + Kategori Çipleri + Trend Aramalar ---- */}
         <section style={{ maxWidth:1200, margin:'12px auto 0', padding:'0 12px' }}>
           {/* Hero Slider */}
-          <div ref={heroRef}
-             style={{
-            display:'grid',
-             gridAutoFlow:'column',
-              gridAutoColumns:'100%',
-              overflowX:'auto',
-               scrollSnapType:'x mandatory',
-              gap:12,
-               borderRadius:16
-                 }}>
+      <div
+  ref={heroRef}
+  className="hero-scroll"
+  onMouseEnter={() => setHeroPause(true)}
+  onMouseLeave={() => setHeroPause(false)}
+  onTouchStart={() => setHeroPause(true)}
+  onTouchEnd={() => setHeroPause(false)}
+  
+  style={{
+    display:'grid',
+    gridAutoFlow:'column',
+    gridAutoColumns:'100%',
+    overflowX:'auto',
+    scrollSnapType:'x mandatory',
+    gap:12,
+    borderRadius:16
+  }}>
+
 
             {heroSlides.map((s)=>(
               <div key={s.id}
@@ -1105,7 +1122,15 @@ useEffect(() => {
       key={i}
       aria-label={`Hero ${i+1}`}
       className={i === heroIndex ? 'active' : ''}
-      onClick={()=> setHeroIndex(i)}
+    onClick={() => {
+  setHeroIndex(i);
+  const el = heroRef.current;
+  if (!el) return;
+  const target = el.children[i] as HTMLElement | undefined;
+  const left = target ? target.offsetLeft : i * (el.clientWidth || 0);
+  el.scrollTo({ left, behavior: 'smooth' });
+}}
+
     />
   ))}
 </div>
@@ -1171,49 +1196,7 @@ useEffect(() => {
           }} 
         >
           {/* SOL REKLAM */}
-          {!isAndroid && (
-          <aside className="ads-left" style={{
-              width: 150,
-              minWidth: 100,
-              maxWidth: 170,
-              height: 280,
-              background: 'var(--surface, #f8fafc)',
-              padding: 13,
-              borderRadius: 14,
-              boxShadow: '0 4px 12px var(--primary, #2563eb)09',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'sticky',
-              top: 92,
-              zIndex: 10
-            }}
-          >
-            <span
-              style={{
-                marginBottom: 8,
-                fontSize: 13,
-                color: 'var(--slate-600, #475569)',
-                fontWeight: 600,
-                textAlign: 'center'
-              }}
-            >
-              Sponsorlu Reklam
-            </span>
-            <img
-              src="/300x250.png"
-              alt="Reklam"
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 10,
-                objectFit: 'cover',
-                boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
-              }}
-            />
-          </aside>
-          )}
+          
           {/* ANA İÇERİK */}
           <main className="main-col" style={{
             maxWidth: 950,
@@ -1951,49 +1934,7 @@ useEffect(() => {
           </main>
 
           {/* SAĞ REKLAM */}
-          {!isAndroid && (
-          <aside className="ads-right" style={{
-              width: 150,
-              minWidth: 100,
-              maxWidth: 170,
-              height: 280,
-              background: 'var(--surface, #f8fafc)',
-              padding: 13,
-              borderRadius: 14,
-              boxShadow: '0 4px 12px var(--primary, #2563eb)09',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'sticky',
-              top: 92,
-              zIndex: 10
-            }}
-          >
-            <span
-              style={{
-                marginBottom: 8,
-                fontSize: 13,
-                color: 'var(--slate-600, #475569)',
-                fontWeight: 600,
-                textAlign: 'center'
-              }}
-            >
-              Sponsorlu Reklam
-            </span>
-            <img
-              src="/300x250.png"
-              alt="Reklam"
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 10,
-                objectFit: 'cover',
-                boxShadow: '0 2px 9px var(--brand-700, #1648b0)18'
-              }}
-            />
-          </aside>
-          )}
+          
         </div>
 
         {/* Responsive düzen için */}
@@ -2008,9 +1949,12 @@ useEffect(() => {
   --bg-grad-end: #eafcf6; /* üst arkaplan degrade ucu */
 }
 
-/* Hero kaydırıcıyı gizli scrollbar + dots */
-.hero-scroll{ scrollbar-width:none; -ms-overflow-style:none; }
-.hero-scroll::-webkit-scrollbar{ display:none; }
+
+/* Hero kaydırıcı: scrollbar tamamen kapalı */
+.hero-scroll{ scrollbar-width: none; -ms-overflow-style: none; }
+.hero-scroll::-webkit-scrollbar{ display: none; }
+
+
 
 .hero-dots{
   display:flex; gap:6px; justify-content:center; margin-top:8px;
@@ -2018,10 +1962,19 @@ useEffect(() => {
 .hero-dots button{
   width:8px; height:8px; border-radius:999px; border:0; background:#e5e7eb;
 }
-.hero-dots button.active{
-  width:22px; background:linear-gradient(90deg, var(--danger), var(--warning));
-  transition: width .25s;
+.hero-dots{
+  position: relative;
 }
+.hero-dots::before{
+  content:"";
+  position:absolute;
+  left:50%; transform:translateX(-50%);
+  bottom:-6px;
+  width:160px; height:4px; border-radius:999px;
+  background: linear-gradient(90deg,#06b6d4,#22c55e,#a3e635);
+  opacity:.25;
+}
+
 
   /* PWA / çentik güvenli alanları */
   body { padding-bottom: env(safe-area-inset-bottom); }
