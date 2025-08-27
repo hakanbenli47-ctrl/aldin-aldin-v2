@@ -119,7 +119,12 @@ import {
   FiBox,
   FiHeart,
   FiTag,
-  FiMoreHorizontal
+  FiMoreHorizontal,
+  FiTruck,
+  FiShield,
+  FiRefreshCw,
+  FiTrendingUp,
+  FiStar
 } from 'react-icons/fi';
 import { FaCar } from 'react-icons/fa';
 
@@ -178,7 +183,6 @@ const trMap: Record<string,string> = { 'İ':'i','I':'ı','Ş':'ş','Ğ':'ğ','Ü
 const trLower = (s:string) => s.replace(/[İIŞĞÜÖÇ]/g, ch => trMap[ch] ?? ch).toLowerCase();
 const stripDiacritics = (s:string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const normalizeText = (s:string) => stripDiacritics(trLower(s || ''));
-
 const parsePrice = (p?: string) => {
   if (!p) return 0;
   // "12.345,67" -> 12345.67
@@ -186,6 +190,13 @@ const parsePrice = (p?: string) => {
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : 0;
 };
+
+/** === HERO SLIDE verileri (görsel yoksa degrade kutu) === */
+const heroSlides = [
+  { id: 'h1', title: 'Mega Kampanya', sub: 'Elektroniklerde +%20 indirim', cta: 'Fırsatları Gör', href: '/?kategori=Elektronik', img: '/banner-1.jpg' },
+  { id: 'h2', title: 'Kışa Hazırlık', sub: 'Giyim & Ev Eşyaları', cta: 'İlham Al', href: '/?kategori=Giyim', img: '/banner-2.jpg' },
+  { id: 'h3', title: 'Süper Fırsat', sub: 'Spor & Outdoor haftası', cta: 'Keşfet', href: '/?kategori=Spor%20&%20Outdoor', img: '/banner-3.jpg' },
+];
 
 const Index2: NextPage = () => {
   const [loginDropdown, setLoginDropdown] = useState(false);
@@ -221,10 +232,51 @@ const Index2: NextPage = () => {
   const [sortKey, setSortKey] = useState<'relevance'|'priceAsc'|'priceDesc'|'rating'|'newest'|'viewsDesc'>('relevance'); // NEW
   const [visibleCount, setVisibleCount]   = useState(12);              // NEW
 
-  // === MEGA KAMPANYA autoplay slider ===
-  const [kampanyaIndex, setKampanyaIndex] = useState(0);
-  const [kampanyaPaused, setKampanyaPaused] = useState(false);
-  const kampanyaTimer = useRef<NodeJS.Timeout | null>(null);
+  // YENİ: son bakılanlar, trend aramalar, çok görüntülenenler, top mağazalar
+  const [recentlyViewed, setRecentlyViewed] = useState<Ilan[]>([]);
+  const [flashTick, setFlashTick] = useState(0); // geri sayım tetikleyici
+  const heroRef = useRef<HTMLDivElement>(null);
+// === HERO AUTOPLAY ===
+const [heroIndex, setHeroIndex] = useState(0);
+const [heroPause, setHeroPause] = useState(false);
+const heroTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+const scrollHero = (idx: number) => {
+  const el = heroRef.current;
+  if (!el) return;
+  const w = el.clientWidth; // her slide %100 genişlik
+  el.scrollTo({ left: idx * w, behavior: 'smooth' });
+};
+
+// autoplay: pause değilse 3.5sn'de bir kaydır
+useEffect(() => {
+  if (heroTimer.current) clearInterval(heroTimer.current);
+  if (!heroPause) {
+    heroTimer.current = setInterval(() => {
+      setHeroIndex(i => {
+        const next = (i + 1) % heroSlides.length;
+        requestAnimationFrame(() => scrollHero(next));
+        return next;
+      });
+    }, 3500);
+  }
+  return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
+}, [heroPause]);
+
+// index değişince hizala
+useEffect(() => { scrollHero(heroIndex); }, [heroIndex]);
+
+// manuel swipe ile dots senkron kalsın
+useEffect(() => {
+  const el = heroRef.current;
+  if (!el) return;
+  const onScroll = () => {
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    if (i !== heroIndex) setHeroIndex(Math.max(0, Math.min(heroSlides.length - 1, i)));
+  };
+  el.addEventListener('scroll', onScroll, { passive: true });
+  return () => el.removeEventListener('scroll', onScroll as any);
+}, [heroIndex]);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
@@ -292,11 +344,11 @@ const Index2: NextPage = () => {
           .select("id, adet, product_id")
           .eq("user_id", userId);
         setCartItems(cartData || []);
-        const { data: favData, error: favError } = await supabase
+        const { data: favData } = await supabase
           .from("favoriler")
           .select("ilan_id")
           .eq("user_id", userId);
-        if (!favError && favData) {
+        if (favData) {
           setFavoriler(favData.map(f => f.ilan_id));
         }
       } else {
@@ -343,6 +395,25 @@ const Index2: NextPage = () => {
     }
     fetchData();
     fetchDopedIlanlar();
+  }, []);
+
+  // Son bakılanlar (localStorage: recently_viewed = [ids])
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('recently_viewed');
+      if (!raw) return;
+      const ids: number[] = JSON.parse(raw);
+      const list = ids
+        .map(id => ilanlar.find(i => i.id === id))
+        .filter(Boolean) as Ilan[];
+      setRecentlyViewed(list);
+    } catch {}
+  }, [ilanlar]);
+
+  // Flash deals: saniyelik tick (geri sayım göstermek için)
+  useEffect(() => {
+    const iv = setInterval(() => setFlashTick(t => t + 1), 1000);
+    return () => clearInterval(iv);
   }, []);
 
   const sepetteVarMi = (id: number) => cartItems.find((item) => item.product_id === id);
@@ -408,28 +479,15 @@ const Index2: NextPage = () => {
     }
   };
 
-  const getRemainingTime = (expirationDate: string | undefined): string => {
-    if (!expirationDate) return '';
-    const now = new Date();
-    const expiration = new Date(expirationDate);
-    const diff = expiration.getTime() - now.getTime();
-    if (diff <= 0) return 'Süre doldu';
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    return `Kalan süre: ${days} gün ${hours} saat`;
-  };
-
-  const findKategoriAd = (id: number | null | undefined): string => {
-    if (typeof id !== "number" || isNaN(id)) return "";
-    const kat = dbKategoriler.find((k) => k.id === id);
-    return kat?.ad || "";
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsLoggedIn(false);
-    setUser(null);
-    window.location.href = '/';
+  // YENİ: hızlı yönlendirme + recently_viewed yazma
+  const goToProduct = (id: number, from: string) => {
+    try {
+      const raw = localStorage.getItem('recently_viewed');
+      const arr: number[] = raw ? JSON.parse(raw) : [];
+      const updated = [id, ...arr.filter(x => x !== id)].slice(0, 20);
+      localStorage.setItem('recently_viewed', JSON.stringify(updated));
+    } catch {}
+    window.location.href = `/urun/${id}?from=${from}`;
   };
 
   /** === GELİŞMİŞ FİLTRELEME + SIRALAMA + ÖNERİ === */
@@ -441,7 +499,7 @@ const Index2: NextPage = () => {
     const qn = normalizeText(q);
     const title = normalizeText(p.title);
     const desc  = normalizeText(p.desc);
-    const katAd = normalizeText(findKategoriAd(p.kategori_id));
+    const katAd = normalizeText(dbKategoriler.find(k=>k.id===p.kategori_id)?.ad || '');
     const firma = normalizeText(firmaAdMap[p.user_email]?.ad || '');
 
     let score = 0;
@@ -469,7 +527,7 @@ const Index2: NextPage = () => {
       if (!q) return kategoriOk;
       const title = normalizeText(i.title);
       const desc  = normalizeText(i.desc);
-      const katAd = normalizeText(findKategoriAd(i.kategori_id));
+      const katAd = normalizeText(dbKategoriler.find(k=>k.id===i.kategori_id)?.ad || '');
       const firma = normalizeText(firmaAdMap[i.user_email]?.ad || '');
 
       const matches = title.includes(q) || desc.includes(q) || katAd.includes(q) || firma.includes(q);
@@ -522,36 +580,88 @@ const Index2: NextPage = () => {
   }, [
     ilanlar, firmaAdMap, aktifKategoriId, debouncedSearch,
     onlyDiscounted, onlyInStock, onlyNew, minPrice, maxPrice,
-    sortKey, visibleCount
+    sortKey, visibleCount, dbKategoriler
   ]);
 
   // İndirimli ürünleri belirle
   const indirimliUrunler = useMemo(
-    () => ilanlar.filter(x => x.indirimli_fiyat && x.indirimli_fiyat !== x.price).slice(0, 12),
+    () => ilanlar.filter(x => x.indirimli_fiyat && x.indirimli_fiyat !== x.price).slice(0, 5),
     [ilanlar]
   );
 
-  // MEGA KAMPANYA slider listesi (indirimli ürünlerden beslenir; yoksa doped; o da yoksa ilanlar)
-  const kampanyaSlides = useMemo(() => {
-    const src = (indirimliUrunler.length ? indirimliUrunler
-      : (dopedIlanlar.length ? dopedIlanlar : ilanlar)).slice(0, 8);
-    return src;
-  }, [indirimliUrunler, dopedIlanlar, ilanlar]);
+  // Türetilen listeler (yeni alanlar)
+  const cokGoruntulenenler = useMemo(
+    () => [...ilanlar].sort((a,b)=> (b.views ?? 0) - (a.views ?? 0)).slice(0, 12),
+    [ilanlar]
+  );
 
-  // Autoplay (pause on hover)
-  useEffect(() => {
-    if (!kampanyaSlides.length) return;
-    if (kampanyaTimer.current) clearInterval(kampanyaTimer.current);
-    if (!kampanyaPaused) {
-      kampanyaTimer.current = setInterval(() => {
-        setKampanyaIndex(i => (i + 1) % kampanyaSlides.length);
-      }, 3500);
-    }
-    return () => { if (kampanyaTimer.current) clearInterval(kampanyaTimer.current); }
-  }, [kampanyaSlides.length, kampanyaPaused]);
+  const kategoriSayilari = useMemo(() => {
+    const map = new Map<number, number>();
+    ilanlar.forEach(i => map.set(i.kategori_id, (map.get(i.kategori_id) ?? 0) + 1));
+    const list = dbKategoriler.map(k => ({ ...k, sayi: map.get(k.id) ?? 0 }));
+    return list.sort((a,b)=> b.sayi - a.sayi);
+  }, [ilanlar, dbKategoriler]);
+
+  const topMagazalar = useMemo(() => {
+    const counts: Record<string, number> = {};
+    ilanlar.forEach(i => { counts[i.user_email] = (counts[i.user_email] ?? 0) + 1; });
+    const list = Object.keys(counts).map(email => ({
+      email,
+      ad: firmaAdMap[email]?.ad || email.split('@')[0],
+      puan: firmaAdMap[email]?.puan ?? 0,
+      urun: counts[email]
+    }));
+    return list.sort((a,b)=> (b.puan - a.puan) || (b.urun - a.urun)).slice(0, 10);
+  }, [ilanlar, firmaAdMap]);
+
+  // Trend aramalar (başlıklardan anahtar kelime çıkarımı – basit)
+  const trendingTerms = useMemo(() => {
+    const stop = new Set(['ve','ile','the','for','ama','çok','az','yeni','super','süper','set','paket','pro','mini','max']);
+    const freq: Record<string, number> = {};
+    ilanlar.forEach(i => {
+      normalizeText(i.title).split(/\s+/).forEach(w => {
+        if (!w || w.length < 3 || stop.has(w)) return;
+        if (/^\d+$/.test(w)) return;
+        freq[w] = (freq[w] ?? 0) + 1;
+      });
+    });
+    return Object.entries(freq).sort((a,b)=> b[1]-a[1]).slice(0,10).map(x => x[0]);
+  }, [ilanlar]);
+
+  const getRemainingTime = (expirationDate: string | undefined): string => {
+    if (!expirationDate) return '';
+    const now = new Date();
+    const expiration = new Date(expirationDate);
+    const diff = expiration.getTime() - now.getTime();
+    if (diff <= 0) return 'Süre doldu';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    return `Kalan süre: ${days} gün ${hours} saat`;
+  };
+
+  const findKategoriAd = (id: number | null | undefined): string => {
+    if (typeof id !== "number" || isNaN(id)) return "";
+    const kat = dbKategoriler.find((k) => k.id === id);
+    return kat?.ad || "";
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    setUser(null);
+    window.location.href = '/';
+  };
 
   // Görselliği mobile uygunlaştır
   if (loading) return <p style={{ textAlign: "center", padding: 40 }}>⏳ Yükleniyor...</p>;
+
+  // Gece yarısına geri sayım (Flash Deals için)
+  const now = new Date();
+  const midnight = new Date(now); midnight.setHours(23,59,59,999);
+  const left = Math.max(0, midnight.getTime() - now.getTime());
+  const HH = Math.floor(left/3600000).toString().padStart(2,'0');
+  const MM = Math.floor((left%3600000)/60000).toString().padStart(2,'0');
+  const SS = Math.floor((left%60000)/1000).toString().padStart(2,'0');
 
   return (
     <>
@@ -574,7 +684,7 @@ const Index2: NextPage = () => {
             position: 'sticky',
             top: 0,
             zIndex: 1000,
-            borderBottom: '2px solid var(--primary, #2563eb)',
+            borderBottom: '1.5px solid var(--border, #e4e9ef)',
             padding: 0
           }}
         >
@@ -604,14 +714,14 @@ const Index2: NextPage = () => {
                   onClick={() => setDropdownOpen(o => !o)}
                   style={{
                     background: dropdownOpen
-                      ? 'linear-gradient(93deg,var(--ink-900, #223555) 40%,var(--primary-400, #3479e3) 65%, var(--accent, #00d18f) 100%)'
-                      : 'linear-gradient(90deg,#ffffff 0%,#eef6ff 100%)',
+                      ? 'linear-gradient(93deg,var(--ink-900, #223555) 60%,var(--primary-400, #3479e3) 100%)'
+                      : 'linear-gradient(90deg,var(--surface, #f8fafc) 0%,var(--dropdown-active, #eef6fd) 100%)',
                     color: dropdownOpen ? '#fff' : 'var(--primary,#2563eb)',
-                    border: '2px solid var(--primary, #2563eb)',
-                    fontWeight: 800,
+                    border: '1.5px solid var(--dropdown-border, #dde7fa)',
+                    fontWeight: 700,
                     fontSize: isAndroid ? 13 : 14,
-                    padding: isAndroid ? '6px 10px' : '9px 14px',
-                    borderRadius: 12,
+                    padding: isAndroid ? '6px 10px' : '8px 12px',
+                    borderRadius: isAndroid ? 8 : 10,
                     display: 'flex',
                     alignItems: 'center',
                     gap: isAndroid ? 6 : 8,
@@ -622,7 +732,7 @@ const Index2: NextPage = () => {
                   }}
                 >
                   <FiTag size={isAndroid ? 16 : 18} />
-                  <span style={{ fontWeight:900, letterSpacing:'.3px' }}>Kategoriler</span>
+                  <span style={{ fontWeight:800, letterSpacing:'.3px' }}>Kategoriler</span>
                   <FiChevronDown size={isAndroid ? 14 : 16} />
                 </button>
 
@@ -636,9 +746,9 @@ const Index2: NextPage = () => {
                       padding: '9px 0',
                       background: '#fff',
                       boxShadow: '0 10px 32px 0 #3479e311,0 2px 8px #22355518',
-                      borderRadius: 12,
+                      borderRadius: 11,
                       listStyle: 'none',
-                      minWidth: 220,
+                      minWidth: 210,
                       zIndex: 2000,
                       border: '1.5px solid var(--panel-border, #e3e8f2)',
                       animation: 'dropdownShow .18s cubic-bezier(.6,.2,.17,1.08)'
@@ -653,7 +763,7 @@ const Index2: NextPage = () => {
                           border: 'none',
                           padding: '10px 19px',
                           color: aktifKategori.ad === 'Tümü' ? 'var(--primary)' : 'var(--ink-900)',
-                          fontWeight: 800,
+                          fontWeight: 700,
                           textAlign: 'left',
                           cursor: 'pointer',
                           fontSize: 15.5,
@@ -661,7 +771,7 @@ const Index2: NextPage = () => {
                           display: 'flex',
                           alignItems: 'center',
                           gap: 10,
-                          borderRadius: 8,
+                          borderRadius: 7,
                           transition: 'background .14s'
                         }}
                         onClick={() => {
@@ -683,7 +793,7 @@ const Index2: NextPage = () => {
                             border: 'none',
                             padding: '10px 19px',
                             color: aktifKategori.id === kat.id ? 'var(--primary)' : 'var(--ink-900)',
-                            fontWeight: 800,
+                            fontWeight: 700,
                             textAlign: 'left',
                             cursor: 'pointer',
                             fontSize: 15.5,
@@ -691,7 +801,7 @@ const Index2: NextPage = () => {
                             display: 'flex',
                             alignItems: 'center',
                             gap: 10,
-                            borderRadius: 8,
+                            borderRadius: 7,
                             transition: 'background .14s'
                           }}
                           onClick={() => {
@@ -720,12 +830,12 @@ const Index2: NextPage = () => {
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   style={{
                     width:'100%',
-                    border: '2px solid var(--accent, #00d18f)',
-                    borderRadius: 12,
-                    padding: '11px 44px 11px 14px',
+                    border: '1.5px solid var(--border-200, #e2e8f0)',
+                    borderRadius: 10,
+                    padding: '10px 44px 10px 14px',
                     fontSize: 16,
                     height: isAndroid ? 48 : undefined,
-                    background: 'linear-gradient(90deg,#f0fff7,#f3f4ff)',
+                    background: 'var(--surface, #f8fafc)',
                     outline: 'none',
                     color: 'var(--ink-900, #223555)',
                     minWidth: 0
@@ -738,7 +848,7 @@ const Index2: NextPage = () => {
                     title="Temizle"
                     style={{
                       position:'absolute', right:10, top: '50%', transform:'translateY(-50%)',
-                      border:'none', background:'transparent', cursor:'pointer', fontSize:20, color:'#94a3b8', fontWeight:900
+                      border:'none', background:'transparent', cursor:'pointer', fontSize:18, color:'#9aa3af'
                     }}
                   >×</button>
                 )}
@@ -748,19 +858,19 @@ const Index2: NextPage = () => {
                   <div
                     style={{
                       position:'absolute', top:'110%', left:0, width:'100%',
-                      background:'#fff', border:'1px solid #e5e7eb', borderRadius:12,
+                      background:'#fff', border:'1px solid #e5e7eb', borderRadius:10,
                       boxShadow:'0 8px 24px rgba(0,0,0,.08)', zIndex:3000, overflow:'hidden'
                     }}
                   >
                     {suggestions.map(s => (
                       <div
                         key={s.id}
-                        onMouseDown={(e)=>{ e.preventDefault(); window.location.href=`/urun/${s.id}?from=search_suggest`; }}
+                        onMouseDown={(e)=>{ e.preventDefault(); goToProduct(s.id, 'search_suggest'); }}
                         style={{
                           display:'grid',
-                          gridTemplateColumns:'64px 1fr auto',
+                          gridTemplateColumns:'56px 1fr auto',
                           gap:10, alignItems:'center',
-                          padding:'10px 10px',
+                          padding:'8px 10px',
                           borderBottom:'1px solid #f1f5f9',
                           cursor:'pointer'
                         }}
@@ -768,13 +878,13 @@ const Index2: NextPage = () => {
                         <img
                           src={Array.isArray(s.resim_url) ? s.resim_url[0] || "/placeholder.jpg" : s.resim_url || "/placeholder.jpg"}
                           alt={s.title}
-                          style={{ width:64, height:44, objectFit:'cover', borderRadius:8, border:'1px solid #eef2f7' }}
+                          style={{ width:56, height:40, objectFit:'cover', borderRadius:6, border:'1px solid #eef2f7' }}
                         />
                         <div style={{ overflow:'hidden' }}>
-                          <div style={{ fontWeight:800, fontSize:14, whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden' }}>{s.title}</div>
+                          <div style={{ fontWeight:700, fontSize:14, whiteSpace:'nowrap', textOverflow:'ellipsis', overflow:'hidden' }}>{s.title}</div>
                           <div style={{ fontSize:12, color:'#6b7280' }}>{findKategoriAd(s.kategori_id)}</div>
                         </div>
-                        <div style={{ fontWeight:900, fontSize:13, color:'#ef4444' }}>
+                        <div style={{ fontWeight:700, fontSize:13 }}>
                           {s.indirimli_fiyat && s.indirimli_fiyat !== s.price ? s.indirimli_fiyat : s.price} ₺
                         </div>
                       </div>
@@ -792,30 +902,28 @@ const Index2: NextPage = () => {
                   position: "relative",
                   cursor: "pointer",
                   padding: 8,
-                  background: "linear-gradient(135deg,#ebfff7,#eff6ff)",
-                  borderRadius: 12,
-                  boxShadow: "0 2px 10px rgba(0,0,0,.06)",
+                  background: "var(--surface, #f8fafc)",
+                  borderRadius: 9,
+                  boxShadow: "0 1px 7px rgba(27,189,138,.09)",
                   display: "flex",
-                  alignItems: "center",
-                  border: '1.6px solid #dbeafe'
+                  alignItems: "center"
                 }}
                 title="Sepetim"
               >
-                <FiShoppingCart size={26} color="#00d18f" />
+                <FiShoppingCart size={26} color="var(--accent, #1bbd8a)" />
                 {cartItems.length > 0 && (
                   <span style={{
                     position: "absolute",
                     top: -4,
                     right: -7,
                     fontSize: 12,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     color: "#fff",
-                    background: "linear-gradient(90deg,#ef4444,#f97316)",
+                    background: "var(--success-500, #22c55e)",
                     borderRadius: 16,
                     padding: "2px 6px",
                     minWidth: 18,
-                    textAlign: "center",
-                    border: '1px solid #fff'
+                    textAlign: "center"
                   }}>
                     {cartItems.reduce((top, c) => top + (c.adet || 1), 0)}
                   </span>
@@ -828,15 +936,14 @@ const Index2: NextPage = () => {
                     <button
                       onClick={() => setLoginDropdown(prev => !prev)}
                       style={{
-                        background: 'linear-gradient(90deg,#2563eb,#00d18f)',
+                        background: 'var(--primary, #2563eb)',
                         color: '#fff',
-                        padding: '9px 14px',
-                        borderRadius: 12,
+                        padding: '8px 14px',
+                        borderRadius: 10,
                         border: 'none',
-                        fontWeight: 900,
+                        fontWeight: 700,
                         fontSize: 14,
-                        cursor: 'pointer',
-                        boxShadow: '0 6px 20px rgba(37,99,235,.18)'
+                        cursor: 'pointer'
                       }}
                     >
                       Giriş Yap
@@ -850,10 +957,10 @@ const Index2: NextPage = () => {
                           right: 0,
                           background: "#fff",
                           border: "1px solid #e2e8f0",
-                          borderRadius: 10,
+                          borderRadius: 8,
                           boxShadow: "0 4px 12px rgba(0,0,0,.08)",
                           zIndex: 999,
-                          minWidth: 180
+                          minWidth: 160
                         }}
                       >
                         <button
@@ -866,7 +973,7 @@ const Index2: NextPage = () => {
                             border: "none",
                             textAlign: "left",
                             cursor: "pointer",
-                            fontWeight: 700,
+                            fontWeight: 600,
                             fontSize: 14,
                             color: "#223555"
                           }}
@@ -883,7 +990,7 @@ const Index2: NextPage = () => {
                             border: "none",
                             textAlign: "left",
                             cursor: "pointer",
-                            fontWeight: 700,
+                            fontWeight: 600,
                             fontSize: 14,
                             color: "#223555"
                           }}
@@ -897,15 +1004,14 @@ const Index2: NextPage = () => {
                   <button
                     onClick={() => window.location.href = '/kayit'}
                     style={{
-                      background: 'linear-gradient(90deg,#f97316,#ef4444)',
+                      background: 'var(--accent, #1bbd8a)',
                       color: '#fff',
-                      padding: '9px 14px',
-                      borderRadius: 12,
+                      padding: '8px 14px',
+                      borderRadius: 10,
                       border: 'none',
-                      fontWeight: 900,
+                      fontWeight: 700,
                       fontSize: 14,
-                      cursor: 'pointer',
-                      boxShadow: '0 6px 20px rgba(249,115,22,.18)'
+                      cursor: 'pointer'
                     }}
                   >
                     Kaydol
@@ -916,12 +1022,12 @@ const Index2: NextPage = () => {
                   <button
                     onClick={() => window.location.href = '/profil2'}
                     style={{
-                      background: '#fff',
+                      background: 'var(--surface, #f3f4f6)',
                       color: 'var(--primary, #2563eb)',
-                      border: '2px solid rgba(37,99,235,.35)',
-                      padding: '9px 14px',
-                      borderRadius: 12,
-                      fontWeight: 900,
+                      border: '1px solid rgba(37,99,235,.15)',
+                      padding: '8px 14px',
+                      borderRadius: 10,
+                      fontWeight: 700,
                       fontSize: 14,
                       cursor: 'pointer'
                     }}
@@ -931,15 +1037,14 @@ const Index2: NextPage = () => {
                   <button
                     onClick={handleLogout}
                     style={{
-                      background: 'linear-gradient(90deg,#ef4444,#f97316)',
+                      background: 'var(--danger, #e11d48)',
                       color: '#fff',
-                      padding: '9px 14px',
-                      borderRadius: 12,
+                      padding: '8px 14px',
+                      borderRadius: 10,
                       border: 'none',
-                      fontWeight: 900,
+                      fontWeight: 700,
                       fontSize: 14,
-                      cursor: 'pointer',
-                      boxShadow: '0 6px 20px rgba(239,68,68,.18)'
+                      cursor: 'pointer'
                     }}
                   >
                     Çıkış
@@ -952,140 +1057,105 @@ const Index2: NextPage = () => {
 
         <SloganBar />
 
-        {/* === MEGA KAMPANYA AUTOPLAY === */}
-        {kampanyaSlides.length > 0 && (
-          <section
-            className="mega-campaign"
-            style={{
-              maxWidth: 1300,
-              margin: '14px auto 26px',
-              borderRadius: 18,
-              padding: '0 10px'
-            }}
-          >
-            <div
-              onMouseEnter={() => setKampanyaPaused(true)}
-              onMouseLeave={() => setKampanyaPaused(false)}
-              style={{
-                position:'relative',
-                overflow:'hidden',
-                borderRadius: 18,
-                border:'2px solid #fecaca',
-                background: 'linear-gradient(135deg,#fff1f2,#fff7ed 40%,#ecfeff 100%)',
-                boxShadow:'0 10px 40px rgba(0,0,0,.08)'
-              }}
-            >
-              <div
-                style={{
-                  display:'flex',
-                  width:`${kampanyaSlides.length * 100}%`,
-                  transform:`translateX(-${kampanyaIndex * (100 / kampanyaSlides.length)}%)`,
-                  transition:'transform .55s cubic-bezier(.4,.0,.2,1)'
-                }}
-              >
-                {kampanyaSlides.map((item, i) => (
-                  <div
-                    key={item.id ?? i}
-                    style={{
-                      width:`${100 / kampanyaSlides.length}%`,
-                      minHeight: 220,
-                      display:'grid',
-                      gridTemplateColumns:'1.6fr 1fr',
-                      alignItems:'center',
-                      gap:18,
-                      padding:'18px',
-                    }}
-                  >
-                    <div style={{ padding:'6px 8px' }}>
-                      <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'#fff', padding:'5px 10px', borderRadius:999, border:'1px solid #fee2e2', fontWeight:900, color:'#ef4444', marginBottom:8 }}>
-                        🔥 MEGA KAMPANYA
-                        <span style={{ color:'#f97316', fontWeight:900, fontSize:12, marginLeft:6 }}>OTOMATİK KAYAR</span>
-                      </div>
-                      <h3 style={{ fontSize: isAndroid ? 18 : 22, fontWeight:900, lineHeight:1.2, color:'#0f172a', margin:'6px 0 8px' }}>
-                        {item.title}
-                      </h3>
-                      <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:10 }}>
-                        {item.indirimli_fiyat && item.indirimli_fiyat !== item.price ? (
-                          <>
-                            <span style={{ textDecoration:'line-through', color:'#94a3b8', fontWeight:700 }}>{item.price} ₺</span>
-                            <span style={{ color:'#ef4444', fontWeight:900, fontSize: isAndroid ? 18 : 22 }}>{item.indirimli_fiyat} ₺</span>
-                          </>
-                        ):(
-                          <span style={{ color:'#16a34a', fontWeight:900, fontSize: isAndroid ? 18 : 22 }}>{item.price} ₺</span>
-                        )}
-                      </div>
-                      <div style={{ display:'flex', gap:10 }}>
-                        <button
-                          onClick={() => window.location.href = `/urun/${item.id}?from=mega_kampanya`}
-                          style={{
-                            background:'linear-gradient(90deg,#2563eb,#00d18f)',
-                            color:'#fff',
-                            border:'none',
-                            padding:'10px 14px',
-                            borderRadius:12,
-                            fontWeight:900,
-                            cursor:'pointer',
-                            boxShadow:'0 8px 24px rgba(0,209,143,.25)'
-                          }}
-                        >
-                          Fırsatı Yakala
-                        </button>
-                        <button
-                          onClick={() => sepeteEkle(item)}
-                          style={{
-                            background:'#fff',
-                            color:'#ef4444',
-                            border:'2px solid #fecaca',
-                            padding:'10px 14px',
-                            borderRadius:12,
-                            fontWeight:900,
-                            cursor:'pointer'
-                          }}
-                        >
-                          Sepete Ekle
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ padding:'8px' }}>
-                      <img
-                        src={Array.isArray(item.resim_url) ? item.resim_url[0] || "/placeholder.jpg" : item.resim_url || "/placeholder.jpg"}
-                        alt={item.title}
-                        style={{
-                          width:'100%',
-                          height: isAndroid ? 160 : 220,
-                          objectFit:'cover',
-                          borderRadius:16,
-                          border:'2px solid #fee2e2',
-                          boxShadow:'0 10px 30px rgba(239,68,68,.15)'
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {/* ---- YENİ: HERO SLIDER + Avantaj Barı + Kategori Çipleri + Trend Aramalar ---- */}
+        <section style={{ maxWidth:1200, margin:'12px auto 0', padding:'0 12px' }}>
+          {/* Hero Slider */}
+          <div ref={heroRef}
+             style={{
+            display:'grid',
+             gridAutoFlow:'column',
+              gridAutoColumns:'100%',
+              overflowX:'auto',
+               scrollSnapType:'x mandatory',
+              gap:12,
+               borderRadius:16
+                 }}>
 
-              {/* dots */}
-              <div style={{ position:'absolute', left:'50%', bottom:10, transform:'translateX(-50%)', display:'flex', gap:6, background:'rgba(255,255,255,.75)', padding:'6px 10px', borderRadius:999, border:'1px solid #fecaca' }}>
-                {kampanyaSlides.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setKampanyaIndex(i)}
-                    style={{
-                      width: i === kampanyaIndex ? 22 : 8,
-                      height: 8,
-                      borderRadius: 999,
-                      border:'none',
-                      background: i === kampanyaIndex ? 'linear-gradient(90deg,#ef4444,#f97316)' : '#fecaca',
-                      cursor:'pointer',
-                      transition:'all .25s'
-                    }}
-                    aria-label={`Kampanya ${i+1}`}
-                  />
-                ))}
+            {heroSlides.map((s)=>(
+              <div key={s.id}
+                style={{
+                  position:'relative',
+                  minHeight:180,
+                  background:'linear-gradient(135deg,#e0f2fe,#e9d5ff)',
+                  border:'1px solid #e5e7eb',
+                  borderRadius:16,
+                  overflow:'hidden',
+                  scrollSnapAlign:'start'
+                }}>
+                <img src={s.img} alt={s.title}
+                  onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }}
+                  style={{ width:'100%', height:'100%', objectFit:'cover', opacity:.9 }} />
+                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', padding:'0 20px' }}>
+                  <div>
+                    <div style={{ fontWeight:900, fontSize:26, color:'#0f172a' }}>{s.title}</div>
+                    <div style={{ fontWeight:700, fontSize:16, color:'#334155', marginTop:6 }}>{s.sub}</div>
+                    <button
+                      onClick={()=> window.location.href = s.href}
+                      style={{ marginTop:12, background:'#111827', color:'#fff', border:'none', borderRadius:10, padding:'10px 14px', fontWeight:800, cursor:'pointer' }}>
+                      {s.cta} →
+                    </button>
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
+<div className="hero-dots">
+  {heroSlides.map((_, i)=>(
+    <button
+      key={i}
+      aria-label={`Hero ${i+1}`}
+      className={i === heroIndex ? 'active' : ''}
+      onClick={()=> setHeroIndex(i)}
+    />
+  ))}
+</div>
+          {/* Avantaj barı */}
+          <div style={{
+            display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',
+            gap:12, marginTop:12
+          }}>
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiTruck size={22} /><div><div style={{fontWeight:800}}>Hızlı Kargo</div><div style={{fontSize:13, color:'#6b7280'}}>Seçili ürünlerde aynı gün</div></div>
             </div>
-          </section>
-        )}
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiShield size={22} /><div><div style={{fontWeight:800}}>Güvenli Ödeme</div><div style={{fontSize:13, color:'#6b7280'}}>3D Secure & koruma</div></div>
+            </div>
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiRefreshCw size={22} /><div><div style={{fontWeight:800}}>Kolay İade</div><div style={{fontSize:13, color:'#6b7280'}}>14 gün koşulsuz</div></div>
+            </div>
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiTrendingUp size={22} /><div><div style={{fontWeight:800}}>Trend Ürünler</div><div style={{fontSize:13, color:'#6b7280'}}>Her gün güncellenir</div></div>
+            </div>
+          </div>
+
+          {/* Kategori çipleri */}
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
+            {kategoriSayilari.slice(0,12).map(k=>(
+              <button key={k.id}
+                onClick={()=> setAktifKategori({ ad:k.ad, id:k.id })}
+                style={{
+                  border:'1px solid #e5e7eb', background:'#fff', borderRadius:999, padding:'6px 12px', cursor:'pointer',
+                  fontWeight:800, fontSize:13, display:'flex', alignItems:'center', gap:8
+                }}>
+                {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad} <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Trend aramalar */}
+          {trendingTerms.length > 0 && (
+            <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontWeight:900, color:'#334155', fontSize:14 }}>Trend Aramalar:</span>
+              {trendingTerms.map(t=>(
+                <button key={t}
+                  onClick={()=> setSearch(t)}
+                  style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:999, padding:'4px 10px', fontWeight:800, fontSize:12, cursor:'pointer' }}>
+                  #{t}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Layout: Sol reklam, ana, sağ reklam */}
         <div className="layout-3col"
@@ -1151,7 +1221,46 @@ const Index2: NextPage = () => {
             padding: '0 10px',
             flexGrow: 1,
           }}>
-            {/* ÖNE ÇIKANLAR */}
+            {/* === YENİ: FLASH DEALS (gün sonuna geri sayım) === */}
+            {indirimliUrunler.length > 0 && (
+              <section
+                className="section-block"
+                style={{
+                  background:'#fff',
+                  padding:'22px 18px',
+                  borderRadius:18,
+                  marginBottom:24,
+                  border:'1.5px solid #fde68a',
+                  boxShadow:'0 4px 16px rgba(234,179,8,.15)'
+                }}
+              >
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                  <h2 style={{ fontSize:22, fontWeight:900, color:'#78350f' }}>⚡ Flash Deals</h2>
+                  <div style={{ fontWeight:900, fontSize:16, color:'#b45309' }}>Bitişe: {HH}:{MM}:{SS}</div>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px,1fr))', gap:14, marginTop:12 }}>
+                  {indirimliUrunler.slice(0,8).map(p=>(
+                    <div key={p.id}
+                      onClick={()=> goToProduct(p.id,'flash')}
+                      style={{ cursor:'pointer', background:'#fff8', border:'1px solid #fde68a', borderRadius:12, padding:10, position:'relative' }}>
+                      <span style={{ position:'absolute', top:10, left:10, background:'#ef4444', color:'#fff', fontSize:11, fontWeight:900, borderRadius:6, padding:'2px 8px' }}>-%</span>
+                      <img
+                        src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:110, objectFit:'cover', borderRadius:8, border:'1px solid #fee2e2' }}
+                      />
+                      <div style={{ fontWeight:800, marginTop:6, fontSize:14, color:'#111827' }}>{p.title}</div>
+                      <div style={{ fontWeight:700, fontSize:14 }}>
+                        <span style={{ textDecoration:'line-through', color:'#9ca3af', marginRight:6 }}>{p.price}₺</span>
+                        <span style={{ color:'#ef4444' }}>{p.indirimli_fiyat}₺</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ÖNE ÇIKANLAR (MEVCUT) */}
             <section
               style={{
                 background: '#fff',
@@ -1159,14 +1268,14 @@ const Index2: NextPage = () => {
                 borderRadius: 18,
                 marginBottom: 42,
                 boxShadow: '0 4px 22px var(--warning, #f59e0b)09',
-                border: '2px solid #fde68a'
+                border: '1.5px solid var(--border-200, #e2e8f0)'
               }}
             >
               <h2
                 style={{
                   fontSize: 23,
-                  fontWeight: 900,
-                  color: '#b45309',
+                  fontWeight: 800,
+                  color: 'var(--amber-700, #b45309)',
                   marginBottom: 20,
                   letterSpacing: ".2px"
                 }}
@@ -1176,12 +1285,12 @@ const Index2: NextPage = () => {
               {dopedIlanlar.length === 0 ? (
                 <div
                   style={{
-                    background: 'linear-gradient(90deg,#fef9c3,#fff7ed)',
+                    background: 'var(--note-bg, #fef9c3)',
                     padding: 40,
                     textAlign: 'center',
                     borderRadius: 13,
-                    color: '#92400e',
-                    fontWeight: 700,
+                    color: 'var(--note-fg, #92400e)',
+                    fontWeight: 500,
                     fontSize: 16
                   }}
                 >
@@ -1199,15 +1308,15 @@ const Index2: NextPage = () => {
                     <div className="product-card featured"
                       key={product.id}
                       style={{
-                        background: 'linear-gradient(180deg,#fff7ed,#fef3c7)',
+                        background: 'var(--highlight, #fef08a)',
                         borderRadius: 15,
                         padding: 15,
-                        boxShadow: '0 8px 24px rgba(234,179,8,.18)',
+                        boxShadow: '0 4px 17px var(--highlight-600, #eab308)17',
                         transition: 'transform 0.15s, box-shadow 0.18s',
                         cursor: 'pointer',
-                        border: "2px solid #fde68a"
+                        border: "1.5px solid var(--highlight-border, #fbe192)"
                       }}
-                      onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                      onClick={() => goToProduct(product.id,'featured')}
                       onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
                       onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                     >
@@ -1224,14 +1333,14 @@ const Index2: NextPage = () => {
                           objectFit: 'cover',
                           borderRadius: 10,
                           marginBottom: 12,
-                          border: "1.5px solid #fae27a"
+                          border: "1.5px solid var(--highlight-img-border, #fae27a)"
                         }}
                       />
                       <h3
                         style={{
                           fontSize: 18,
-                          fontWeight: 800,
-                          color: '#78350f',
+                          fontWeight: 700,
+                          color: 'var(--amber-900, #78350f)',
                           marginBottom: 6
                         }}
                       >
@@ -1254,8 +1363,8 @@ const Index2: NextPage = () => {
                       <div
                         style={{
                           fontSize: 16,
-                          fontWeight: 800,
-                          color: product.indirimli_fiyat ? "#ef4444" : "#16a34a",
+                          fontWeight: 600,
+                          color: product.indirimli_fiyat ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
                           marginBottom: 4
                         }}
                       >
@@ -1263,13 +1372,13 @@ const Index2: NextPage = () => {
                           <>
                             <span style={{
                               textDecoration: "line-through",
-                              color: "#d1d5db",
-                              fontWeight: 600,
+                              color: "var(--ink-300, #d1d5db)",
+                              fontWeight: 500,
                               marginRight: 7
                             }}>
                               {product.price} ₺
                             </span>
-                            <span style={{ color: "#ef4444", fontWeight: 900 }}>
+                            <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
                               {product.indirimli_fiyat} ₺
                             </span>
                           </>
@@ -1312,13 +1421,13 @@ const Index2: NextPage = () => {
                         background: "var(--surface-200, #f1f5f9)",
                         borderRadius: 13,
                         boxShadow: "0 2px 13px #1d8cf80b",
-                        border: "2px solid #bfdbfe",
+                        border: "1.5px solid var(--border, #e4e9ef)",
                         marginRight: 5,
                         cursor: "pointer",
                         padding: "13px 9px",
                         position: "relative"
                       }}
-                      onClick={() => window.location.href = `/urun/${product.id}?from=populer`}
+                      onClick={() => goToProduct(product.id,'populer')}
                     >
                       <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
                         alt={product.title}
@@ -1327,10 +1436,10 @@ const Index2: NextPage = () => {
                           height: 92,
                           objectFit: "cover",
                           borderRadius: 8,
-                          border: "1.5px solid #dbeafe"
+                          border: "1px solid var(--border-soft, #e0e7ef)"
                         }} />
                       <div style={{
-                        fontWeight: 800, fontSize: 15,
+                        fontWeight: 700, fontSize: 15,
                         color: "var(--ink-900, #223555)", marginTop: 5
                       }}>{product.title}</div>
                       {/* Ortalama yıldız */}
@@ -1338,28 +1447,28 @@ const Index2: NextPage = () => {
                         color: "var(--warning, #f59e0b)", fontWeight: 600, fontSize: 18
                       }}>
                         {renderStars(product.ortalamaPuan ?? 0)}
-                        <span style={{ fontWeight: 700, fontSize: 14, color: "var(--ink-500, #64748b)", marginLeft: 5 }}>
+                        <span style={{ fontWeight: 500, fontSize: 14, color: "var(--ink-500, #64748b)", marginLeft: 5 }}>
                           ({(product.ortalamaPuan ?? 0).toFixed(1)})
                         </span>
                       </div>
                       {/* Fiyat */}
                       <div style={{
                         fontSize: 16,
-                        fontWeight: 800,
-                        color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "#ef4444" : "#16a34a",
+                        fontWeight: 600,
+                        color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
                         marginBottom: 4
                       }}>
                         {product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? (
                           <>
                             <span style={{
                               textDecoration: "line-through",
-                              color: "#d1d5db",
-                              fontWeight: 600,
+                              color: "var(--ink-300, #d1d5db)",
+                              fontWeight: 500,
                               marginRight: 7
                             }}>
                               {product.price} ₺
                             </span>
-                            <span style={{ color: "#ef4444", fontWeight: 900 }}>
+                            <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
                               {product.indirimli_fiyat} ₺
                             </span>
                           </>
@@ -1373,12 +1482,12 @@ const Index2: NextPage = () => {
               </section>
             )}
 
-            {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
+            {/* POPÜLER & FIRSAT ÜRÜNLERİ (MEVCUT – aynen korundu) */}
             <section className="section-block" style={{ marginBottom: 32 }}>
               <h2 style={{
                 fontSize: 24,
                 fontWeight: 900,
-                color: '#e11d48',
+                color: 'var(--danger, #e11d48)',
                 marginBottom: 8,
                 letterSpacing: ".2px",
                 display: "flex",
@@ -1388,19 +1497,19 @@ const Index2: NextPage = () => {
                 <span style={{fontSize: 28, marginTop: -4}}>🔥</span>
                 Ayın İndirimleri Başladı!
                 <span style={{
-                  background: "linear-gradient(90deg,#22c55e,#16a34a)",
+                  background: "var(--success-500, #22c55e)",
                   color: "#fff",
                   borderRadius: 7,
                   fontSize: 14,
                   padding: "2px 12px",
                   marginLeft: 8,
-                  fontWeight: 900
+                  fontWeight: 700
                 }}>
                   Haftanın Fırsatları
                 </span>
               </h2>
               <p style={{
-                fontWeight: 700,
+                fontWeight: 600,
                 fontSize: 15.5,
                 color: '#444',
                 marginBottom: 12,
@@ -1417,27 +1526,27 @@ const Index2: NextPage = () => {
                       background: "#fff6",
                       borderRadius: 13,
                       boxShadow: "0 2px 13px #f871710b",
-                      border: "2px solid #fecaca",
+                      border: "1.5px solid var(--border, #e4e9ef)",
                       marginRight: 5,
                       cursor: "pointer",
                       padding: "13px 9px",
                       position: "relative"
                     }}
-                    onClick={() => window.location.href = `/urun/${p.id}?from=populer`}
+                    onClick={() => goToProduct(p.id,'populer')}
                   >
                     {/* İNDİRİMDE ROZETİ */}
                     {p.indirimli_fiyat &&
                       <span style={{
                         position: "absolute", top: 11, left: 11,
-                        background: "linear-gradient(90deg,#ef4444,#f97316)", color: "#fff",
-                        fontWeight: 900, fontSize: 12, borderRadius: 7, padding: "2px 10px", boxShadow: "0 1px 5px rgba(239,68,68,.3)"
+                        background: "var(--price-discount, #ef4444)", color: "#fff",
+                        fontWeight: 800, fontSize: 12, borderRadius: 7, padding: "2px 10px", boxShadow: "0 1px 5px var(--price-discount, #ef4444)15"
                       }}>İNDİRİMDE</span>}
 
                     {/* ÇOK SATAN ROZETİ */}
                     {idx < 3 &&
                       <span style={{
                         position: "absolute", top: 11, right: 11,
-                        background: "linear-gradient(90deg,#f59e0b,#f97316)", color: "#fff", fontWeight: 900,
+                        background: "var(--warning, #f59e0b)", color: "#fff", fontWeight: 800,
                         fontSize: 12, borderRadius: 7, padding: "2px 10px"
                       }}>Çok Satan</span>}
 
@@ -1448,28 +1557,28 @@ const Index2: NextPage = () => {
                         height: 92,
                         objectFit: "cover",
                         borderRadius: 8,
-                        border: "1.5px solid #fde68a"
+                        border: "1px solid var(--yellow-300, #fde68a)"
                       }} />
                     <div style={{
-                      fontWeight: 800, fontSize: 15,
-                      color: "#e11d48", marginTop: 5
+                      fontWeight: 700, fontSize: 15,
+                      color: "var(--danger, #e11d48)", marginTop: 5
                     }}>{p.title}</div>
                     <div style={{
-                      fontWeight: 900, fontSize: 15, color: "#22c55e"
+                      fontWeight: 700, fontSize: 15, color: "var(--success-500, #22c55e)"
                     }}>
                       {p.indirimli_fiyat ?
                         <>
-                          <span style={{ textDecoration: "line-through", color: "#d1d5db", fontWeight: 700, marginRight: 4 }}>
+                          <span style={{ textDecoration: "line-through", color: "var(--ink-300, #d1d5db)", fontWeight: 600, marginRight: 4 }}>
                             {p.price}₺
                           </span>
-                          <span style={{ color: "#ef4444" }}>{p.indirimli_fiyat}₺</span>
+                          <span style={{ color: "var(--price-discount, #ef4444)" }}>{p.indirimli_fiyat}₺</span>
                         </>
                         : `${p.price}₺`}
                     </div>
                     {/* Stok azaldı badge örneği */}
                     {p.stok && p.stok < 5 &&
                       <div style={{
-                        color: "#e11d48", fontWeight: 900, fontSize: 13, marginTop: 2
+                        color: "var(--danger, #e11d48)", fontWeight: 700, fontSize: 13, marginTop: 2
                       }}>
                         Son {p.stok} ürün!
                       </div>
@@ -1485,7 +1594,7 @@ const Index2: NextPage = () => {
                 <h2
                   style={{
                     fontSize: 23,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     color: 'var(--ink-900, #223555)',
                     marginBottom: 10
                   }}
@@ -1497,11 +1606,11 @@ const Index2: NextPage = () => {
 
                 {/* SIRALAMA */}
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <label style={{ fontSize:13, color:'#64748b', fontWeight:900 }}>Sırala:</label>
+                  <label style={{ fontSize:13, color:'#64748b', fontWeight:700 }}>Sırala:</label>
                   <select
                     value={sortKey}
                     onChange={(e)=> setSortKey(e.target.value as any)}
-                    style={{ padding:'8px 10px', border:'2px solid #e2e8f0', borderRadius:10, fontWeight:900 }}
+                    style={{ padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8, fontWeight:700 }}
                   >
                     <option value="relevance">Alaka</option>
                     <option value="priceAsc">Fiyat Artan</option>
@@ -1517,28 +1626,28 @@ const Index2: NextPage = () => {
               <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', margin:'6px 0 14px' }}>
                 <button onClick={()=> setOnlyDiscounted(v=>!v)}
                   style={{
-                    padding:'8px 12px', borderRadius:999, border:'2px solid #fde68a',
-                    background: onlyDiscounted ? '#fff7ed' : '#fff', fontWeight:900, fontSize:13, cursor:'pointer'
+                    padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
+                    background: onlyDiscounted ? '#fde68a' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
                   }}>İndirimli</button>
 
                 <button onClick={()=> setOnlyInStock(v=>!v)}
                   style={{
-                    padding:'8px 12px', borderRadius:999, border:'2px solid #bbf7d0',
-                    background: onlyInStock ? '#ecfeff' : '#fff', fontWeight:900, fontSize:13, cursor:'pointer'
+                    padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
+                    background: onlyInStock ? '#dcfce7' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
                   }}>Stokta</button>
 
                 <button onClick={()=> setOnlyNew(v=>!v)}
                   style={{
-                    padding:'8px 12px', borderRadius:999, border:'2px solid #bfdbfe',
-                    background: onlyNew ? '#eff6ff' : '#fff', fontWeight:900, fontSize:13, cursor:'pointer'
+                    padding:'8px 12px', borderRadius:999, border:'1px solid #e2e8f0',
+                    background: onlyNew ? '#e0e7ff' : '#fff', fontWeight:800, fontSize:13, cursor:'pointer'
                   }}>Yeni</button>
 
                 <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                   <input value={minPrice} onChange={e=>setMinPrice(e.target.value)} placeholder="Min ₺"
-                    style={{ width:90, padding:'8px 10px', border:'2px solid #e2e8f0', borderRadius:10 }} />
+                    style={{ width:90, padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8 }} />
                   <span style={{ color:'#94a3b8' }}>–</span>
                   <input value={maxPrice} onChange={e=>setMaxPrice(e.target.value)} placeholder="Max ₺"
-                    style={{ width:90, padding:'8px 10px', border:'2px solid #e2e8f0', borderRadius:10 }} />
+                    style={{ width:90, padding:'8px 10px', border:'1px solid #e2e8f0', borderRadius:8 }} />
                 </div>
 
                 {(onlyDiscounted || onlyInStock || onlyNew || minPrice || maxPrice || debouncedSearch) && (
@@ -1547,7 +1656,7 @@ const Index2: NextPage = () => {
                       setOnlyDiscounted(false); setOnlyInStock(false); setOnlyNew(false);
                       setMinPrice(''); setMaxPrice(''); setSearch(''); setVisibleCount(12);
                     }}
-                    style={{ padding:'8px 12px', borderRadius:10, border:'2px solid #e2e8f0', background:'#fff', fontWeight:900, fontSize:13, cursor:'pointer' }}
+                    style={{ padding:'8px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', fontWeight:800, fontSize:13, cursor:'pointer' }}
                   >
                     Temizle
                   </button>
@@ -1562,7 +1671,7 @@ const Index2: NextPage = () => {
                     textAlign: 'center',
                     borderRadius: 13,
                     color: 'var(--ink-500, #64748b)',
-                    fontWeight: 700,
+                    fontWeight: 500,
                     fontSize: 16
                   }}
                 >
@@ -1590,13 +1699,13 @@ const Index2: NextPage = () => {
                             background: '#fff',
                             borderRadius: 15,
                             padding: 15,
-                            boxShadow: '0 3px 16px rgba(34,197,94,.14)',
+                            boxShadow: '0 3px 16px var(--success, #16a34a)14',
                             transition: 'transform 0.16s',
                             cursor: 'pointer',
                             position: 'relative',
-                            border: "2px solid #e2e8f0"
+                            border: "1.5px solid var(--border, #e4e9ef)"
                           }}
-                          onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                          onClick={() => goToProduct(product.id,'index2')}
                           onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
                           onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                         >
@@ -1605,13 +1714,13 @@ const Index2: NextPage = () => {
                               style={{
                                 position: 'absolute',
                                 top: 13, left: 13,
-                                background: 'linear-gradient(90deg,#22c55e,#16a34a)',
+                                background: 'var(--success, #16a34a)',
                                 color: '#fff',
-                                fontWeight: 900,
+                                fontWeight: 800,
                                 fontSize: 13,
-                                borderRadius: 999,
+                                borderRadius: 8,
                                 padding: '4px 13px',
-                                boxShadow: '0 2px 8px rgba(34,197,94,.25)',
+                                boxShadow: '0 2px 8px var(--success, #16a34a)15',
                                 zIndex: 1
                               }}
                             >
@@ -1625,7 +1734,7 @@ const Index2: NextPage = () => {
                               position: 'absolute',
                               top: 12, right: 14,
                               fontSize: 22,
-                              color: favoriler.includes(product.id) ? "#fb8500" : "#bbb",
+                              color: favoriler.includes(product.id) ? "var(--attention, #fb8500)" : "#bbb",
                               cursor: 'pointer',
                               userSelect: 'none',
                               zIndex: 2,
@@ -1648,14 +1757,14 @@ const Index2: NextPage = () => {
                               borderRadius: 10,
                               marginBottom: 12,
                               background: '#f0fdf4',
-                              border: "1.5px solid #e2e8f0"
+                              border: "1px solid var(--border, #e4e9ef)"
                             }}
                           />
                           <h3
                             style={{
                               fontSize: 17,
-                              fontWeight: 800,
-                              color: '#1e293b',
+                              fontWeight: 700,
+                              color: 'var(--ink-800, #1e293b)',
                               marginBottom: 6
                             }}
                           >
@@ -1669,8 +1778,8 @@ const Index2: NextPage = () => {
                           <div
                             style={{
                               fontSize: 16,
-                              fontWeight: 800,
-                              color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "#ef4444" : "#16a34a",
+                              fontWeight: 600,
+                              color: product.indirimli_fiyat && product.indirimli_fiyat !== product.price ? "var(--price-discount, #ef4444)" : "var(--success, #16a34a)",
                               marginBottom: 4
                             }}
                           >
@@ -1678,13 +1787,13 @@ const Index2: NextPage = () => {
                               <>
                                 <span style={{
                                   textDecoration: "line-through",
-                                  color: "#d1d5db",
-                                  fontWeight: 600,
+                                  color: "var(--ink-300, #d1d5db)",
+                                  fontWeight: 500,
                                   marginRight: 7
                                 }}>
                                   {product.price} ₺
                                 </span>
-                                <span style={{ color: "#ef4444", fontWeight: 900 }}>
+                                <span style={{ color: "var(--price-discount, #ef4444)", fontWeight: 700 }}>
                                   {product.indirimli_fiyat} ₺
                                 </span>
                               </>
@@ -1696,7 +1805,7 @@ const Index2: NextPage = () => {
                           <span
                             style={{
                               fontSize: 14,
-                              color: '#64748b'
+                              color: 'var(--ink-500, #64748b)'
                             }}
                           >
                             {findKategoriAd(product.kategori_id)}
@@ -1705,16 +1814,16 @@ const Index2: NextPage = () => {
                             <button
                               style={{
                                 marginTop: 13,
-                                background: 'linear-gradient(90deg,#00d18f,#2563eb)',
+                                background: 'linear-gradient(90deg, var(--accent, #1bbd8a) 0%, var(--success, #16a34a) 90%)',
                                 color: '#fff',
                                 padding: '10px 0',
-                                borderRadius: 12,
+                                borderRadius: 10,
                                 border: 'none',
-                                fontWeight: 900,
+                                fontWeight: 700,
                                 fontSize: 15,
                                 cursor: 'pointer',
                                 width: '100%',
-                                boxShadow: '0 6px 20px rgba(0,209,143,.25)',
+                                boxShadow: '0 2px 8px var(--attention, #fb8500)22',
                                 letterSpacing: 0.5,
                                 transition: 'background 0.18s'
                               }}
@@ -1729,16 +1838,16 @@ const Index2: NextPage = () => {
                             <button
                               style={{
                                 marginTop: 13,
-                                background: 'linear-gradient(90deg,#fb8500,#ffbc38)',
+                                background: 'linear-gradient(90deg, var(--attention, #fb8500) 0%, var(--attention-300, #ffbc38) 80%)',
                                 color: '#fff',
                                 padding: '10px 0',
-                                borderRadius: 12,
+                                borderRadius: 10,
                                 border: 'none',
-                                fontWeight: 900,
+                                fontWeight: 700,
                                 fontSize: 15,
                                 cursor: 'pointer',
                                 width: '100%',
-                                boxShadow: '0 6px 18px rgba(251,133,0,.25)',
+                                boxShadow: '0 2px 8px var(--attention, #fb8500)22',
                                 letterSpacing: 0.5,
                                 transition: 'background 0.18s'
                               }}
@@ -1761,8 +1870,8 @@ const Index2: NextPage = () => {
                       <button
                         onClick={()=> setVisibleCount(c=> c + 12)}
                         style={{
-                          background:'#fff', border:'2px solid #e2e8f0', borderRadius:12,
-                          padding:'10px 16px', fontWeight:900, cursor:'pointer'
+                          background:'#fff', border:'1px solid #e2e8f0', borderRadius:10,
+                          padding:'10px 16px', fontWeight:800, cursor:'pointer'
                         }}
                       >
                         Daha Fazla Yükle ({totalAfterFilters - normalIlanlar.length} kaldı)
@@ -1772,6 +1881,73 @@ const Index2: NextPage = () => {
                 </>
               )}
             </section>
+
+            {/* === YENİ: TOP MAĞAZALAR === */}
+            {topMagazalar.length > 0 && (
+              <section className="section-block" style={{ marginTop:24 }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
+                  {topMagazalar.map(m=>(
+                    <div key={m.email}
+                      onClick={()=> window.location.href=`/firma-yorumlar/${m.email}`}
+                      style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+                      <div style={{
+                        width:44, height:44, borderRadius:12, background:'#eef2ff', display:'grid', placeItems:'center',
+                        fontWeight:900, color:'#334155'
+                      }}>
+                        {m.ad?.slice(0,2).toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:800, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.ad}</div>
+                        <div style={{ fontSize:12, color:'#6b7280' }}>{m.urun} ürün</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:4, color:'#f59e0b', fontSize:14 }}>
+                          <FiStar /> {m.puan.toFixed(1)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* === YENİ: ÇOK GÖRÜNTÜLENENLER === */}
+            {cokGoruntulenenler.length > 0 && (
+              <section className="section-block" style={{ marginTop:24 }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>👀 Çok Görüntülenenler</h2>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
+                  {cokGoruntulenenler.map(p=>(
+                    <div key={p.id}
+                      onClick={()=> goToProduct(p.id,'most_viewed')}
+                      style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:10 }}>
+                      <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:110, objectFit:'cover', borderRadius:8, border:'1px solid #eef2f7' }} />
+                      <div style={{ fontWeight:800, marginTop:6, fontSize:14 }}>{p.title}</div>
+                      <div style={{ color:'#64748b', fontSize:12 }}>{findKategoriAd(p.kategori_id)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* === YENİ: SON BAKTIKLARIN === */}
+            {recentlyViewed.length > 0 && (
+              <section className="section-block" style={{ marginTop:24 }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🕒 Son Baktıkların</h2>
+                <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
+                  {recentlyViewed.map(p=>(
+                    <div key={p.id}
+                      onClick={()=> goToProduct(p.id,'recent')}
+                      style={{ minWidth:200, border:'1px solid #e5e7eb', background:'#fff', borderRadius:12, padding:10, cursor:'pointer' }}>
+                      <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:90, objectFit:'cover', borderRadius:8 }} />
+                      <div style={{ fontWeight:800, fontSize:14, marginTop:6 }}>{p.title}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </main>
 
           {/* SAĞ REKLAM */}
@@ -1820,17 +1996,32 @@ const Index2: NextPage = () => {
           )}
         </div>
 
-        {/* Responsive + Canlı renkler için global stiller */}
-        <style jsx global>{`
-  :root{
-    --primary:#2563eb;
-    --accent:#00d18f;
-    --warning:#f59e0b;
-    --danger:#e11d48;
-    --highlight:#fef08a;
-    --surface:#f8fafc;
-    --ink-900:#0f172a;
-  }
+        {/* Responsive düzen için */}
+        <style jsx global>{`:root{
+  --primary: #2563eb;     /* canlı mavi */
+  --accent:  #00d18f;     /* parlak turkuaz */
+  --danger:  #ef4444;     /* kırmızı */
+  --success: #16a34a;     /* yeşil */
+  --warning: #f59e0b;     /* amber */
+  --ink-900: #0f172a;     /* koyu metin */
+  --border:  #e5e7eb;     /* sınır çizgisi */
+  --bg-grad-end: #eafcf6; /* üst arkaplan degrade ucu */
+}
+
+/* Hero kaydırıcıyı gizli scrollbar + dots */
+.hero-scroll{ scrollbar-width:none; -ms-overflow-style:none; }
+.hero-scroll::-webkit-scrollbar{ display:none; }
+
+.hero-dots{
+  display:flex; gap:6px; justify-content:center; margin-top:8px;
+}
+.hero-dots button{
+  width:8px; height:8px; border-radius:999px; border:0; background:#e5e7eb;
+}
+.hero-dots button.active{
+  width:22px; background:linear-gradient(90deg, var(--danger), var(--warning));
+  transition: width .25s;
+}
 
   /* PWA / çentik güvenli alanları */
   body { padding-bottom: env(safe-area-inset-bottom); }
@@ -1865,11 +2056,14 @@ const Index2: NextPage = () => {
 
   /* Telefon: tam genişlik görünüm + 1 sütun grid */
   @media (max-width: 640px) {
+    /* Header iç divini kenardan kenara yap */
     .header-inner{
       max-width: none !important;
       width: 100% !important;
       padding: 0 12px !important;
     }
+
+    /* Ana kolon: kenar boşluklarını kaldır, full-bleed */
     .main-col{
       max-width: none !important;
       padding: 0 !important;
@@ -1881,6 +2075,8 @@ const Index2: NextPage = () => {
       padding-left: 16px !important;
       padding-right: 16px !important;
     }
+
+    /* Grid: 1 sütun */
     .ilanGrid { grid-template-columns: 1fr !important; }
   }
 
@@ -1890,8 +2086,8 @@ const Index2: NextPage = () => {
 
   /* === PHONE REFINEMENTS (<=640px) === */
   @media (max-width: 640px){
-    .header-left{ display:none !important; }
-    .ads-left, .ads-right{ display:none !important; }
+    .header-left{ display:none !important; }        /* LOGO gizle */
+    .ads-left, .ads-right{ display:none !important; } /* Reklamları gizle (ek güvence) */
 
     .header-inner{
       grid-template-columns: 1fr !important;
@@ -1904,11 +2100,13 @@ const Index2: NextPage = () => {
     }
     .header-actions{ gap:8px !important; }
     .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
+
     .main-col > .section-block{
       padding:16px 12px !important;
       margin-bottom:20px !important;
       border-radius:10px !important;
     }
+
     .product-card img{ height:140px !important; object-fit:cover !important; }
   }
 
@@ -1932,18 +2130,19 @@ const Index2: NextPage = () => {
   }
   .is-android .layout-3col{
     display: block !important;
-    max-width: none !important;
   }
   .is-android .main-col{
     width: 100% !important;
     max-width: none !important;
     padding: 0 10px !important;
   }
+
   .is-android .main-col > .section-block{
     margin: 0 0 18px !important;
     border-radius: 10px !important;
     padding: 16px 12px !important;
   }
+
   .is-android .section-block h2 + div{
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0,1fr)) !important;
@@ -1961,6 +2160,7 @@ const Index2: NextPage = () => {
     grid-template-columns: repeat(2, minmax(0,1fr)) !important;
     gap: 12px !important;
   }
+
   @media (max-width: 480px){
     .is-android .section-block h2 + div,
     .is-android .section-block h2 + p + div,
@@ -1968,10 +2168,12 @@ const Index2: NextPage = () => {
       grid-template-columns: 1fr !important;
     }
   }
+
   .is-android .product-card img{
     height: 140px !important;
     object-fit: cover !important;
   }
+
   .is-android .layout-3col{
     display:block !important;
     max-width:none !important;
@@ -1981,6 +2183,7 @@ const Index2: NextPage = () => {
     max-width:none !important;
     padding:0 4px !important;
   }
+
   .is-android .header-left{ display:none !important; }
   .is-android .header-inner{
     grid-template-columns: 1fr auto !important;
@@ -1991,11 +2194,13 @@ const Index2: NextPage = () => {
   .is-android .header-middle input[type="text"]{ height:42px !important; }
   .is-android .header-actions{ gap:6px !important; }
   .is-android .header-actions button{ padding:6px 10px !important; font-size:13px !important; border-radius:8px !important; }
+
   .is-android .main-col > .section-block{
     padding:12px 6px !important;
     margin:0 0 16px !important;
     border-radius:8px !important;
   }
+
   .is-android .featuredGrid{
     display:grid !important;
     grid-template-columns: repeat(2, minmax(0,1fr)) !important;
@@ -2007,6 +2212,7 @@ const Index2: NextPage = () => {
     gap:10px !important;
     overflow:visible !important;
   }
+
   .is-android .section-block h2 + p + div{
     display:flex !important;
     gap:12px !important;
@@ -2019,16 +2225,19 @@ const Index2: NextPage = () => {
     scroll-snap-align:start;
     min-width:220px;
   }
+
   .is-android .ilanGrid{
     display:grid !important;
     grid-template-columns: repeat(2, minmax(0,1fr)) !important;
     gap:10px !important;
   }
+
   .is-android .product-card img{
     height:150px !important;
     object-fit:cover !important;
     border-radius:10px !important;
   }
+
   @media (min-width:400px){
     .is-android .main-col{ padding:0 6px !important; }
     .is-android .main-col > .section-block{ padding:14px 8px !important; }
@@ -2037,11 +2246,14 @@ const Index2: NextPage = () => {
     .is-android .ilanGrid{ gap:12px !important; }
     .is-android .section-block h2 + p + div > *{ min-width:240px; }
   }
+
   @media (max-width:360px){
     .is-android .product-card img{ height:140px !important; }
   }
+
   html, body { max-width: 100vw; overflow-x: hidden; }
   img, video { max-width: 100%; height: auto; display: block; }
+
   @media (max-width: 420px){
     .is-android .header-middle{
       display:flex !important;
