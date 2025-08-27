@@ -10,7 +10,7 @@
 // NOTE: Colors now use CSS variables with fallbacks to your current palette.
 // Define these in your global CSS (e.g., :root { --primary: #yourColor; ... }) to match your site theme.
 import type { NextPage } from 'next';
-import React, { useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { useState, useEffect, ReactNode, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
 import { supabase } from '../lib/supabaseClient';
@@ -119,7 +119,12 @@ import {
   FiBox,
   FiHeart,
   FiTag,
-  FiMoreHorizontal
+  FiMoreHorizontal,
+  FiTruck,
+  FiShield,
+  FiRefreshCw,
+  FiTrendingUp,
+  FiStar
 } from 'react-icons/fi';
 import { FaCar } from 'react-icons/fa';
 
@@ -178,7 +183,6 @@ const trMap: Record<string,string> = { 'İ':'i','I':'ı','Ş':'ş','Ğ':'ğ','Ü
 const trLower = (s:string) => s.replace(/[İIŞĞÜÖÇ]/g, ch => trMap[ch] ?? ch).toLowerCase();
 const stripDiacritics = (s:string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const normalizeText = (s:string) => stripDiacritics(trLower(s || ''));
-
 const parsePrice = (p?: string) => {
   if (!p) return 0;
   // "12.345,67" -> 12345.67
@@ -186,6 +190,13 @@ const parsePrice = (p?: string) => {
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : 0;
 };
+
+/** === HERO SLIDE verileri (görsel yoksa degrade kutu) === */
+const heroSlides = [
+  { id: 'h1', title: 'Mega Kampanya', sub: 'Elektroniklerde +%20 indirim', cta: 'Fırsatları Gör', href: '/?kategori=Elektronik', img: '/banner-1.jpg' },
+  { id: 'h2', title: 'Kışa Hazırlık', sub: 'Giyim & Ev Eşyaları', cta: 'İlham Al', href: '/?kategori=Giyim', img: '/banner-2.jpg' },
+  { id: 'h3', title: 'Süper Fırsat', sub: 'Spor & Outdoor haftası', cta: 'Keşfet', href: '/?kategori=Spor%20&%20Outdoor', img: '/banner-3.jpg' },
+];
 
 const Index2: NextPage = () => {
   const [loginDropdown, setLoginDropdown] = useState(false);
@@ -220,6 +231,11 @@ const Index2: NextPage = () => {
   const [maxPrice, setMaxPrice]           = useState<string>('');      // NEW
   const [sortKey, setSortKey] = useState<'relevance'|'priceAsc'|'priceDesc'|'rating'|'newest'|'viewsDesc'>('relevance'); // NEW
   const [visibleCount, setVisibleCount]   = useState(12);              // NEW
+
+  // YENİ: son bakılanlar, trend aramalar, çok görüntülenenler, top mağazalar
+  const [recentlyViewed, setRecentlyViewed] = useState<Ilan[]>([]);
+  const [flashTick, setFlashTick] = useState(0); // geri sayım tetikleyici
+  const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined') {
@@ -287,11 +303,11 @@ const Index2: NextPage = () => {
           .select("id, adet, product_id")
           .eq("user_id", userId);
         setCartItems(cartData || []);
-        const { data: favData, error: favError } = await supabase
+        const { data: favData } = await supabase
           .from("favoriler")
           .select("ilan_id")
           .eq("user_id", userId);
-        if (!favError && favData) {
+        if (favData) {
           setFavoriler(favData.map(f => f.ilan_id));
         }
       } else {
@@ -338,6 +354,25 @@ const Index2: NextPage = () => {
     }
     fetchData();
     fetchDopedIlanlar();
+  }, []);
+
+  // Son bakılanlar (localStorage: recently_viewed = [ids])
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('recently_viewed');
+      if (!raw) return;
+      const ids: number[] = JSON.parse(raw);
+      const list = ids
+        .map(id => ilanlar.find(i => i.id === id))
+        .filter(Boolean) as Ilan[];
+      setRecentlyViewed(list);
+    } catch {}
+  }, [ilanlar]);
+
+  // Flash deals: saniyelik tick (geri sayım göstermek için)
+  useEffect(() => {
+    const iv = setInterval(() => setFlashTick(t => t + 1), 1000);
+    return () => clearInterval(iv);
   }, []);
 
   const sepetteVarMi = (id: number) => cartItems.find((item) => item.product_id === id);
@@ -403,28 +438,15 @@ const Index2: NextPage = () => {
     }
   };
 
-  const getRemainingTime = (expirationDate: string | undefined): string => {
-    if (!expirationDate) return '';
-    const now = new Date();
-    const expiration = new Date(expirationDate);
-    const diff = expiration.getTime() - now.getTime();
-    if (diff <= 0) return 'Süre doldu';
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    return `Kalan süre: ${days} gün ${hours} saat`;
-  };
-
-  const findKategoriAd = (id: number | null | undefined): string => {
-    if (typeof id !== "number" || isNaN(id)) return "";
-    const kat = dbKategoriler.find((k) => k.id === id);
-    return kat?.ad || "";
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsLoggedIn(false);
-    setUser(null);
-    window.location.href = '/';
+  // YENİ: hızlı yönlendirme + recently_viewed yazma
+  const goToProduct = (id: number, from: string) => {
+    try {
+      const raw = localStorage.getItem('recently_viewed');
+      const arr: number[] = raw ? JSON.parse(raw) : [];
+      const updated = [id, ...arr.filter(x => x !== id)].slice(0, 20);
+      localStorage.setItem('recently_viewed', JSON.stringify(updated));
+    } catch {}
+    window.location.href = `/urun/${id}?from=${from}`;
   };
 
   /** === GELİŞMİŞ FİLTRELEME + SIRALAMA + ÖNERİ === */
@@ -436,7 +458,7 @@ const Index2: NextPage = () => {
     const qn = normalizeText(q);
     const title = normalizeText(p.title);
     const desc  = normalizeText(p.desc);
-    const katAd = normalizeText(findKategoriAd(p.kategori_id));
+    const katAd = normalizeText(dbKategoriler.find(k=>k.id===p.kategori_id)?.ad || '');
     const firma = normalizeText(firmaAdMap[p.user_email]?.ad || '');
 
     let score = 0;
@@ -464,7 +486,7 @@ const Index2: NextPage = () => {
       if (!q) return kategoriOk;
       const title = normalizeText(i.title);
       const desc  = normalizeText(i.desc);
-      const katAd = normalizeText(findKategoriAd(i.kategori_id));
+      const katAd = normalizeText(dbKategoriler.find(k=>k.id===i.kategori_id)?.ad || '');
       const firma = normalizeText(firmaAdMap[i.user_email]?.ad || '');
 
       const matches = title.includes(q) || desc.includes(q) || katAd.includes(q) || firma.includes(q);
@@ -517,7 +539,7 @@ const Index2: NextPage = () => {
   }, [
     ilanlar, firmaAdMap, aktifKategoriId, debouncedSearch,
     onlyDiscounted, onlyInStock, onlyNew, minPrice, maxPrice,
-    sortKey, visibleCount
+    sortKey, visibleCount, dbKategoriler
   ]);
 
   // İndirimli ürünleri belirle
@@ -526,8 +548,79 @@ const Index2: NextPage = () => {
     [ilanlar]
   );
 
+  // Türetilen listeler (yeni alanlar)
+  const cokGoruntulenenler = useMemo(
+    () => [...ilanlar].sort((a,b)=> (b.views ?? 0) - (a.views ?? 0)).slice(0, 12),
+    [ilanlar]
+  );
+
+  const kategoriSayilari = useMemo(() => {
+    const map = new Map<number, number>();
+    ilanlar.forEach(i => map.set(i.kategori_id, (map.get(i.kategori_id) ?? 0) + 1));
+    const list = dbKategoriler.map(k => ({ ...k, sayi: map.get(k.id) ?? 0 }));
+    return list.sort((a,b)=> b.sayi - a.sayi);
+  }, [ilanlar, dbKategoriler]);
+
+  const topMagazalar = useMemo(() => {
+    const counts: Record<string, number> = {};
+    ilanlar.forEach(i => { counts[i.user_email] = (counts[i.user_email] ?? 0) + 1; });
+    const list = Object.keys(counts).map(email => ({
+      email,
+      ad: firmaAdMap[email]?.ad || email.split('@')[0],
+      puan: firmaAdMap[email]?.puan ?? 0,
+      urun: counts[email]
+    }));
+    return list.sort((a,b)=> (b.puan - a.puan) || (b.urun - a.urun)).slice(0, 10);
+  }, [ilanlar, firmaAdMap]);
+
+  // Trend aramalar (başlıklardan anahtar kelime çıkarımı – basit)
+  const trendingTerms = useMemo(() => {
+    const stop = new Set(['ve','ile','the','for','ama','çok','az','yeni','super','süper','set','paket','pro','mini','max']);
+    const freq: Record<string, number> = {};
+    ilanlar.forEach(i => {
+      normalizeText(i.title).split(/\s+/).forEach(w => {
+        if (!w || w.length < 3 || stop.has(w)) return;
+        if (/^\d+$/.test(w)) return;
+        freq[w] = (freq[w] ?? 0) + 1;
+      });
+    });
+    return Object.entries(freq).sort((a,b)=> b[1]-a[1]).slice(0,10).map(x => x[0]);
+  }, [ilanlar]);
+
+  const getRemainingTime = (expirationDate: string | undefined): string => {
+    if (!expirationDate) return '';
+    const now = new Date();
+    const expiration = new Date(expirationDate);
+    const diff = expiration.getTime() - now.getTime();
+    if (diff <= 0) return 'Süre doldu';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    return `Kalan süre: ${days} gün ${hours} saat`;
+  };
+
+  const findKategoriAd = (id: number | null | undefined): string => {
+    if (typeof id !== "number" || isNaN(id)) return "";
+    const kat = dbKategoriler.find((k) => k.id === id);
+    return kat?.ad || "";
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsLoggedIn(false);
+    setUser(null);
+    window.location.href = '/';
+  };
+
   // Görselliği mobile uygunlaştır
   if (loading) return <p style={{ textAlign: "center", padding: 40 }}>⏳ Yükleniyor...</p>;
+
+  // Gece yarısına geri sayım (Flash Deals için)
+  const now = new Date();
+  const midnight = new Date(now); midnight.setHours(23,59,59,999);
+  const left = Math.max(0, midnight.getTime() - now.getTime());
+  const HH = Math.floor(left/3600000).toString().padStart(2,'0');
+  const MM = Math.floor((left%3600000)/60000).toString().padStart(2,'0');
+  const SS = Math.floor((left%60000)/1000).toString().padStart(2,'0');
 
   return (
     <>
@@ -731,7 +824,7 @@ const Index2: NextPage = () => {
                     {suggestions.map(s => (
                       <div
                         key={s.id}
-                        onMouseDown={(e)=>{ e.preventDefault(); window.location.href=`/urun/${s.id}?from=search_suggest`; }}
+                        onMouseDown={(e)=>{ e.preventDefault(); goToProduct(s.id, 'search_suggest'); }}
                         style={{
                           display:'grid',
                           gridTemplateColumns:'56px 1fr auto',
@@ -922,6 +1015,97 @@ const Index2: NextPage = () => {
         </header>
 
         <SloganBar />
+
+        {/* ---- YENİ: HERO SLIDER + Avantaj Barı + Kategori Çipleri + Trend Aramalar ---- */}
+        <section style={{ maxWidth:1200, margin:'12px auto 0', padding:'0 12px' }}>
+          {/* Hero Slider */}
+          <div ref={heroRef}
+            style={{
+              display:'grid',
+              gridAutoFlow:'column',
+              gridAutoColumns:'100%',
+              overflowX:'auto',
+              scrollSnapType:'x mandatory',
+              gap:12,
+              borderRadius:16
+            }}>
+            {heroSlides.map((s)=>(
+              <div key={s.id}
+                style={{
+                  position:'relative',
+                  minHeight:180,
+                  background:'linear-gradient(135deg,#e0f2fe,#e9d5ff)',
+                  border:'1px solid #e5e7eb',
+                  borderRadius:16,
+                  overflow:'hidden',
+                  scrollSnapAlign:'start'
+                }}>
+                <img src={s.img} alt={s.title}
+                  onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }}
+                  style={{ width:'100%', height:'100%', objectFit:'cover', opacity:.9 }} />
+                <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', padding:'0 20px' }}>
+                  <div>
+                    <div style={{ fontWeight:900, fontSize:26, color:'#0f172a' }}>{s.title}</div>
+                    <div style={{ fontWeight:700, fontSize:16, color:'#334155', marginTop:6 }}>{s.sub}</div>
+                    <button
+                      onClick={()=> window.location.href = s.href}
+                      style={{ marginTop:12, background:'#111827', color:'#fff', border:'none', borderRadius:10, padding:'10px 14px', fontWeight:800, cursor:'pointer' }}>
+                      {s.cta} →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Avantaj barı */}
+          <div style={{
+            display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',
+            gap:12, marginTop:12
+          }}>
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiTruck size={22} /><div><div style={{fontWeight:800}}>Hızlı Kargo</div><div style={{fontSize:13, color:'#6b7280'}}>Seçili ürünlerde aynı gün</div></div>
+            </div>
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiShield size={22} /><div><div style={{fontWeight:800}}>Güvenli Ödeme</div><div style={{fontSize:13, color:'#6b7280'}}>3D Secure & koruma</div></div>
+            </div>
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiRefreshCw size={22} /><div><div style={{fontWeight:800}}>Kolay İade</div><div style={{fontSize:13, color:'#6b7280'}}>14 gün koşulsuz</div></div>
+            </div>
+            <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <FiTrendingUp size={22} /><div><div style={{fontWeight:800}}>Trend Ürünler</div><div style={{fontSize:13, color:'#6b7280'}}>Her gün güncellenir</div></div>
+            </div>
+          </div>
+
+          {/* Kategori çipleri */}
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
+            {kategoriSayilari.slice(0,12).map(k=>(
+              <button key={k.id}
+                onClick={()=> setAktifKategori({ ad:k.ad, id:k.id })}
+                style={{
+                  border:'1px solid #e5e7eb', background:'#fff', borderRadius:999, padding:'6px 12px', cursor:'pointer',
+                  fontWeight:800, fontSize:13, display:'flex', alignItems:'center', gap:8
+                }}>
+                {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad} <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Trend aramalar */}
+          {trendingTerms.length > 0 && (
+            <div style={{ marginTop:10, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontWeight:900, color:'#334155', fontSize:14 }}>Trend Aramalar:</span>
+              {trendingTerms.map(t=>(
+                <button key={t}
+                  onClick={()=> setSearch(t)}
+                  style={{ background:'#f1f5f9', border:'1px solid #e2e8f0', borderRadius:999, padding:'4px 10px', fontWeight:800, fontSize:12, cursor:'pointer' }}>
+                  #{t}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* Layout: Sol reklam, ana, sağ reklam */}
         <div className="layout-3col"
           style={{
@@ -986,7 +1170,46 @@ const Index2: NextPage = () => {
             padding: '0 10px',
             flexGrow: 1,
           }}>
-            {/* ÖNE ÇIKANLAR */}
+            {/* === YENİ: FLASH DEALS (gün sonuna geri sayım) === */}
+            {indirimliUrunler.length > 0 && (
+              <section
+                className="section-block"
+                style={{
+                  background:'#fff',
+                  padding:'22px 18px',
+                  borderRadius:18,
+                  marginBottom:24,
+                  border:'1.5px solid #fde68a',
+                  boxShadow:'0 4px 16px rgba(234,179,8,.15)'
+                }}
+              >
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
+                  <h2 style={{ fontSize:22, fontWeight:900, color:'#78350f' }}>⚡ Flash Deals</h2>
+                  <div style={{ fontWeight:900, fontSize:16, color:'#b45309' }}>Bitişe: {HH}:{MM}:{SS}</div>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px,1fr))', gap:14, marginTop:12 }}>
+                  {indirimliUrunler.slice(0,8).map(p=>(
+                    <div key={p.id}
+                      onClick={()=> goToProduct(p.id,'flash')}
+                      style={{ cursor:'pointer', background:'#fff8', border:'1px solid #fde68a', borderRadius:12, padding:10, position:'relative' }}>
+                      <span style={{ position:'absolute', top:10, left:10, background:'#ef4444', color:'#fff', fontSize:11, fontWeight:900, borderRadius:6, padding:'2px 8px' }}>-%</span>
+                      <img
+                        src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:110, objectFit:'cover', borderRadius:8, border:'1px solid #fee2e2' }}
+                      />
+                      <div style={{ fontWeight:800, marginTop:6, fontSize:14, color:'#111827' }}>{p.title}</div>
+                      <div style={{ fontWeight:700, fontSize:14 }}>
+                        <span style={{ textDecoration:'line-through', color:'#9ca3af', marginRight:6 }}>{p.price}₺</span>
+                        <span style={{ color:'#ef4444' }}>{p.indirimli_fiyat}₺</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ÖNE ÇIKANLAR (MEVCUT) */}
             <section
               style={{
                 background: '#fff',
@@ -1042,7 +1265,7 @@ const Index2: NextPage = () => {
                         cursor: 'pointer',
                         border: "1.5px solid var(--highlight-border, #fbe192)"
                       }}
-                      onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                      onClick={() => goToProduct(product.id,'featured')}
                       onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
                       onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                     >
@@ -1153,7 +1376,7 @@ const Index2: NextPage = () => {
                         padding: "13px 9px",
                         position: "relative"
                       }}
-                      onClick={() => window.location.href = `/urun/${product.id}?from=populer`}
+                      onClick={() => goToProduct(product.id,'populer')}
                     >
                       <img src={Array.isArray(product.resim_url) ? product.resim_url[0] || "/placeholder.jpg" : product.resim_url || "/placeholder.jpg"}
                         alt={product.title}
@@ -1208,7 +1431,7 @@ const Index2: NextPage = () => {
               </section>
             )}
 
-            {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
+            {/* POPÜLER & FIRSAT ÜRÜNLERİ (MEVCUT – aynen korundu) */}
             <section className="section-block" style={{ marginBottom: 32 }}>
               <h2 style={{
                 fontSize: 24,
@@ -1258,7 +1481,7 @@ const Index2: NextPage = () => {
                       padding: "13px 9px",
                       position: "relative"
                     }}
-                    onClick={() => window.location.href = `/urun/${p.id}?from=populer`}
+                    onClick={() => goToProduct(p.id,'populer')}
                   >
                     {/* İNDİRİMDE ROZETİ */}
                     {p.indirimli_fiyat &&
@@ -1431,7 +1654,7 @@ const Index2: NextPage = () => {
                             position: 'relative',
                             border: "1.5px solid var(--border, #e4e9ef)"
                           }}
-                          onClick={() => window.location.href = `/urun/${product.id}?from=index2`}
+                          onClick={() => goToProduct(product.id,'index2')}
                           onMouseOver={e => (e.currentTarget as HTMLElement).style.transform = "translateY(-5px)"}
                           onMouseOut={e => (e.currentTarget as HTMLElement).style.transform = "none"}
                         >
@@ -1607,6 +1830,73 @@ const Index2: NextPage = () => {
                 </>
               )}
             </section>
+
+            {/* === YENİ: TOP MAĞAZALAR === */}
+            {topMagazalar.length > 0 && (
+              <section className="section-block" style={{ marginTop:24 }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
+                  {topMagazalar.map(m=>(
+                    <div key={m.email}
+                      onClick={()=> window.location.href=`/firma-yorumlar/${m.email}`}
+                      style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+                      <div style={{
+                        width:44, height:44, borderRadius:12, background:'#eef2ff', display:'grid', placeItems:'center',
+                        fontWeight:900, color:'#334155'
+                      }}>
+                        {m.ad?.slice(0,2).toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:800, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.ad}</div>
+                        <div style={{ fontSize:12, color:'#6b7280' }}>{m.urun} ürün</div>
+                        <div style={{ display:'flex', alignItems:'center', gap:4, color:'#f59e0b', fontSize:14 }}>
+                          <FiStar /> {m.puan.toFixed(1)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* === YENİ: ÇOK GÖRÜNTÜLENENLER === */}
+            {cokGoruntulenenler.length > 0 && (
+              <section className="section-block" style={{ marginTop:24 }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>👀 Çok Görüntülenenler</h2>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
+                  {cokGoruntulenenler.map(p=>(
+                    <div key={p.id}
+                      onClick={()=> goToProduct(p.id,'most_viewed')}
+                      style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:10 }}>
+                      <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:110, objectFit:'cover', borderRadius:8, border:'1px solid #eef2f7' }} />
+                      <div style={{ fontWeight:800, marginTop:6, fontSize:14 }}>{p.title}</div>
+                      <div style={{ color:'#64748b', fontSize:12 }}>{findKategoriAd(p.kategori_id)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* === YENİ: SON BAKTIKLARIN === */}
+            {recentlyViewed.length > 0 && (
+              <section className="section-block" style={{ marginTop:24 }}>
+                <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🕒 Son Baktıkların</h2>
+                <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
+                  {recentlyViewed.map(p=>(
+                    <div key={p.id}
+                      onClick={()=> goToProduct(p.id,'recent')}
+                      style={{ minWidth:200, border:'1px solid #e5e7eb', background:'#fff', borderRadius:12, padding:10, cursor:'pointer' }}>
+                      <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+                        alt={p.title}
+                        style={{ width:'100%', height:90, objectFit:'cover', borderRadius:8 }} />
+                      <div style={{ fontWeight:800, fontSize:14, marginTop:6 }}>{p.title}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </main>
 
           {/* SAĞ REKLAM */}
@@ -1654,6 +1944,7 @@ const Index2: NextPage = () => {
           </aside>
           )}
         </div>
+
         {/* Responsive düzen için */}
         <style jsx global>{`
   /* PWA / çentik güvenli alanları */
@@ -1763,7 +2054,6 @@ const Index2: NextPage = () => {
   }
   .is-android .layout-3col{
     display: block !important;
-    max-width: none !important;
   }
   .is-android .main-col{
     width: 100% !important;
