@@ -1041,33 +1041,21 @@ useEffect(() => {
                 borderRadius:0, // full-bleed
                 width:'100vw',
               }}>
-              {heroSlides.map((s)=>(
-                <div key={s.id}
-                  style={{
-                    position:'relative',
-                    minHeight:220,
-                    background:'linear-gradient(135deg,#e0f2fe,#e9d5ff)',
-                    border:'1px solid #e5e7eb',
-                    borderRadius:0,
-                    overflow:'hidden',
-                    scrollSnapAlign:'start'
-                  }}>
-                  <img src={s.img} alt={s.title}
-                    onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }}
-                    style={{ width:'100%', height:'100%', objectFit:'cover', opacity:.9 }} />
-                  <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', padding:'0 20px' }}>
-                    <div>
-                      <div style={{ fontWeight:900, fontSize:28, color:'#0f172a' }}>{s.title}</div>
-                      <div style={{ fontWeight:700, fontSize:16, color:'#334155', marginTop:6 }}>{s.sub}</div>
-                      <button
-                        onClick={()=> window.location.href = s.href}
-                        style={{ marginTop:12, background:'var(--ink-900, #111827)', color:'#fff', border:'none', borderRadius:10, padding:'10px 14px', fontWeight:800, cursor:'pointer' }}>
-                        {s.cta} →
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {heroSlides.map((s)=>( 
+  <div key={s.id} className="hero-slide">
+    <img src={s.img} alt={s.title}
+      onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }} />
+    <div className="hero-content">
+      <div>
+        <div className="hero-title">{s.title}</div>
+        <div className="hero-sub">{s.sub}</div>
+        <button onClick={()=> window.location.href = s.href} className="hero-btn">
+          {s.cta} →
+        </button>
+      </div>
+    </div>
+  </div>
+))}
             </div>
             <div className="hero-dots">
               {heroSlides.map((_, i)=>(
@@ -1754,6 +1742,68 @@ useEffect(() => {
 
           {/* Global Styles */}
           <style jsx global>{`
+          .hero-slide {
+  position: relative;
+  min-height: 180px;
+  max-height: 420px;
+  background: linear-gradient(135deg,#e0f2fe,#e9d5ff);
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+  overflow: hidden;
+  scroll-snap-align: start;
+}
+
+.hero-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: .9;
+}
+
+.hero-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+}
+
+.hero-title {
+  font-weight: 900;
+  font-size: 28px;
+  color: #0f172a;
+}
+.hero-sub {
+  font-weight: 700;
+  font-size: 16px;
+  color: #334155;
+  margin-top: 6px;
+}
+.hero-btn {
+  margin-top: 12px;
+  background: var(--ink-900, #111827);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+  .hero-slide { min-height: 160px; max-height: 260px; }
+  .hero-title { font-size: 22px; }
+  .hero-sub { font-size: 14px; }
+}
+
+/* Telefon */
+@media (max-width: 480px) {
+  .hero-slide { min-height: 140px; max-height: 200px; }
+  .hero-title { font-size: 18px; }
+  .hero-sub { font-size: 13px; }
+}
+
 :root{
   --primary: #2563eb;
   --primary-400: #3479e3;
