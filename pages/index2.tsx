@@ -1,4 +1,3 @@
-
 /* Add to globals.css for compact featured grid on phones:
 @media (max-width: 640px){
   .featuredGrid{ grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; }
