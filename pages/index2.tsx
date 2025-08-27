@@ -1035,7 +1035,7 @@ const Index2: NextPage = () => {
               display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',
               gap:12, marginTop:12, padding:'0 12px'
             }}>
-              <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <div style={{ background:'#9cdd84ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
                 <FiTruck size={22} /><div><div style={{fontWeight:800}}>Hızlı Kargo</div><div style={{fontSize:13, color:'#6b7280'}}>Seçili ürünlerde aynı gün</div></div>
               </div>
               <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
