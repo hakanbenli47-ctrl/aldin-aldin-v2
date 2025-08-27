@@ -191,11 +191,6 @@ const parsePrice = (p?: string) => {
 };
 
 /** === HERO SLIDE verileri (görsel yoksa degrade kutu) === */
-const heroSlides = [
-  { id: 'h1', title: 'Mega Kampanya', sub: 'Elektroniklerde +%20 indirim', cta: 'Fırsatları Gör', href: '/?kategori=Elektronik', img: '/banner-1.jpg' },
-  { id: 'h2', title: 'Kışa Hazırlık', sub: 'Giyim & Ev Eşyaları', cta: 'İlham Al', href: '/?kategori=Giyim', img: '/banner-2.jpg' },
-  { id: 'h3', title: 'Süper Fırsat', sub: 'Spor & Outdoor haftası', cta: 'Keşfet', href: '/?kategori=Spor%20&%20Outdoor', img: '/banner-3.jpg' },
-];
 
 const Index2: NextPage = () => {
   const [loginDropdown, setLoginDropdown] = useState(false);
@@ -211,6 +206,8 @@ const Index2: NextPage = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [dopedIlanlar, setDopedIlanlar] = useState<Ilan[]>([]);
+  // Hero için state
+const [heroSlides, setHeroSlides] = useState<any[]>([]);
   const router = useRouter()
   const { kategori } = router.query
   const [aktifKategori, setAktifKategori] = useState<{ ad: string; id?: number | null }>({
@@ -357,6 +354,66 @@ const Index2: NextPage = () => {
     fetchData();
     fetchDopedIlanlar();
   }, []);
+useEffect(() => {
+  async function fetchHeroSlides() {
+    // Elektronik
+    const { data: elektronik } = await supabase
+      .from("ilan")
+      .select("id, title, resim_url")
+      .eq("kategori_id", 1)
+      .limit(1);
+
+    // Giyim
+    const { data: giyim } = await supabase
+      .from("ilan")
+      .select("id, title, resim_url")
+      .eq("kategori_id", 2)
+      .limit(1);
+
+    // Spor
+    const { data: spor } = await supabase
+      .from("ilan")
+      .select("id, title, resim_url")
+      .eq("kategori_id", 3)
+      .limit(1);
+
+    setHeroSlides([
+      {
+        id: "h1",
+        title: "Mega Kampanya",
+        sub: elektronik?.[0]?.title || "Elektronik Ürünler",
+        cta: "Fırsatları Gör",
+        href: elektronik?.[0] ? `/urun/${elektronik[0].id}` : "/?kategori=Elektronik",
+        img: Array.isArray(elektronik?.[0]?.resim_url)
+          ? elektronik[0].resim_url[0]
+          : elektronik?.[0]?.resim_url || "/banner-1.jpg",
+      },
+      {
+        id: "h2",
+        title: "Kışa Hazırlık",
+        sub: giyim?.[0]?.title || "Giyim Ürünleri",
+        cta: "İlham Al",
+        href: giyim?.[0] ? `/urun/${giyim[0].id}` : "/?kategori=Giyim",
+        img: Array.isArray(giyim?.[0]?.resim_url)
+          ? giyim[0].resim_url[0]
+          : giyim?.[0]?.resim_url || "/banner-2.jpg",
+      },
+      {
+        id: "h3",
+        title: "Süper Fırsat",
+        sub: spor?.[0]?.title || "Spor & Outdoor",
+        cta: "Keşfet",
+        href: spor?.[0] ? `/urun/${spor[0].id}` : "/?kategori=Spor%20&%20Outdoor",
+        img: Array.isArray(spor?.[0]?.resim_url)
+          ? spor[0].resim_url[0]
+          : spor?.[0]?.resim_url || "/banner-3.jpg",
+      },
+    ]);
+  }
+
+  fetchHeroSlides();
+}, []);
+
 
   // Son bakılanlar
   const [recentlyViewed, setRecentlyViewed] = useState<Ilan[]>([]);
@@ -1038,13 +1095,13 @@ const Index2: NextPage = () => {
               <div style={{ background:'#9cdd84ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
                 <FiTruck size={22} /><div><div style={{fontWeight:800}}>Hızlı Kargo</div><div style={{fontSize:13, color:'#6b7280'}}>Seçili ürünlerde aynı gün</div></div>
               </div>
-              <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <div style={{ background:'#77c0c5ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
                 <FiShield size={22} /><div><div style={{fontWeight:800}}>Güvenli Ödeme</div><div style={{fontSize:13, color:'#6b7280'}}>3D Secure & koruma</div></div>
               </div>
-              <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <div style={{ background:'#ed3a3aff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
                 <FiRefreshCw size={22} /><div><div style={{fontWeight:800}}>Kolay İade</div><div style={{fontSize:13, color:'#6b7280'}}>14 gün koşulsuz</div></div>
               </div>
-              <div style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
+              <div style={{ background:'#ee87d3ff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
                 <FiTrendingUp size={22} /><div><div style={{fontWeight:800}}>Trend Ürünler</div><div style={{fontSize:13, color:'#6b7280'}}>Her gün güncellenir</div></div>
               </div>
             </div>
