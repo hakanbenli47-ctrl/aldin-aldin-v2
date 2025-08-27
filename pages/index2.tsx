@@ -361,42 +361,42 @@ useEffect(() => {
       .from("ilan")
       .select("id, title, resim_url")
       .eq("kategori_id", 1)
-      .limit(1);
+      .limit(3);
 
     // Giyim
     const { data: giyim } = await supabase
       .from("ilan")
       .select("id, title, resim_url")
       .eq("kategori_id", 2)
-      .limit(1);
+      .limit(3);
 
     // Spor
     const { data: spor } = await supabase
       .from("ilan")
       .select("id, title, resim_url")
       .eq("kategori_id", 3)
-      .limit(1);
+      .limit(3);
 
     setHeroSlides([
       {
-        id: "h1",
-        title: "Mega Kampanya",
-        sub: elektronik?.[0]?.title || "Elektronik Ürünler",
-        cta: "Fırsatları Gör",
-        href: elektronik?.[0] ? `/urun/${elektronik[0].id}` : "/?kategori=Elektronik",
-        img: Array.isArray(elektronik?.[0]?.resim_url)
-          ? elektronik[0].resim_url[0]
-          : elektronik?.[0]?.resim_url || "/banner-1.jpg",
-      },
+  id: "h1",
+  title: "Mega Kampanya",
+  sub: elektronik?.[1]?.title || "Elektronik Ürünler",
+  cta: "Fırsatları Gör",
+  href: elektronik?.[1] ? `/urun/${elektronik[1].id}` : "/?kategori=Elektronik",
+  img: Array.isArray(elektronik?.[1]?.resim_url)
+    ? elektronik[1].resim_url[0]
+    : elektronik?.[1]?.resim_url || "/banner-1.jpg",
+},
       {
         id: "h2",
         title: "Kışa Hazırlık",
-        sub: giyim?.[0]?.title || "Giyim Ürünleri",
+        sub: giyim?.[2]?.title || "Giyim Ürünleri",
         cta: "İlham Al",
-        href: giyim?.[0] ? `/urun/${giyim[0].id}` : "/?kategori=Giyim",
-        img: Array.isArray(giyim?.[0]?.resim_url)
-          ? giyim[0].resim_url[0]
-          : giyim?.[0]?.resim_url || "/banner-2.jpg",
+        href: giyim?.[2] ? `/urun/${giyim[2].id}` : "/?kategori=Giyim",
+        img: Array.isArray(giyim?.[2]?.resim_url)
+          ? giyim[2].resim_url[0]
+          : giyim?.[2]?.resim_url || "/banner-2.jpg",
       },
       {
         id: "h3",
