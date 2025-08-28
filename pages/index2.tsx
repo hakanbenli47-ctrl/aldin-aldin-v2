@@ -1767,15 +1767,39 @@ const Index2: NextPage = () => {
           {/* Global Styles */}
           <style jsx global>{`
 /* === FULL-BLEED yardımcıları === */
-.full-bleed{
-  width:100vw;
-  margin-left:calc(50% - 50vw);
-  margin-right:calc(50% - 50vw);
+/* FULL-BLEED — desktop'ta hizalı, mobil/tablet'te tam-kenar */
+.full-bleed {                /* DESKTOP (≥1025px) */
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 .full-bleed > .inner{
-  padding-left:clamp(8px, 2.2vw, 24px);
-  padding-right:clamp(8px, 2.2vw, 24px);
+  max-width: 1280px;         /* istersen 1200/1320 yap */
+  margin: 0 auto;
+  padding-left: clamp(8px, 2.2vw, 24px);
+  padding-right: clamp(8px, 2.2vw, 24px);
 }
+
+/* Mobil/Tablet: gerçekten full-bleed */
+@media (max-width: 1024px){
+  .full-bleed{
+    width: 100dvw;                         /* scrollbar sorunu yok */
+    margin-left: calc(50% - 50dvw);
+    margin-right: calc(50% - 50dvw);
+  }
+}
+
+/* Eski tarayıcılar için dvw fallback */
+@supports not (width: 100dvw){
+  @media (max-width: 1024px){
+    .full-bleed{
+      width: 100vw;
+      margin-left: calc(50% - 50vw);
+      margin-right: calc(50% - 50vw);
+    }
+  }
+}
+
 
 /* Section’ları da yatayda sıfırla */
 .section-block{
