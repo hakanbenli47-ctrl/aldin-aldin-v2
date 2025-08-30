@@ -365,7 +365,7 @@ function maskedName(uid?: string) {
     return (uid || "").slice(0, 8) || "Anonim";
   }
 
-  const f = (p.first_name || "").trim().slice(0, 2);
+  const f = (p.first_name || "").trim().slice(0, 9);
   const l = (p.last_name || "").trim().slice(0, 2);
   const label = `${f} ${l}`.trim();
 
