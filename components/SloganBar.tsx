@@ -11,7 +11,7 @@ const SLOGANLAR = [
   "Her Şehirde, Her Evde, 80bir Yanında!",
   "Güvenli Alışverişin Yeni Adresi!",
   "Yeni açıldık, aramıza katıl!",
-  "Sadece ilk aya özel %3 komisyon ile Başladık!",
+  "Sadece ilk aya özel %8 komisyon ile Başladık!",
   "Türkiye'nin her köşesine ulaşan yeni pazar!"
 ];
 
