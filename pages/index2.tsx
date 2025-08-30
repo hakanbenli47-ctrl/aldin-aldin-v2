@@ -382,12 +382,12 @@ const Index2: NextPage = () => {
         {
           id: "h1",
           title: "Mega Kampanya",
-          sub: elektronik?.[1]?.title || "Elektronik Ürünler",
+          sub: elektronik?.[3]?.title || "Elektronik Ürünler",
           cta: "Fırsatları Gör",
-          href: elektronik?.[1] ? `/urun/${elektronik[1].id}` : "/?kategori=Elektronik",
+          href: elektronik?.[1] ? `/urun/${elektronik[3].id}` : "/?kategori=Elektronik",
           img: Array.isArray(elektronik?.[1]?.resim_url)
-            ? elektronik[1].resim_url[0]
-            : elektronik?.[1]?.resim_url || "/banner-1.jpg",
+            ? elektronik[3].resim_url[0]
+            : elektronik?.[3]?.resim_url || "/banner-1.jpg",
         },
         {
           id: "h2",
