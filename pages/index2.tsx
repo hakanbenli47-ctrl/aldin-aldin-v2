@@ -1040,8 +1040,10 @@ const Index2: NextPage = () => {
                 scrollSnapType:'x mandatory',
                 gap:12,
                 borderRadius:0, // full-bleed
-                width:'100vw',
+                width:'100dvw',
+
               }}>
+                
               {heroSlides.map((s)=>(
                 <div key={s.id} className="hero-slide">
                   <img src={s.img} alt={s.title}
@@ -1828,6 +1830,14 @@ const Index2: NextPage = () => {
   }
 }
 
+/* ---- ORTAK CONTAINER: tüm .inner bloklarını ortaya al ---- */
+.inner{
+  max-width: 1200px;      /* istersen 1140/1280 yapabilirsin */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
 
 
 /* Section’ları da yatayda sıfırla */
@@ -1979,18 +1989,6 @@ img, video { max-width: 100%; height: auto; display: block; }
 .is-android .ilanGrid{ display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 10px !important; }
 @media (max-width: 480px){
   .is-android .ilanGrid{ grid-template-columns: 1fr !important; }
-}@media (min-width:1025px){
-  .layout-3col .main-col .section-block.full-bleed.expand-desktop{
-    width: 100%;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-  .layout-3col .main-col .section-block.full-bleed.expand-desktop > .inner{
-    max-width: 1200px !important;
-    margin: 0 auto !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
 }
 
           `}</style>
