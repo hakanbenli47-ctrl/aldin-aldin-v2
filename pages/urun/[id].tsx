@@ -111,6 +111,10 @@ export default function UrunDetay({
   const [shareUrl, setShareUrl] = useState("");
   const ozellikler = ilan.ozellikler ?? {};
   const [yorumlar, setYorumlar] = useState<any[]>([]);
+  // Yorum yazan kullanıcıların adı/soyadı için küçük bir cache
+const [yorumUserMap, setYorumUserMap] = useState<
+  Record<string, { first_name: string | null; last_name: string | null }>
+>({});
   const [yorum, setYorum] = useState("");
   const [puan, setPuan] = useState(5);
   const [secilenOzellikler, setSecilenOzellikler] = useState<Record<string, string>>({});
@@ -126,13 +130,40 @@ export default function UrunDetay({
   const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
 
   async function fetchYorumlar() {
-    const { data } = await supabase
-      .from("yorumlar")
-      .select("*")
-      .eq("urun_id", ilan.id)
-      .order("created_at", { ascending: false });
-    setYorumlar(data || []);
+  // 1) Yorumları al
+  const { data: yData } = await supabase
+    .from("yorumlar")
+    .select("*")
+    .eq("urun_id", ilan.id)
+    .order("created_at", { ascending: false });
+
+  setYorumlar(yData || []);
+
+  // 2) Yorum yazan benzersiz user_id’leri topla
+  const ids = Array.from(
+    new Set((yData || []).map((y: any) => y.user_id).filter(Boolean))
+  );
+
+  if (ids.length === 0) {
+    setYorumUserMap({});
+    return;
   }
+
+  // 3) user_profiles'tan ad/soyad çek
+  const { data: profs } = await supabase
+    .from("user_profiles")
+    .select("user_id, first_name, last_name")
+    .in("user_id", ids);
+
+  const map: Record<string, { first_name: string | null; last_name: string | null }> =
+    Object.fromEntries((profs || []).map((p: any) => [
+      p.user_id,
+      { first_name: p.first_name, last_name: p.last_name }
+    ]));
+
+  setYorumUserMap(map);
+}
+
 
   // Ortalama ürün puanı
   const ortalamaPuan = useMemo(() => {
@@ -325,6 +356,21 @@ export default function UrunDetay({
       return d;
     }
   }
+function maskedName(uid?: string) {
+  if (!uid) return "Anonim";
+  const p = yorumUserMap[uid];
+
+  if (!p) {
+    // profil bulunamazsa eski davranış
+    return (uid || "").slice(0, 8) || "Anonim";
+  }
+
+  const f = (p.first_name || "").trim().slice(0, 2);
+  const l = (p.last_name || "").trim().slice(0, 2);
+  const label = `${f} ${l}`.trim();
+
+  return label || "Anonim";
+}
 
   return (
     <>
@@ -499,7 +545,7 @@ export default function UrunDetay({
               yorumlar.map((y) => (
                 <div key={y.id} className="reviewCard">
                   <div className="reviewHead">
-                    <span className="reviewUser">{(y.user_id || "").slice(0, 8) || "Anonim"}</span>
+                    <span className="reviewUser">{maskedName(y.user_id)}</span>
                     <span className="reviewStars">{renderStars(Number(y.puan) || 0)}</span>
                   </div>
                   {y.yorum && <p className="reviewText">{y.yorum}</p>}
