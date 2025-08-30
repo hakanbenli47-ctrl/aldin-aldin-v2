@@ -1147,7 +1147,7 @@ const Index2: NextPage = () => {
             <main className="main-col" style={{ width: "100%", padding: 0, flexGrow: 1 }}>
               {/* FLASH DEALS */}
               {indirimliUrunler.length > 0 && (
-                <section className="section-block full-bleed"
+                <section className="section-block full-bleed expand-desktop"
                   style={{
                     background:'#fff',
                     padding:'22px 0',
@@ -1157,7 +1157,7 @@ const Index2: NextPage = () => {
                     boxShadow:'0 4px 16px rgba(234,179,8,.15)'
                   }}>
                   <div className="inner" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
-                    <h2 style={{ fontSize:22, fontWeight:900, color:'#78350f' }}>⚡ Flash Deals</h2>
+                    <h2 style={{ fontSize:22, fontWeight:900, color:'#78350f' }}>⚡ Flash Ürünler</h2>
                     <div style={{ fontWeight:900, fontSize:16, color:'#b45309' }}>Bitişe: {HH}:{MM}:{SS}</div>
                   </div>
                   <div className="inner" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(210px,1fr))', gap:14, marginTop:12 }}>
@@ -1183,7 +1183,8 @@ const Index2: NextPage = () => {
               )}
 
               {/* ÖNE ÇIKANLAR */}
-              <section className="section-block full-bleed" style={{
+              <section className="section-block full-bleed expand-desktop"
+               style={{
                 background: '#fff',
                 padding: '30px 0',
                 borderRadius: 0,
@@ -1291,7 +1292,7 @@ const Index2: NextPage = () => {
               </section>
 
               {populerIlanlar.length > 0 && (
-                <section className="section-block full-bleed" style={{ margin: '0 0 32px', padding:'0' }}>
+                <section className="section-block full-bleed expand-desktop"  style={{ margin: '0 0 32px', padding:'0' }}>
                   <div className="inner">
                     <h2 style={{ fontSize: 24, fontWeight: 900, color: '#1d8cf8', marginBottom: 12, letterSpacing: ".2px" }}>
                       ⭐ EN POPÜLER ÜRÜNLER
@@ -1354,7 +1355,8 @@ const Index2: NextPage = () => {
               )}
 
               {/* POPÜLER & FIRSAT ÜRÜNLERİ */}
-              <section className="section-block full-bleed" style={{ margin: '0 0 32px', padding:'0' }}>
+              <section className="section-block full-bleed expand-desktop"
+               style={{ margin: '0 0 32px', padding:'0' }}>
                 <div className="inner">
                   <h2 style={{
                     fontSize: 24,
@@ -1443,7 +1445,7 @@ const Index2: NextPage = () => {
               </section>
 
               {/* STANDART İLANLAR (FULL-BLEED) */}
-              <section className="section-block full-bleed">
+             <section className="section-block full-bleed expand-desktop" >
                 <div className="inner">
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--ink-900, #223555)', marginBottom: 10 }}>
@@ -1691,7 +1693,7 @@ const Index2: NextPage = () => {
 
               {/* TOP MAĞAZALAR (FULL-BLEED) */}
               {topMagazalar.length > 0 && (
-                <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
+                <section className="section-block full-bleed expand-desktop"  style={{ marginTop:24, padding:0 }}>
                   <div className="inner">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
@@ -1721,7 +1723,7 @@ const Index2: NextPage = () => {
 
               {/* ÇOK GÖRÜNTÜLENENLER (FULL-BLEED) */}
               {cokGoruntulenenler.length > 0 && (
-                <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
+                <section className="section-block full-bleed expand-desktop"  style={{ marginTop:24, padding:0 }}>
                   <div className="inner">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>👀 Çok Görüntülenenler</h2>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
@@ -1743,7 +1745,9 @@ const Index2: NextPage = () => {
 
               {/* SON BAKTIKLARIN (FULL-BLEED) */}
               {recentlyViewed.length > 0 && (
-                <section className="section-block full-bleed" style={{ marginTop:24, padding:0 }}>
+                <section className="section-block full-bleed expand-desktop" 
+                
+                style={{ marginTop:24, padding:0 }}>
                   <div className="inner">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🕒 Son Baktıkların</h2>
                     <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
@@ -1784,6 +1788,30 @@ const Index2: NextPage = () => {
     width: 100vw;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
+  }
+}
+/* Sadece masaüstünde tam-kenar açan varyant */
+@media (min-width: 1025px){
+  .full-bleed.expand-desktop{
+    width: 100dvw;
+    margin-left: calc(50% - 50dvw);
+    margin-right: calc(50% - 50dvw);
+  }
+  .full-bleed.expand-desktop > .inner{
+    max-width: none;
+    margin: 0;
+    padding-left: 20px;   /* kenarlara hafif iç boşluk */
+    padding-right: 20px;
+  }
+}
+/* 100dvw desteklemeyen tarayıcılar için yedek */
+@supports not (width: 100dvw){
+  @media (min-width: 1025px){
+    .full-bleed.expand-desktop{
+      width: 100vw;
+      margin-left: calc(50% - 50vw);
+      margin-right: calc(50% - 50vw);
+    }
   }
 }
 
