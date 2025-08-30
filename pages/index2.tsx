@@ -1447,7 +1447,7 @@ const Index2: NextPage = () => {
               </section>
 
               {/* STANDART İLANLAR (FULL-BLEED) */}
-             <section className="section-block full-bleed expand-desktop" >
+             <section className="section-block" >
                 <div className="inner">
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--ink-900, #223555)', marginBottom: 10 }}>
@@ -1697,7 +1697,7 @@ const Index2: NextPage = () => {
 
               {/* TOP MAĞAZALAR (FULL-BLEED) */}
               {topMagazalar.length > 0 && (
-                <section className="section-block full-bleed expand-desktop"  style={{ marginTop:24, padding:0 }}>
+                <section className="section-block"  style={{ marginTop:24, padding:0 }}>
                   <div className="inner">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
@@ -1727,7 +1727,7 @@ const Index2: NextPage = () => {
 
               {/* ÇOK GÖRÜNTÜLENENLER (FULL-BLEED) */}
               {cokGoruntulenenler.length > 0 && (
-                <section className="section-block full-bleed expand-desktop"  style={{ marginTop:24, padding:0 }}>
+               <section className="section-block"  style={{ marginTop:24, padding:0 }}>
                   <div className="inner">
                     <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>👀 Çok Görüntülenenler</h2>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
@@ -1749,7 +1749,7 @@ const Index2: NextPage = () => {
 
               {/* SON BAKTIKLARIN (FULL-BLEED) */}
               {recentlyViewed.length > 0 && (
-                <section className="section-block full-bleed expand-desktop" 
+                 <section className="section-block"  
                 
                 style={{ marginTop:24, padding:0 }}>
                   <div className="inner">
@@ -1979,7 +1979,20 @@ img, video { max-width: 100%; height: auto; display: block; }
 .is-android .ilanGrid{ display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 10px !important; }
 @media (max-width: 480px){
   .is-android .ilanGrid{ grid-template-columns: 1fr !important; }
+}@media (min-width:1025px){
+  .layout-3col .main-col .section-block.full-bleed.expand-desktop{
+    width: 100%;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  .layout-3col .main-col .section-block.full-bleed.expand-desktop > .inner{
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
 }
+
           `}</style>
         </div>
       </div>

@@ -1,7 +1,7 @@
 // pages/urun/[id].tsx
 import { useRouter } from "next/router";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import { supabase } from "../../lib/supabaseClient";
 import type { User } from "@supabase/supabase-js";
@@ -16,7 +16,7 @@ interface Ilan {
   doped?: boolean;
   desc?: string;
   ozellikler?: Record<string, string[]>;
-  kategori?: { ad: string }; 
+  kategori?: { ad: string };
 }
 
 function renderStars(rating: number, max = 5) {
@@ -91,7 +91,6 @@ export async function getServerSideProps(context: any) {
   };
 }
 
-
 export default function UrunDetay({
   ilan,
   firmaAdi,
@@ -135,6 +134,20 @@ export default function UrunDetay({
     setYorumlar(data || []);
   }
 
+  // Ortalama ürün puanı
+  const ortalamaPuan = useMemo(() => {
+    if (!yorumlar?.length) return 0;
+    const sum = yorumlar.reduce((a: number, y: any) => a + (Number(y.puan) || 0), 0);
+    return sum / yorumlar.length;
+  }, [yorumlar]);
+
+  // Kullanıcının mevcut yorumu (varsa)
+  const benimYorumum = useMemo(
+    () => (user ? yorumlar.find((y) => y.user_id === user.id) : null),
+    [user, yorumlar]
+  );
+
+  // İlk yükleme
   useEffect(() => {
     setShareUrl(window.location.href);
     setMainImg(
@@ -145,6 +158,7 @@ export default function UrunDetay({
     fetchYorumlar();
   }, [ilan.resim_url, ilan.id]);
 
+  // Oturum kullanıcıyı getir
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
@@ -157,6 +171,7 @@ export default function UrunDetay({
     };
   }, []);
 
+  // Favori kontrolü
   useEffect(() => {
     const userId = user?.id;
     if (!userId) return;
@@ -180,18 +195,19 @@ export default function UrunDetay({
       cancelled = true;
     };
   }, [user?.id, ilan.id]);
-// ürün detay sayfası açıldığında görüntülenme sayısını +1 arttır
-useEffect(() => {
-  async function artir() {
-    if (!ilan?.id) return;
-    try {
-      await supabase.rpc("increment_views", { ilan_id: ilan.id });
-    } catch (e) {
-      console.error("Views update hatası:", e);
+
+  // ürün detay sayfası açıldığında görüntülenme sayısını +1 arttır
+  useEffect(() => {
+    async function artir() {
+      if (!ilan?.id) return;
+      try {
+        await supabase.rpc("increment_views", { ilan_id: ilan.id });
+      } catch (e) {
+        console.error("Views update hatası:", e);
+      }
     }
-  }
-  artir();
-}, [ilan?.id]);
+    artir();
+  }, [ilan?.id]);
 
   const sepeteEkle = async (urun: Ilan) => {
     if (!user) {
@@ -262,6 +278,53 @@ useEffect(() => {
     typeof ilan.price === "number"
       ? `${ilan.price.toLocaleString("tr-TR")} ₺`
       : (ilan.price ? `${ilan.price} ₺` : "Fiyat bilgisi yok");
+
+  // === YORUM GÖNDER / GÜNCELLE ===
+  async function yorumGonder() {
+    if (!user) {
+      alert("Yorum yapmak için giriş yapınız.");
+      router.push("/giris");
+      return;
+    }
+    if (puan < 1 || puan > 5) {
+      alert("Lütfen 1-5 arasında bir puan seçin.");
+      return;
+    }
+
+    try {
+      // Aynı kullanıcının aynı ürüne yorumunu güncelle
+      const mevcut = yorumlar.find((y) => y.user_id === user.id);
+      if (mevcut) {
+        await supabase
+          .from("yorumlar")
+          .update({ yorum: yorum.trim(), puan })
+          .eq("id", mevcut.id);
+      } else {
+        await supabase.from("yorumlar").insert([{
+          urun_id: ilan.id,
+          user_id: user.id,
+          yorum: yorum.trim(),
+          puan
+        }]);
+      }
+      setYorum("");
+      await fetchYorumlar();
+      alert("Teşekkürler! Yorumun kaydedildi.");
+    } catch (e) {
+      console.error(e);
+      alert("Yorum gönderilirken bir hata oluştu.");
+    }
+  }
+
+  // Yardımcı: tarih
+  function formatDate(d?: string) {
+    if (!d) return "";
+    try {
+      return new Date(d).toLocaleString("tr-TR");
+    } catch {
+      return d;
+    }
+  }
 
   return (
     <>
@@ -345,31 +408,37 @@ useEffect(() => {
             </div>
           )}
 
+          {/* ÜRÜN ORTALAMA PUAN */}
+          <div className="productRatingRow">
+            <span className="stars">{renderStars(ortalamaPuan)}</span>
+            <span className="score">({ortalamaPuan.toFixed(1)} / 5 • {yorumlar.length} yorum)</span>
+          </div>
+
           {/* ÖZELLİKLER */}
           {/* ÖZELLİKLER sadece gıda ve giyim için */}
-{ilan?.kategori?.ad &&
- ["gıda", "giyim"].includes(ilan.kategori.ad.toLowerCase()) &&
- Object.keys(ozellikler).length > 0 && (
-  <div className="opts">
-    {Object.keys(ozellikler).map((ozellik) => (
-      <div key={ozellik} className="opt">
-        <label className="optLabel">{ozellik}</label>
-        <select
-          value={secilenOzellikler[ozellik] || ""}
-          onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
-          className="optSelect"
-        >
-          <option value="">Seçiniz</option>
-          {ozellikler[ozellik]?.map((deger: string, idx: number) => (
-            <option key={idx} value={deger}>
-              {deger}
-            </option>
-          ))}
-        </select>
-      </div>
-    ))}
-  </div>
-)}
+          {ilan?.kategori?.ad &&
+          ["gıda", "giyim"].includes(ilan.kategori.ad.toLowerCase()) &&
+          Object.keys(ozellikler).length > 0 && (
+            <div className="opts">
+              {Object.keys(ozellikler).map((ozellik) => (
+                <div key={ozellik} className="opt">
+                  <label className="optLabel">{ozellik}</label>
+                  <select
+                    value={secilenOzellikler[ozellik] || ""}
+                    onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
+                    className="optSelect"
+                  >
+                    <option value="">Seçiniz</option>
+                    {ozellikler[ozellik]?.map((deger: string, idx: number) => (
+                      <option key={idx} value={deger}>
+                        {deger}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* FİYAT */}
           <div className="price">{fiyatText}</div>
@@ -377,6 +446,63 @@ useEffect(() => {
           {/* BUTONLAR */}
           <button className="btnAdd" onClick={() => sepeteEkle(ilan)}>🛒 Sepete Ekle</button>
           <button className="btnGo" onClick={sepeteGit}>Sepete Git</button>
+        </section>
+
+        {/* YORUMLAR & PUANLAMA */}
+        <section className="reviews">
+          <h2>Yorumlar & Puanlama</h2>
+
+          {user ? (
+            <div className="reviewForm">
+              <div className="rateRow" aria-label="Puan ver">
+                {[1,2,3,4,5].map((n) => (
+                  <button
+                    type="button"
+                    key={n}
+                    className="rateStar"
+                    onClick={() => setPuan(n)}
+                    title={`${n} yıldız`}
+                  >
+                    {n <= puan ? "★" : "☆"}
+                  </button>
+                ))}
+                <span className="rateScore">{puan}</span>
+                {benimYorumum && <span className="editBadge">Mevcut yorumun güncellenecek</span>}
+              </div>
+
+              <textarea
+                className="reviewTextarea"
+                placeholder="Deneyimini yaz (isteğe bağlı)"
+                value={yorum}
+                onChange={(e) => setYorum(e.target.value)}
+                rows={4}
+              />
+              <button className="reviewSend" onClick={yorumGonder}>
+                {benimYorumum ? "Güncelle" : "Gönder"}
+              </button>
+            </div>
+          ) : (
+            <div className="loginHint">
+              Yorum yazmak için lütfen <a onClick={()=>router.push("/giris")} style={{cursor:"pointer", textDecoration:"underline"}}>giriş yapın</a>.
+            </div>
+          )}
+
+          <div className="reviewList">
+            {yorumlar.length === 0 ? (
+              <div className="empty">Bu ürün için henüz yorum yapılmamış.</div>
+            ) : (
+              yorumlar.map((y) => (
+                <div key={y.id} className="reviewCard">
+                  <div className="reviewHead">
+                    <span className="reviewUser">{(y.user_id || "").slice(0, 8) || "Anonim"}</span>
+                    <span className="reviewStars">{renderStars(Number(y.puan) || 0)}</span>
+                  </div>
+                  {y.yorum && <p className="reviewText">{y.yorum}</p>}
+                  <div className="reviewMeta">{formatDate(y.created_at)}</div>
+                </div>
+              ))
+            )}
+          </div>
         </section>
 
         {/* BENZER ÜRÜNLER */}
@@ -555,6 +681,17 @@ useEffect(() => {
         }
         .stars { color: #f59e0b; font-size: 18px; }
         .score { color: var(--muted); font-size: 14px; }
+
+        .productRatingRow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          margin: 4px 0 8px;
+          font-weight: 700;
+          color: #334155;
+        }
+
         .opts { margin: 8px 0 12px; text-align: left; }
         .opt { margin-bottom: 10px; }
         .optLabel {
@@ -599,6 +736,59 @@ useEffect(() => {
           padding: 11px 0;
           font-size: 15px;
         }
+
+        /* --- YORUMLAR --- */
+        .reviews{
+          width:100%;
+          max-width: 800px;
+          background:#fff;
+          border:1px solid var(--border);
+          border-radius:16px;
+          box-shadow: var(--shadow);
+          padding:16px;
+          margin: 8px auto 24px;
+        }
+        .reviews h2{
+          font-size:18px;
+          font-weight:900;
+          color:#111827;
+          margin: 4px 0 12px;
+        }
+        .reviewForm{
+          border:1px solid #e5e7eb;
+          border-radius:12px;
+          padding:12px;
+          margin-bottom:14px;
+          background:#fcfcfd;
+        }
+        .rateRow{
+          display:flex; align-items:center; gap:6px; margin-bottom:8px;
+        }
+        .rateStar{
+          border:none; background:transparent; cursor:pointer; font-size:22px; line-height:1;
+          color:#f59e0b;
+        }
+        .rateScore{ font-weight:800; color:#334155; margin-left:4px; }
+        .editBadge{ margin-left:8px; font-size:12px; background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:999px; font-weight:700; }
+        .reviewTextarea{
+          width:100%; border:1px solid #e5e7eb; border-radius:10px; padding:10px; font-size:14px; resize:vertical;
+          min-height:90px; background:#fff;
+        }
+        .reviewSend{
+          margin-top:8px; background: var(--brand-2); color:#fff; border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer;
+        }
+        .loginHint{ background:#f8fafc; border:1px solid #e5e7eb; padding:12px; border-radius:10px; margin-bottom:12px; color:#334155; }
+
+        .reviewList{ display:flex; flex-direction:column; gap:10px; }
+        .reviewCard{
+          border:1px solid #e5e7eb; border-radius:12px; padding:10px; background:#fff;
+        }
+        .reviewHead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+        .reviewUser{ font-weight:800; color:#0f172a; }
+        .reviewStars{ color:#f59e0b; }
+        .reviewText{ margin:4px 0 6px; color:#111827; font-size:14px; line-height:1.35; }
+        .reviewMeta{ color:#64748b; font-size:12px; }
+        .empty{ color:#64748b; font-weight:600; }
 
         /* Benzerler */
         .similar {
@@ -675,6 +865,9 @@ useEffect(() => {
           .price { font-size: 20px; margin-top: 6px; }
           .btnAdd { padding: 12px 0; font-size: 15px; }
           .btnGo { padding: 10px 0; font-size: 14px; }
+
+          .reviews{ padding:12px; }
+          .reviewTextarea{ min-height: 80px; }
 
           .similar h2 { font-size: 16px; margin: 12px 8px; }
           .simGrid {
