@@ -384,8 +384,8 @@ const Index2: NextPage = () => {
           title: "Mega Kampanya",
           sub: elektronik?.[3]?.title || "Elektronik Ürünler",
           cta: "Fırsatları Gör",
-          href: elektronik?.[1] ? `/urun/${elektronik[3].id}` : "/?kategori=Elektronik",
-          img: Array.isArray(elektronik?.[1]?.resim_url)
+          href: elektronik?.[3] ? `/urun/${elektronik[3].id}` : "/?kategori=Elektronik",
+          img: Array.isArray(elektronik?.[3]?.resim_url)
             ? elektronik[3].resim_url[0]
             : elektronik?.[3]?.resim_url || "/banner-1.jpg",
         },
@@ -1812,6 +1812,15 @@ const Index2: NextPage = () => {
       margin-left: calc(50% - 50vw);
       margin-right: calc(50% - 50vw);
     }
+  }
+}
+/* Masaüstünde sol kırpmayı engelle */
+@media (min-width: 1025px){
+  html, body { overflow-x: visible; }  /* solda gizlenmeyi keser */
+  .full-bleed.expand-desktop { box-sizing: border-box; }
+  .full-bleed.expand-desktop > .inner {
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
   }
 }
 
