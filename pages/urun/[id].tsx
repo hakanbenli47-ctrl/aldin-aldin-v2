@@ -477,9 +477,14 @@ export default function UrunDetay({
                 onChange={(e) => setYorum(e.target.value)}
                 rows={4}
               />
-              <button className="reviewSend" onClick={yorumGonder}>
-                {benimYorumum ? "Güncelle" : "Gönder"}
-              </button>
+              <button
+  className="reviewSend"
+  onClick={yorumGonder}
+  style={{ background:'#000', color:'#fff', border:'1px solid #000' }}
+>
+  {benimYorumum ? "Güncelle" : "Gönder"}
+</button>
+
             </div>
           ) : (
             <div className="loginHint">

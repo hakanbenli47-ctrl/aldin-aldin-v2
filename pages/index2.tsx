@@ -226,6 +226,32 @@ const Index2: NextPage = () => {
   const [maxPrice, setMaxPrice]           = useState<string>('');
   const [sortKey, setSortKey] = useState<'relevance'|'priceAsc'|'priceDesc'|'rating'|'newest'|'viewsDesc'>('relevance');
   const [visibleCount, setVisibleCount]   = useState(12);
+// Oturum bilgisi: ilk yüklemede getir + sonraki giriş/çıkışları dinle
+useEffect(() => {
+  let mounted = true;
+
+  // İlk render: mevcut session
+  supabase.auth.getSession().then(({ data }) => {
+    if (!mounted) return;
+    const usr = data?.session?.user ?? null;
+    setUser(usr);
+    setIsLoggedIn(!!usr);
+  });
+
+  // Değişiklikleri dinle (login / logout)
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    const usr = session?.user ?? null;
+    setUser(usr);
+    setIsLoggedIn(!!usr);
+  });
+
+  return () => {
+    mounted = false;
+    subscription.unsubscribe();
+  };
+}, []);
 
   // === HERO AUTOPLAY ===
   const heroRef = useRef<HTMLDivElement>(null);
