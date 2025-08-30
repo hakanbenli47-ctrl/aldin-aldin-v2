@@ -1209,12 +1209,14 @@ const Index2: NextPage = () => {
                       Şu anda öne çıkarılan bir ilan yok.
                     </div>
                   ) : (
-                    <div className="featuredGrid"
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 1fr))',
-                        gap: 23
-                      }}>
+     <div className="featuredGrid"
+  style={{
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(235px, 235px))',
+    gap: 23,
+    justifyContent: 'center'
+  }}>
+
                       {dopedIlanlar.map((product) => (
                         <div className="product-card featured"
                           key={product.id}
@@ -1526,11 +1528,13 @@ const Index2: NextPage = () => {
                   ) : (
                     <>
                       <div className="ilanGrid"
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                          gap: 23
-                        }}>
+  style={{
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 210px))',
+    gap: 23,
+    justifyContent: 'center'
+  }}>
+
                         {normalIlanlar.map((product) => {
                           const sepette = sepetteVarMi(product.id);
                           return (
