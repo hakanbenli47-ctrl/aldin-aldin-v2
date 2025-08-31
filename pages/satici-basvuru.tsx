@@ -12,7 +12,9 @@ export default function SaticiBasvuru() {
   const [telefon, setTelefon] = useState("");
   const [belgeler, setBelgeler] = useState<{ [key: string]: string }>({});
   const [sozlesmeOnay, setSozlesmeOnay] = useState(false);
-  const [iban, setIban] = useState(""); // <<< IBAN
+
+  // IBAN alanı: TR ile başlat
+  const [iban, setIban] = useState("TR");
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -48,8 +50,7 @@ export default function SaticiBasvuru() {
   }, []);
 
   const sanitizeFileName = (name: string) =>
-    name
-      .normalize("NFD")
+    name.normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, "-")
       .replace(/[^a-zA-Z0-9.\-_]/g, "");
@@ -72,7 +73,8 @@ export default function SaticiBasvuru() {
       return;
     }
 
-    const { data } = supabase.storage
+    const { data } = supabase
+      .storage
       .from("satici-belgeler")
       .getPublicUrl(fileName);
 
@@ -96,17 +98,31 @@ export default function SaticiBasvuru() {
 
   // --- IBAN yardımcıları ---
   const normalizeIban = (v: string) => v.replace(/[^\dA-Za-z]/g, "").toUpperCase();
+
   const isValidTrIban = (v: string) => {
     const s = normalizeIban(v);
     if (!/^TR\d{24}$/.test(s)) return false; // TR + 24 rakam
     // mod-97
     const rearranged = s.slice(4) + s.slice(0, 4);
-    const expanded = rearranged.replace(/[A-Z]/g, (c) =>
-      (c.charCodeAt(0) - 55).toString()
-    );
+    const expanded = rearranged.replace(/[A-Z]/g, (c) => (c.charCodeAt(0) - 55).toString());
     let rem = 0;
     for (const ch of expanded) rem = (rem * 10 + Number(ch)) % 97;
     return rem === 1;
+  };
+
+  // Yazarken otomatik TR + 4'lü gruplama + en fazla 24 rakam
+  const formatTrIbanInput = (raw: string) => {
+    const upper = raw.toUpperCase().replace(/\s+/g, "");
+    // Başta TR varsa ayıkla, yoksa da dijitleri al
+    let digits = upper.startsWith("TR") ? upper.slice(2) : upper.replace(/^TR/i, "");
+    digits = digits.replace(/\D/g, "").slice(0, 24); // sadece rakam ve max 24
+    const full = "TR" + digits;
+    // 4'erli gruplandır
+    return full.match(/.{1,4}/g)?.join(" ") ?? full;
+  };
+
+  const handleIbanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIban(formatTrIbanInput(e.target.value));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,9 +140,7 @@ export default function SaticiBasvuru() {
 
     const cleanIban = normalizeIban(iban);
     if (!isValidTrIban(cleanIban)) {
-      setMessage(
-        "Lütfen geçerli bir TR IBAN girin (ör. TR12 3456 7890 1234 5678 9012 34)."
-      );
+      setMessage("Lütfen geçerli bir TR IBAN girin (TR + 24 rakam, ör. TR12 3456 7890 1234 5678 9012 34).");
       return;
     }
 
@@ -135,19 +149,17 @@ export default function SaticiBasvuru() {
 
     await supabase.from("satici_basvuru").delete().eq("user_id", user?.id);
 
-    const { error } = await supabase.from("satici_basvuru").insert([
-      {
-        user_id: user?.id,
-        firma_adi: firmaAdi,
-        vergi_no: vergiNo,
-        telefon,
-        belgeler,
-        sozlesme_onay: sozlesmeOnay,
-        sozlesme_onay_tarih: new Date().toISOString(),
-        durum: "pending",
-        iban: cleanIban, // <<< KAYIT
-      },
-    ]);
+    const { error } = await supabase.from("satici_basvuru").insert([{
+      user_id: user?.id,
+      firma_adi: firmaAdi,
+      vergi_no: vergiNo,
+      telefon,
+      belgeler,
+      sozlesme_onay: sozlesmeOnay,
+      sozlesme_onay_tarih: new Date().toISOString(),
+      durum: "pending",
+      iban: cleanIban,
+    }]);
 
     setLoading(false);
 
@@ -163,8 +175,7 @@ export default function SaticiBasvuru() {
           `${firmaAdi} firmasından yeni satıcı başvurusu yapıldı.`,
           `<p><b>${firmaAdi}</b> firmasından yeni satıcı başvurusu yapıldı.</p>
            <p>Vergi No: ${vergiNo || "-"}</p>
-           <p>Telefon: ${telefon || "-"}</p>
-           <p>IBAN: ${cleanIban}</p>`
+           <p>Telefon: ${telefon || "-"}</p>`
         );
       }
 
@@ -172,7 +183,7 @@ export default function SaticiBasvuru() {
       setTelefon("");
       setBelgeler({});
       setSozlesmeOnay(false);
-      setIban(""); // form sıfırla
+      setIban("TR");
 
       setTimeout(() => router.push("/satici-durum"), 2000);
     }
@@ -202,7 +213,9 @@ export default function SaticiBasvuru() {
           required
           placeholder="TR__ ____ ____ ____ ____ ____ __"
           value={iban}
-          onChange={(e) => setIban(e.target.value)}
+          onChange={handleIbanChange}
+          onFocus={() => { if (!iban || !iban.startsWith("TR")) setIban("TR"); }}
+          style={{ textTransform: "uppercase" }}
         />
 
         <label>Vergi Levhası (PDF/JPG)</label>
