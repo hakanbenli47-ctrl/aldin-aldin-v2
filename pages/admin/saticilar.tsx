@@ -15,6 +15,7 @@ type Basvuru = {
   created_at: string;
   red_nedeni?: string;
   user_email?: string;
+  iban?: string;                 // <<< IBAN eklendi
 };
 
 type OdemeSatiri = {
@@ -35,6 +36,10 @@ export default function AdminSaticilar() {
   const KOMISYON_ORANI = 0.10; // %10 komisyon
 
   const ADMIN_EMAILS = ["80birinfo@gmail.com"];
+
+  // Görünüm için 4'lü gruplama (TR123456... -> TR12 3456 ...)
+  const formatIban = (v?: string) =>
+    v ? v.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim() : "—";
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -58,7 +63,7 @@ export default function AdminSaticilar() {
     setLoading(true);
     const { data, error } = await supabase
       .from("satici_basvuru")
-      .select("*")
+      .select("*") // iban zaten burada geliyor
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -68,7 +73,7 @@ export default function AdminSaticilar() {
     }
 
     const parsed: Basvuru[] = [];
-    for (const row of data || []) {
+    for (const row of (data || []) as any[]) {
       let belgeler: Record<string, string> | undefined;
       if (row.belgeler) {
         const parsedBelge =
@@ -78,11 +83,16 @@ export default function AdminSaticilar() {
 
         belgeler = {};
         for (const [k, v] of Object.entries(parsedBelge)) {
-          const { data: urlData } = supabase
-            .storage
-            .from("satici-belgeler")
-            .getPublicUrl(v as string);
-          belgeler[k] = urlData.publicUrl;
+          let url = v as string;
+          // Hem path hem direkt URL olasılığı için güvenli dönüşüm
+          if (!/^https?:\/\//i.test(url)) {
+            const { data: urlData } = supabase
+              .storage
+              .from("satici-belgeler")
+              .getPublicUrl(url);
+            url = urlData.publicUrl;
+          }
+          belgeler[k] = url;
         }
       }
       parsed.push({ ...row, belgeler });
@@ -103,7 +113,7 @@ export default function AdminSaticilar() {
     }
 
     const grouped: Record<string, OdemeSatiri> = {};
-    data?.forEach((row: any) => {
+    (data || []).forEach((row: any) => {
       const firma = row.saticilar?.firma_adi || "Bilinmiyor";
       if (!grouped[firma]) {
         grouped[firma] = {
@@ -196,6 +206,7 @@ export default function AdminSaticilar() {
             <th style={{ padding: 8, border: "1px solid #ddd" }}>Telefon</th>
             <th style={{ padding: 8, border: "1px solid #ddd" }}>Belgeler</th>
             <th style={{ padding: 8, border: "1px solid #ddd" }}>Durum</th>
+            <th style={{ padding: 8, border: "1px solid #ddd" }}>IBAN</th> {/* <<< yeni */}
             <th style={{ padding: 8, border: "1px solid #ddd" }}>İşlem</th>
           </tr>
         </thead>
@@ -225,6 +236,7 @@ export default function AdminSaticilar() {
                   </span>
                 )}
               </td>
+              <td style={{ padding: 8, border: "1px solid #ddd" }}>{formatIban(b.iban)}</td> {/* <<< yeni */}
               <td style={{ padding: 8, border: "1px solid #ddd" }}>
                 {b.durum === "pending" && (
                   <>
