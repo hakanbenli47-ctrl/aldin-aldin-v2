@@ -1,3 +1,4 @@
+// pages/satici-basvuru.tsx
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
@@ -11,6 +12,7 @@ export default function SaticiBasvuru() {
   const [telefon, setTelefon] = useState("");
   const [belgeler, setBelgeler] = useState<{ [key: string]: string }>({});
   const [sozlesmeOnay, setSozlesmeOnay] = useState(false);
+  const [iban, setIban] = useState(""); // <<< IBAN
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -46,12 +48,16 @@ export default function SaticiBasvuru() {
   }, []);
 
   const sanitizeFileName = (name: string) =>
-    name.normalize("NFD")
+    name
+      .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, "-")
       .replace(/[^a-zA-Z0-9.\-_]/g, "");
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    key: string
+  ) => {
     if (!e.target.files?.[0] || !user) return;
     const file = e.target.files[0];
     const safeName = sanitizeFileName(file.name);
@@ -66,8 +72,7 @@ export default function SaticiBasvuru() {
       return;
     }
 
-    const { data } = supabase
-      .storage
+    const { data } = supabase.storage
       .from("satici-belgeler")
       .getPublicUrl(fileName);
 
@@ -89,6 +94,21 @@ export default function SaticiBasvuru() {
     }
   }
 
+  // --- IBAN yardımcıları ---
+  const normalizeIban = (v: string) => v.replace(/[^\dA-Za-z]/g, "").toUpperCase();
+  const isValidTrIban = (v: string) => {
+    const s = normalizeIban(v);
+    if (!/^TR\d{24}$/.test(s)) return false; // TR + 24 rakam
+    // mod-97
+    const rearranged = s.slice(4) + s.slice(0, 4);
+    const expanded = rearranged.replace(/[A-Z]/g, (c) =>
+      (c.charCodeAt(0) - 55).toString()
+    );
+    let rem = 0;
+    for (const ch of expanded) rem = (rem * 10 + Number(ch)) % 97;
+    return rem === 1;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -102,21 +122,32 @@ export default function SaticiBasvuru() {
       return;
     }
 
+    const cleanIban = normalizeIban(iban);
+    if (!isValidTrIban(cleanIban)) {
+      setMessage(
+        "Lütfen geçerli bir TR IBAN girin (ör. TR12 3456 7890 1234 5678 9012 34)."
+      );
+      return;
+    }
+
     setLoading(true);
     setMessage("");
 
     await supabase.from("satici_basvuru").delete().eq("user_id", user?.id);
 
-    const { error } = await supabase.from("satici_basvuru").insert([{
-      user_id: user?.id,
-      firma_adi: firmaAdi,
-      vergi_no: vergiNo,
-      telefon,
-      belgeler,
-      sozlesme_onay: sozlesmeOnay,
-      sozlesme_onay_tarih: new Date().toISOString(),
-      durum: "pending",
-    }]);
+    const { error } = await supabase.from("satici_basvuru").insert([
+      {
+        user_id: user?.id,
+        firma_adi: firmaAdi,
+        vergi_no: vergiNo,
+        telefon,
+        belgeler,
+        sozlesme_onay: sozlesmeOnay,
+        sozlesme_onay_tarih: new Date().toISOString(),
+        durum: "pending",
+        iban: cleanIban, // <<< KAYIT
+      },
+    ]);
 
     setLoading(false);
 
@@ -132,7 +163,8 @@ export default function SaticiBasvuru() {
           `${firmaAdi} firmasından yeni satıcı başvurusu yapıldı.`,
           `<p><b>${firmaAdi}</b> firmasından yeni satıcı başvurusu yapıldı.</p>
            <p>Vergi No: ${vergiNo || "-"}</p>
-           <p>Telefon: ${telefon || "-"}</p>`
+           <p>Telefon: ${telefon || "-"}</p>
+           <p>IBAN: ${cleanIban}</p>`
         );
       }
 
@@ -140,6 +172,7 @@ export default function SaticiBasvuru() {
       setTelefon("");
       setBelgeler({});
       setSozlesmeOnay(false);
+      setIban(""); // form sıfırla
 
       setTimeout(() => router.push("/satici-durum"), 2000);
     }
@@ -162,11 +195,31 @@ export default function SaticiBasvuru() {
         <label>Telefon</label>
         <input type="text" required value={telefon} onChange={(e) => setTelefon(e.target.value)} />
 
+        {/* --- IBAN --- */}
+        <label>IBAN</label>
+        <input
+          type="text"
+          required
+          placeholder="TR__ ____ ____ ____ ____ ____ __"
+          value={iban}
+          onChange={(e) => setIban(e.target.value)}
+        />
+
         <label>Vergi Levhası (PDF/JPG)</label>
-        <input type="file" required accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "vergi_levhasi")} />
+        <input
+          type="file"
+          required
+          accept=".pdf,image/*"
+          onChange={(e) => handleFileUpload(e, "vergi_levhasi")}
+        />
 
         <label>Kimlik Belgesi (PDF/JPG)</label>
-        <input type="file" required accept=".pdf,image/*" onChange={(e) => handleFileUpload(e, "kimlik")} />
+        <input
+          type="file"
+          required
+          accept=".pdf,image/*"
+          onChange={(e) => handleFileUpload(e, "kimlik")}
+        />
 
         <label style={{ marginTop: 10 }}>
           <input

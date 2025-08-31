@@ -12,6 +12,7 @@ export default function DestekAdmin() {
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [mesajlar, setMesajlar] = useState<any[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
+  const [iban, setIban] = useState<string | null>(null); // <<< EKLENDİ
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -46,6 +47,28 @@ export default function DestekAdmin() {
     setMesajlar(data || []);
   };
 
+  // <<< EKLENDİ: IBAN'ı son başvurudan çek
+  const fetchIban = async (email: string) => {
+    if (!email) {
+      setIban(null);
+      return;
+    }
+    const { data, error } = await supabase
+      .from("satici_basvuru")
+      .select("iban")
+      .eq("user_email", email)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("IBAN çekilemedi:", error.message);
+      setIban(null);
+      return;
+    }
+    setIban(data?.iban ?? null);
+  };
+
   const sohbetiBaslat = async (chat: any) => {
     setSelectedChat(chat);
     await supabase
@@ -53,6 +76,7 @@ export default function DestekAdmin() {
       .update({ status: "active" })
       .eq("id", chat.id);
     await fetchMesajlar(chat.id);
+    await fetchIban(chat.kullanici_email); // <<< EKLENDİ
   };
 
   const gonder = async () => {
@@ -91,6 +115,11 @@ export default function DestekAdmin() {
         <h3>💬 Sohbet</h3>
         {selectedChat ? (
           <>
+            {/* IBAN satırı - sadece gösterim */}
+            <div style={{ marginBottom: 8, fontSize: 13, color: "#374151" }}>
+              <b>IBAN:</b> {iban ?? "—"}
+            </div>
+
             <div style={{ height: 400, overflowY: "auto", marginBottom: 10 }}>
               {mesajlar.map((m) => (
                 <div
