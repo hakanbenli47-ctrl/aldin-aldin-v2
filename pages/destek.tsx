@@ -4,78 +4,102 @@ import { supabase } from "../lib/supabaseClient";
 type Mesaj = {
   id: number;
   kullanici_email: string;
-  gonderen_email: string;
+  gonderen_email: string | null;
   mesaj_metni: string;
-  gonderilme_tarihi: string;
+  gonderilme_tarihi: string | null;
   rol: "kullanici" | "destek";
+  status?: "pending" | "active";
 };
 
 export default function Destek() {
-  const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
-  const [yeniMesaj, setYeniMesaj] = useState("");
   const [userEmail, setUserEmail] = useState<string>("");
   const [emailInput, setEmailInput] = useState("");
+  const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
+  const [yeniMesaj, setYeniMesaj] = useState("");
   const [status, setStatus] = useState<"pending" | "active">("pending");
+  const chanRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const kutuRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () =>
     setTimeout(() => {
       kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight);
-    }, 80);
+    }, 60);
 
-  // Sohbet başlat
+  // sayfa yenilense de kullanıcı e-mail’ini koru + tekrar subscribe ol
+  useEffect(() => {
+    const saved = localStorage.getItem("destekEmail");
+    if (saved) {
+      const em = JSON.parse(saved) as string;
+      setUserEmail(em);
+      subscribeRealtime(em);
+    }
+    return () => {
+      if (chanRef.current) supabase.removeChannel(chanRef.current);
+    };
+  }, []);
+
+  // realtime kanalına bağlan
+  function subscribeRealtime(email: string) {
+    if (chanRef.current) supabase.removeChannel(chanRef.current);
+
+    const ch = supabase
+      .channel(`realtime-destek-${email}`)
+      // Yeni mesajlar
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "destek_sohbetleri", filter: `kullanici_email=eq.${email}` },
+        (payload) => {
+          setMesajlar((prev) => [...prev, payload.new as Mesaj]);
+          scrollToBottom();
+        }
+      )
+      // Admin status güncellemesi (katıldı bilgisini göstermek için)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "destek_sohbetleri", filter: `kullanici_email=eq.${email}` },
+        (payload) => {
+          const row = payload.new as Mesaj;
+          if (row.status) setStatus(row.status);
+        }
+      )
+      .subscribe();
+
+    chanRef.current = ch;
+  }
+
+  // sohbet başlat
   const baslatSohbet = async () => {
-    if (!emailInput.trim()) {
+    const em = emailInput.trim();
+    if (!em) {
       alert("Lütfen e-posta adresinizi girin.");
       return;
     }
 
-    setUserEmail(emailInput);
+    setUserEmail(em);
+    localStorage.setItem("destekEmail", JSON.stringify(em));
 
-    // İlk mesaj boş sohbet olarak insert ediliyor
-    const { error } = await supabase.from("destek_sohbetleri").insert([
-      {
-        kullanici_email: emailInput,
-        gonderen_email: emailInput,
-        mesaj_metni: "🆕 Sohbet başlatıldı",
-        rol: "kullanici",
-        status: "pending",
-      },
-    ]);
+    // önce subscribe ol → sonra ilk satırı at (ilk mesajı kaçırmayalım)
+    subscribeRealtime(em);
+
+    const { error } = await supabase.from("destek_sohbetleri").insert({
+      kullanici_email: em,
+      gonderen_email: em,
+      mesaj_metni: "🆕 Sohbet başlatıldı",
+      rol: "kullanici",
+      status: "pending",
+    });
 
     if (error) {
       console.error(error);
       alert("Sohbet başlatılamadı.");
-      return;
     }
-
-    setStatus("pending");
-
-    // Realtime dinleme
-    supabase
-      .channel(`realtime-destek-${emailInput}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "destek_sohbetleri",
-          filter: `kullanici_email=eq.${emailInput}`,
-        },
-        (payload) => {
-          const row = payload.new as any;
-          setMesajlar((prev) => [...prev, row]);
-          scrollToBottom();
-        }
-      )
-      .subscribe();
   };
 
-  // Mesaj gönder
+  // mesaj gönder
   const gonder = async () => {
     if (!yeniMesaj.trim() || !userEmail) return;
 
-    await supabase.from("destek_sohbetleri").insert({
+    const { error } = await supabase.from("destek_sohbetleri").insert({
       kullanici_email: userEmail,
       gonderen_email: userEmail,
       mesaj_metni: yeniMesaj.trim(),
@@ -83,9 +107,14 @@ export default function Destek() {
       status,
     });
 
-    setYeniMesaj("");
+    if (!error) setYeniMesaj("");
+    else {
+      console.error(error);
+      alert("Mesaj gönderilemedi: " + error.message);
+    }
   };
 
+  // ilk aşama: e-posta formu
   if (!userEmail) {
     return (
       <div style={{ maxWidth: 400, margin: "40px auto", textAlign: "center" }}>
@@ -95,13 +124,7 @@ export default function Destek() {
           placeholder="E-posta adresiniz"
           value={emailInput}
           onChange={(e) => setEmailInput(e.target.value)}
-          style={{
-            width: "100%",
-            padding: 10,
-            borderRadius: 8,
-            border: "1px solid #d1d5db",
-            marginBottom: 12,
-          }}
+          style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #d1d5db", marginBottom: 12 }}
         />
         <button
           onClick={baslatSohbet}
@@ -122,9 +145,11 @@ export default function Destek() {
     );
   }
 
+  // sohbet ekranı
   return (
     <div style={{ maxWidth: 640, margin: "20px auto", padding: 16 }}>
       <h2 style={{ color: "#1648b0", marginBottom: 8 }}>💬 Canlı Destek</h2>
+
       <div
         ref={kutuRef}
         style={{
@@ -159,11 +184,8 @@ export default function Destek() {
             🔔 Destek ekibinin sohbete katılması bekleniyor...
           </div>
         )}
-
         {status === "active" && (
-          <div style={{ textAlign: "center", color: "green", marginTop: 10 }}>
-            ✅ Destek ekibi sohbete katıldı.
-          </div>
+          <div style={{ textAlign: "center", color: "green", marginTop: 10 }}>✅ Destek ekibi sohbete katıldı.</div>
         )}
       </div>
 
@@ -176,15 +198,7 @@ export default function Destek() {
         />
         <button
           onClick={gonder}
-          style={{
-            background: "#1648b0",
-            color: "#fff",
-            borderRadius: 8,
-            padding: "10px 16px",
-            border: "none",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
+          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer" }}
         >
           Gönder
         </button>
