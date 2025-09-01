@@ -35,7 +35,12 @@ export default function Destek() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "destek_mesajlari", filter: `sohbet_id=eq.${chatId}` },
         (payload) => {
-          setMesajlar((prev) => [...prev, payload.new as Mesaj]);
+          const row = payload.new as Mesaj;
+          setMesajlar((prev) => [...prev, row]);
+
+          // ✅ Destek tarafından mesaj düştüyse hemen aktif say
+          if (row.rol === "destek") setStatus("active");
+
           scrollToBottom();
         }
       )
@@ -98,7 +103,12 @@ export default function Destek() {
       .select("*")
       .eq("sohbet_id", chatId)
       .order("gonderilme_tarihi", { ascending: true });
-    setMesajlar((data ?? []) as Mesaj[]);
+
+    const list = (data ?? []) as Mesaj[];
+    setMesajlar(list);
+
+    // ✅ Geçmişte destekten mesaj varsa uyarıyı gizle
+    if (list.some((m) => m.rol === "destek")) setStatus("active");
   }
 
   async function fetchStatus(chatId: number) {
@@ -221,14 +231,10 @@ export default function Destek() {
           </div>
         ))}
 
-        {status === "pending" && (
+        {/* ✅ Uyarıyı, sadece status pending İSE ve listede destek mesajı YOKSA göster */}
+        {status === "pending" && !mesajlar.some(m => m.rol === "destek") && (
           <div style={{ textAlign: "center", color: "#999", marginTop: 10 }}>
             🔔 Destek ekibinin sohbete katılması bekleniyor...
-          </div>
-        )}
-        {status === "active" && (
-          <div style={{ textAlign: "center", color: "green", marginTop: 10 }}>
-            ✅ Destek ekibi sohbete katıldı.
           </div>
         )}
       </div>
