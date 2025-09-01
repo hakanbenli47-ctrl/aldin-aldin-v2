@@ -17,53 +17,15 @@ export default function Destek() {
   const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
   const [status, setStatus] = useState<"pending" | "active">("pending");
+  const [loading, setLoading] = useState(false);
 
   const chanRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const kutuRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () =>
-    setTimeout(() => kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight), 50);
+    setTimeout(() => kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight), 40);
 
-  // Açılışta localStorage MIGRASYON + yükleme
-  useEffect(() => {
-    let em: string | null = null;
-    let chatId: number | null = null;
-
-    // email
-    const savedEmail = localStorage.getItem("destekEmail");
-    if (savedEmail) {
-      try { em = JSON.parse(savedEmail); } catch {}
-    }
-
-    // chatId (eski sürümde obje saklanmış olabilir)
-    const savedChat = localStorage.getItem("destekChat");
-    if (savedChat) {
-      try {
-        const parsed = JSON.parse(savedChat);
-        if (typeof parsed === "number") {
-          chatId = parsed;
-        } else if (parsed && typeof parsed === "object") {
-          chatId = parsed.sohbetId ?? parsed.id ?? null;
-          if (!em && parsed.userEmail) em = parsed.userEmail;
-          if (parsed.status === "active" || parsed.status === "pending") setStatus(parsed.status);
-        }
-      } catch {}
-    }
-
-    // Normalize et ve bağlan
-    if (em && chatId) {
-      setUserEmail(em);
-      setSohbetId(chatId);
-      localStorage.setItem("destekEmail", JSON.stringify(em));
-      localStorage.setItem("destekChat", JSON.stringify(chatId)); // 🔧 artık sadece sayı
-      subscribeRealtime(chatId);
-      fetchMesajlar(chatId);
-    }
-
-    return () => { if (chanRef.current) supabase.removeChannel(chanRef.current); };
-  }, []);
-
-  // Realtime kanal
+  // ---- Realtime ----
   function subscribeRealtime(chatId: number) {
     if (chanRef.current) supabase.removeChannel(chanRef.current);
 
@@ -78,12 +40,13 @@ export default function Destek() {
           scrollToBottom();
         }
       )
-      // destek status güncellemesi
+      // admin “active” yapınca statüyü güncelle
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "destek_sohbetleri", filter: `id=eq.${chatId}` },
         (payload) => {
-          if ((payload.new as any)?.status) setStatus((payload.new as any).status);
+          const st = (payload.new as any)?.status;
+          if (st === "active" || st === "pending") setStatus(st);
         }
       )
       .subscribe();
@@ -91,72 +54,114 @@ export default function Destek() {
     chanRef.current = ch;
   }
 
-  // Mesajları çek
+  // ---- İlk yük + localStorage göçü ----
+  useEffect(() => {
+    let em: string | null = null;
+    let chatId: number | null = null;
+
+    try {
+      const savedEmail = localStorage.getItem("destekEmail");
+      if (savedEmail) em = JSON.parse(savedEmail);
+    } catch {}
+    try {
+      const savedChat = localStorage.getItem("destekChat");
+      if (savedChat) {
+        const parsed = JSON.parse(savedChat);
+        chatId = typeof parsed === "number" ? parsed : (parsed?.id ?? parsed?.sohbetId ?? null);
+      }
+    } catch {}
+
+    if (em && chatId) {
+      setUserEmail(em);
+      setSohbetId(chatId);
+      localStorage.setItem("destekEmail", JSON.stringify(em));
+      localStorage.setItem("destekChat", JSON.stringify(chatId)); // sadece sayı sakla
+      subscribeRealtime(chatId);
+      fetchMesajlar(chatId);
+    }
+
+    return () => { if (chanRef.current) supabase.removeChannel(chanRef.current); };
+  }, []);
+
+  // ---- Mesajları çek ----
   async function fetchMesajlar(chatId: number) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("destek_mesajlari")
       .select("*")
       .eq("sohbet_id", chatId)
       .order("gonderilme_tarihi", { ascending: true });
-    setMesajlar((data as Mesaj[]) || []);
+
+    if (!error) setMesajlar((data ?? []) as Mesaj[]);
   }
 
-  // Sohbet başlat
+  // ---- Sohbet başlat ----
   const baslatSohbet = async () => {
     const em = emailInput.trim();
-    if (!em) {
-      alert("Lütfen e-posta adresinizi girin.");
-      return;
-    }
+    if (!em) return alert("Lütfen e-posta adresinizi girin.");
 
-    // sohbet kaydı (tek satır)
+    setLoading(true);
     const { data: sohbetData, error } = await supabase
       .from("destek_sohbetleri")
       .insert({ kullanici_email: em, status: "pending" })
       .select("id")
       .single();
 
+    setLoading(false);
+
     if (error || !sohbetData) {
       console.error(error);
-      alert("Sohbet başlatılamadı.");
-      return;
+      return alert("Sohbet başlatılamadı.");
     }
 
+    const chatId = Number(sohbetData.id);
     setUserEmail(em);
-    setSohbetId(sohbetData.id);
+    setSohbetId(chatId);
     localStorage.setItem("destekEmail", JSON.stringify(em));
-    localStorage.setItem("destekChat", JSON.stringify(sohbetData.id)); // 🔧 sayı olarak yaz
+    localStorage.setItem("destekChat", JSON.stringify(chatId));
 
-    subscribeRealtime(sohbetData.id);
+    subscribeRealtime(chatId);
 
     // ilk bilgilendirme mesajı
     await supabase.from("destek_mesajlari").insert({
-      sohbet_id: sohbetData.id,
+      sohbet_id: chatId,                 // FK → destek_sohbetleri.id
       gonderen_email: em,
       mesaj_metni: "🆕 Sohbet başlatıldı",
       rol: "kullanici",
     });
+
+    await fetchMesajlar(chatId);
   };
 
-  // Mesaj gönder
+  // ---- Mesaj gönder ----
   const gonder = async () => {
     if (!yeniMesaj.trim() || !userEmail || !sohbetId) return;
 
     const { error } = await supabase.from("destek_mesajlari").insert({
-      sohbet_id: sohbetId,           // ✅ BIGINT doğru tip
+      sohbet_id: Number(sohbetId),
       gonderen_email: userEmail,
       mesaj_metni: yeniMesaj.trim(),
       rol: "kullanici",
     });
 
-    if (!error) setYeniMesaj("");
-    else {
+    if (error) {
       console.error(error);
-      alert("Mesaj gönderilemedi: " + error.message);
+      return alert("Mesaj gönderilemedi: " + error.message);
     }
+    setYeniMesaj("");
   };
 
-  // e-posta formu
+  const resetChat = () => {
+    localStorage.removeItem("destekEmail");
+    localStorage.removeItem("destekChat");
+    if (chanRef.current) supabase.removeChannel(chanRef.current);
+    setUserEmail("");
+    setSohbetId(null);
+    setMesajlar([]);
+    setEmailInput("");
+    setStatus("pending");
+  };
+
+  // ---- UI ----
   if (!userEmail || !sohbetId) {
     return (
       <div style={{ maxWidth: 420, margin: "40px auto", textAlign: "center" }}>
@@ -170,15 +175,15 @@ export default function Destek() {
         />
         <button
           onClick={baslatSohbet}
-          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer", width: "100%" }}
+          disabled={loading}
+          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer", width: "100%", opacity: loading ? .7 : 1 }}
         >
-          Sohbeti Başlat
+          {loading ? "Başlatılıyor…" : "Sohbeti Başlat"}
         </button>
       </div>
     );
   }
 
-  // sohbet ekranı
   return (
     <div style={{ maxWidth: 680, margin: "20px auto", padding: 16 }}>
       <h2 style={{ color: "#1648b0", marginBottom: 8 }}>💬 Canlı Destek</h2>
@@ -228,6 +233,9 @@ export default function Destek() {
           style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer" }}
         >
           Gönder
+        </button>
+        <button onClick={resetChat} title="Sohbeti sıfırla" style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 8, padding: "10px 12px" }}>
+          ↺
         </button>
       </div>
     </div>

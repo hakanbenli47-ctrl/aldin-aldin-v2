@@ -25,7 +25,6 @@ export default function DestekAdmin() {
 
   const [sohbetler, setSohbetler] = useState<Sohbet[]>([]);
   const [selectedChat, setSelectedChat] = useState<Sohbet | null>(null);
-
   const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
 
@@ -33,9 +32,9 @@ export default function DestekAdmin() {
   const boxRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () =>
-    setTimeout(() => boxRef.current?.scrollTo(0, boxRef.current.scrollHeight), 50);
+    setTimeout(() => boxRef.current?.scrollTo(0, boxRef.current.scrollHeight), 40);
 
-  // Yetki kontrolü + ilk yük
+  // Yetki + ilk yük
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const u = data?.user;
@@ -45,27 +44,19 @@ export default function DestekAdmin() {
       fetchSohbetler();
     });
 
-    return () => {
-      if (chanRef.current) supabase.removeChannel(chanRef.current);
-    };
+    return () => { if (chanRef.current) supabase.removeChannel(chanRef.current); };
   }, []);
 
-  // Sohbet listesi
-  const fetchSohbetler = async () => {
+  async function fetchSohbetler() {
     const { data, error } = await supabase
       .from("destek_sohbetleri")
       .select("id, kullanici_email, status")
       .order("baslangic_tarihi", { ascending: false });
 
-    if (error) {
-      console.error(error);
-      return;
-    }
-    setSohbetler((data || []) as Sohbet[]);
-  };
+    if (!error) setSohbetler((data ?? []) as Sohbet[]);
+  }
 
-  // Mesajları çek
-  const fetchMesajlar = async (chatId: number) => {
+  async function fetchMesajlar(chatId: number) {
     const { data, error } = await supabase
       .from("destek_mesajlari")
       .select("*")
@@ -73,12 +64,11 @@ export default function DestekAdmin() {
       .order("gonderilme_tarihi", { ascending: true });
 
     if (!error) {
-      setMesajlar((data || []) as Mesaj[]);
+      setMesajlar((data ?? []) as Mesaj[]);
       scrollToBottom();
     }
-  };
+  }
 
-  // Sohbet aç
   const openChat = async (sohbet: Sohbet) => {
     setSelectedChat(sohbet);
 
@@ -87,9 +77,7 @@ export default function DestekAdmin() {
       chanRef.current = null;
     }
 
-    // Kullanıcı tarafında "katıldı" göstermek için
     await supabase.from("destek_sohbetleri").update({ status: "active" }).eq("id", sohbet.id);
-
     await fetchMesajlar(sohbet.id);
 
     const ch = supabase
@@ -107,26 +95,22 @@ export default function DestekAdmin() {
     chanRef.current = ch;
   };
 
-  // Mesaj gönder
   const gonder = async () => {
     if (!yeniMesaj.trim() || !selectedChat || !me) return;
 
     const { error } = await supabase.from("destek_mesajlari").insert({
-      sohbet_id: selectedChat.id,
+      sohbet_id: Number(selectedChat.id),
       gonderen_email: me.email,
       mesaj_metni: yeniMesaj.trim(),
       rol: "destek",
     });
 
-    if (!error) setYeniMesaj("");
-    else console.error(error);
+    if (error) return console.error(error);
+    setYeniMesaj("");
   };
 
   const kanaldanCik = () => {
-    if (chanRef.current) {
-      supabase.removeChannel(chanRef.current);
-      chanRef.current = null;
-    }
+    if (chanRef.current) { supabase.removeChannel(chanRef.current); chanRef.current = null; }
     setSelectedChat(null);
     setMesajlar([]);
   };
