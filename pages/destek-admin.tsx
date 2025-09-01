@@ -17,18 +17,22 @@ type Row = {
 export default function DestekAdmin() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
+
   const [sohbetler, setSohbetler] = useState<{ kullanici_email: string; status: string }[]>([]);
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+
   const [mesajlar, setMesajlar] = useState<Row[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
+
   const chanRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () =>
     setTimeout(() => {
       boxRef.current?.scrollTo(0, boxRef.current.scrollHeight);
-    }, 60);
+    }, 50);
 
+  // Yetki + ilk yük
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const u = data?.user;
@@ -43,7 +47,7 @@ export default function DestekAdmin() {
     };
   }, []);
 
-  // soldaki liste (tek tablo – kullanıcıya göre uniq)
+  // Sol liste: tek tablodan benzersiz mail
   const fetchSohbetler = async () => {
     const { data, error } = await supabase
       .from("destek_sohbetleri")
@@ -58,7 +62,7 @@ export default function DestekAdmin() {
     setSohbetler(unique as any);
   };
 
-  // seçilen sohbetin geçmişini yükle (admin tarafında dursun)
+  // Sağ panel: geçmiş mesajlar (admin tarafında dursun)
   const fetchMesajlar = async (email: string) => {
     const { data, error } = await supabase
       .from("destek_sohbetleri")
@@ -66,26 +70,28 @@ export default function DestekAdmin() {
       .eq("kullanici_email", email)
       .order("gonderilme_tarihi", { ascending: true });
 
-    if (!error) setMesajlar((data || []) as Row[]);
+    if (!error) {
+      setMesajlar((data || []) as Row[]);
+      scrollToBottom();
+    }
   };
 
-  // e-posta satırına tıklayınca
+  // Sohbet seç
   const openChat = async (email: string) => {
     setSelectedEmail(email);
 
-    // eski kanalı kapat
+    // Eski kanal varsa kapat
     if (chanRef.current) {
       supabase.removeChannel(chanRef.current);
       chanRef.current = null;
     }
 
-    // kullanıcıya “katıldı” bilgisini ilet
+    // Kullanıcıya katıldığımızı göster
     await supabase.from("destek_sohbetleri").update({ status: "active" }).eq("kullanici_email", email);
 
     await fetchMesajlar(email);
-    scrollToBottom();
 
-    // realtime dinleme
+    // Realtime dinleme
     const ch = supabase
       .channel(`realtime-destek-${email}`)
       .on(
@@ -101,7 +107,7 @@ export default function DestekAdmin() {
     chanRef.current = ch;
   };
 
-  // mesaj gönder
+  // Mesaj gönder
   const gonder = async () => {
     if (!yeniMesaj.trim() || !selectedEmail || !me) return;
 
@@ -117,17 +123,19 @@ export default function DestekAdmin() {
     else console.error(error);
   };
 
-  // admin için kanal kapatma
-  const kanaliKapat = () => {
+  // Kanal kapatma
+  const kanaldanCik = () => {
     if (chanRef.current) {
       supabase.removeChannel(chanRef.current);
       chanRef.current = null;
     }
+    setSelectedEmail(null);
+    setMesajlar([]);
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: "20px auto", display: "flex", gap: 20 }}>
-      {/* sol sütun: sohbetler */}
+    <div style={{ maxWidth: 1000, margin: "20px auto", display: "flex", gap: 20 }}>
+      {/* SOL: sohbetler */}
       <div style={{ flex: 1, border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
         <h3>📋 Sohbetler</h3>
         {sohbetler.map((s) => (
@@ -139,21 +147,24 @@ export default function DestekAdmin() {
               padding: 8,
               cursor: "pointer",
               background: selectedEmail === s.kullanici_email ? "#f3f4f6" : "transparent",
+              display: "flex",
+              justifyContent: "space-between",
             }}
           >
-            <b>{s.kullanici_email}</b> — {s.status}
+            <b>{s.kullanici_email}</b>
+            <span style={{ color: "#6b7280" }}>{s.status || "pending"}</span>
           </div>
         ))}
       </div>
 
-      {/* sağ sütun: mesajlar */}
+      {/* SAĞ: mesajlar */}
       <div style={{ flex: 2, border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3>💬 Sohbet</h3>
           {selectedEmail && (
             <button
-              onClick={kanaliKapat}
-              style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer" }}
+              onClick={kanaldanCik}
+              style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700 }}
             >
               Kanaldan Çık
             </button>
@@ -162,9 +173,9 @@ export default function DestekAdmin() {
 
         {selectedEmail ? (
           <>
-            <div ref={boxRef} style={{ height: 400, overflowY: "auto", marginBottom: 10 }}>
+            <div ref={boxRef} style={{ height: 430, overflowY: "auto", marginBottom: 10, paddingRight: 4 }}>
               {mesajlar.map((m) => (
-                <div key={m.id} style={{ textAlign: m.rol === "destek" ? "right" : "left", marginBottom: 6 }}>
+                <div key={m.id} style={{ textAlign: m.rol === "destek" ? "right" : "left", marginBottom: 8 }}>
                   <span
                     style={{
                       display: "inline-block",
@@ -184,9 +195,12 @@ export default function DestekAdmin() {
                 value={yeniMesaj}
                 onChange={(e) => setYeniMesaj(e.target.value)}
                 placeholder="Mesajınızı yazın…"
-                style={{ flex: 1, padding: 8 }}
+                style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}
               />
-              <button onClick={gonder} style={{ padding: "8px 14px", background: "#1648b0", color: "#fff", border: "none", borderRadius: 6 }}>
+              <button
+                onClick={gonder}
+                style={{ padding: "10px 16px", background: "#1648b0", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700 }}
+              >
                 Gönder
               </button>
             </div>

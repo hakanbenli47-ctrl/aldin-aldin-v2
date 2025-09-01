@@ -23,9 +23,9 @@ export default function Destek() {
   const scrollToBottom = () =>
     setTimeout(() => {
       kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight);
-    }, 60);
+    }, 50);
 
-  // sayfa yenilense de kullanıcı e-mail’ini koru + tekrar subscribe ol
+  // Açılışta varsa e-postayı ve kanalı geri yükle
   useEffect(() => {
     const saved = localStorage.getItem("destekEmail");
     if (saved) {
@@ -38,7 +38,7 @@ export default function Destek() {
     };
   }, []);
 
-  // realtime kanalına bağlan
+  // Realtime kanal
   function subscribeRealtime(email: string) {
     if (chanRef.current) supabase.removeChannel(chanRef.current);
 
@@ -49,11 +49,13 @@ export default function Destek() {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "destek_sohbetleri", filter: `kullanici_email=eq.${email}` },
         (payload) => {
-          setMesajlar((prev) => [...prev, payload.new as Mesaj]);
+          const row = payload.new as Mesaj;
+          setMesajlar((prev) => [...prev, row]);
+          if (row.rol === "destek") setStatus("active");
           scrollToBottom();
         }
       )
-      // Admin status güncellemesi (katıldı bilgisini göstermek için)
+      // Admin tüm satırlarda status güncellediğinde (active/pending)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "destek_sohbetleri", filter: `kullanici_email=eq.${email}` },
@@ -67,7 +69,7 @@ export default function Destek() {
     chanRef.current = ch;
   }
 
-  // sohbet başlat
+  // Sohbet başlat
   const baslatSohbet = async () => {
     const em = emailInput.trim();
     if (!em) {
@@ -78,13 +80,13 @@ export default function Destek() {
     setUserEmail(em);
     localStorage.setItem("destekEmail", JSON.stringify(em));
 
-    // önce subscribe ol → sonra ilk satırı at (ilk mesajı kaçırmayalım)
+    // Önce abone olalım ki ilk satır kaçmasın
     subscribeRealtime(em);
 
     const { error } = await supabase.from("destek_sohbetleri").insert({
       kullanici_email: em,
       gonderen_email: em,
-      mesaj_metni: "🆕 Sohbet başlatıldı",
+      mesaj_metni: "Sohbet başlatıldı",
       rol: "kullanici",
       status: "pending",
     });
@@ -95,7 +97,7 @@ export default function Destek() {
     }
   };
 
-  // mesaj gönder
+  // Mesaj gönder
   const gonder = async () => {
     if (!yeniMesaj.trim() || !userEmail) return;
 
@@ -114,11 +116,11 @@ export default function Destek() {
     }
   };
 
-  // ilk aşama: e-posta formu
+  // E-posta formu
   if (!userEmail) {
     return (
-      <div style={{ maxWidth: 400, margin: "40px auto", textAlign: "center" }}>
-        <h2 style={{ marginBottom: 20, color: "#1648b0" }}>💬 Canlı Destek Başlat</h2>
+      <div style={{ maxWidth: 420, margin: "40px auto", textAlign: "center" }}>
+        <h2 style={{ marginBottom: 18, color: "#1648b0" }}>💬 Canlı Destek Başlat</h2>
         <input
           type="email"
           placeholder="E-posta adresiniz"
@@ -128,16 +130,7 @@ export default function Destek() {
         />
         <button
           onClick={baslatSohbet}
-          style={{
-            background: "#1648b0",
-            color: "#fff",
-            borderRadius: 8,
-            padding: "10px 16px",
-            border: "none",
-            fontWeight: 600,
-            cursor: "pointer",
-            width: "100%",
-          }}
+          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer", width: "100%" }}
         >
           Sohbeti Başlat
         </button>
@@ -145,22 +138,14 @@ export default function Destek() {
     );
   }
 
-  // sohbet ekranı
+  // Sohbet ekranı
   return (
-    <div style={{ maxWidth: 640, margin: "20px auto", padding: 16 }}>
+    <div style={{ maxWidth: 680, margin: "20px auto", padding: 16 }}>
       <h2 style={{ color: "#1648b0", marginBottom: 8 }}>💬 Canlı Destek</h2>
 
       <div
         ref={kutuRef}
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 10,
-          height: 420,
-          overflowY: "auto",
-          padding: 12,
-          background: "#f9fafb",
-          marginBottom: 12,
-        }}
+        style={{ border: "1px solid #e5e7eb", borderRadius: 10, height: 420, overflowY: "auto", padding: 12, background: "#f9fafb", marginBottom: 12 }}
       >
         {mesajlar.map((m) => (
           <div key={m.id} style={{ textAlign: m.rol === "kullanici" ? "right" : "left", marginBottom: 10 }}>
@@ -185,7 +170,9 @@ export default function Destek() {
           </div>
         )}
         {status === "active" && (
-          <div style={{ textAlign: "center", color: "green", marginTop: 10 }}>✅ Destek ekibi sohbete katıldı.</div>
+          <div style={{ textAlign: "center", color: "green", marginTop: 10 }}>
+            ✅ Destek ekibi sohbete katıldı.
+          </div>
         )}
       </div>
 
