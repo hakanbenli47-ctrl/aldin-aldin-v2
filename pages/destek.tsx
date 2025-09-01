@@ -1,5 +1,5 @@
 // pages/destek.tsx
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 type Mesaj = {
@@ -20,18 +20,6 @@ export default function Destek() {
   const [status, setStatus] = useState<"pending" | "active">("pending");
   const kutuRef = useRef<HTMLDivElement>(null);
 
-  // Var olan mesajları yükle
-  const loadMesajlar = async (sid: number) => {
-    const { data } = await supabase
-      .from("destek_mesajlari")
-      .select("*")
-      .eq("sohbet_id", sid)
-      .order("gonderilme_tarihi", { ascending: true });
-
-    if (data) setMesajlar(data as any);
-    scrollToBottom();
-  };
-
   const scrollToBottom = () =>
     setTimeout(() => {
       kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight);
@@ -46,7 +34,6 @@ export default function Destek() {
 
     setUserEmail(emailInput);
 
-    // Yeni sohbet oluştur
     const { data: ins, error } = await supabase
       .from("destek_sohbetleri")
       .insert([
@@ -67,11 +54,10 @@ export default function Destek() {
 
     setSohbetId(ins.id);
     setStatus(ins.status as "pending" | "active");
-    await loadMesajlar(ins.id);
 
-    // Realtime dinleme
+    // ✅ Realtime dinleme (sadece anlık)
     supabase
-      .channel("realtime-destek-mesajlari")
+      .channel(`realtime-destek-${ins.id}`)
       .on(
         "postgres_changes",
         {
@@ -82,17 +68,7 @@ export default function Destek() {
         },
         (payload) => {
           const row = payload.new as any;
-          setMesajlar((prev) => [
-            ...prev,
-            {
-              id: row.id,
-              sohbet_id: row.sohbet_id,
-              gonderen_email: row.gonderen_email,
-              mesaj_metni: row.mesaj_metni,
-              gonderilme_tarihi: row.gonderilme_tarihi,
-              rol: row.rol,
-            },
-          ]);
+          setMesajlar((prev) => [...prev, row]);
           scrollToBottom();
         }
       )
@@ -103,7 +79,6 @@ export default function Destek() {
   const gonder = async () => {
     if (!yeniMesaj.trim() || !sohbetId) return;
 
-    // 👇 Optimistic update (hemen ekrana bas)
     const fakeMsg: Mesaj = {
       id: Date.now(),
       sohbet_id: sohbetId,
@@ -130,7 +105,6 @@ export default function Destek() {
     }
   };
 
-  // Eğer sohbet yoksa e-posta formunu göster
   if (!sohbetId) {
     return (
       <div style={{ maxWidth: 400, margin: "40px auto", textAlign: "center" }}>
@@ -167,7 +141,6 @@ export default function Destek() {
     );
   }
 
-  // Sohbet başladıysa mesajlaşma ekranını göster
   return (
     <div style={{ maxWidth: 640, margin: "20px auto", padding: 16 }}>
       <h2 style={{ color: "#1648b0", marginBottom: 8 }}>💬 Canlı Destek</h2>
@@ -207,7 +180,6 @@ export default function Destek() {
           );
         })}
 
-        {/* 👇 Bekleme mesajı */}
         {status === "pending" && (
           <div style={{ textAlign: "center", color: "#999", marginTop: 10 }}>
             🔔 Destek ekibinin sohbete katılması bekleniyor...

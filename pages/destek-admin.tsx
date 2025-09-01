@@ -52,7 +52,27 @@ export default function DestekAdmin() {
       .from("destek_sohbetleri")
       .update({ status: "active" })
       .eq("id", chat.id);
+
+    // ✅ geçmiş mesajları yükle
     await fetchMesajlar(chat.id);
+
+    // ✅ realtime dinleme
+    supabase
+      .channel(`realtime-destek-${chat.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "destek_mesajlari",
+          filter: `sohbet_id=eq.${chat.id}`,
+        },
+        (payload) => {
+          const row = payload.new as any;
+          setMesajlar((prev) => [...prev, row]);
+        }
+      )
+      .subscribe();
   };
 
   const gonder = async () => {
@@ -64,7 +84,6 @@ export default function DestekAdmin() {
       rol: "destek",
     });
     setYeniMesaj("");
-    await fetchMesajlar(selectedChat.id);
   };
 
   return (
@@ -120,7 +139,16 @@ export default function DestekAdmin() {
                 placeholder="Mesajınızı yazın…"
                 style={{ flex: 1, padding: 8 }}
               />
-              <button onClick={gonder} style={{ padding: "8px 14px", background: "#1648b0", color: "#fff", border: "none", borderRadius: 6 }}>
+              <button
+                onClick={gonder}
+                style={{
+                  padding: "8px 14px",
+                  background: "#1648b0",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                }}
+              >
                 Gönder
               </button>
             </div>

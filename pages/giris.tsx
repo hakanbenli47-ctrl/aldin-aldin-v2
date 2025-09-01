@@ -8,7 +8,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 
 const ADMIN_EMAILS = ["80birinfo@gmail.com"]; // buraya admin mailleri ekle
-const DESTEK_EMAILS = ["destek80bir@gmail.com", "destek1@80bir.com"]; // ✅ destek admin mailleri
+const DESTEK_EMAILS = ["destek80bir@gmail.com"]; // ✅ destek admin mailleri
 
 // ✅ Senin Firebase config'in
 const firebaseConfig = {
