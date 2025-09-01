@@ -2,12 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
 
-const DESTEK_EMAILS = ["destek80bir@gmail.com"]; // buraya destek personeli maillerini ekle
+const DESTEK_EMAILS = ["destek80bir@gmail.com"]; // destek personelleri
 
 type Sohbet = {
   id: number;
   kullanici_email: string;
-  status: string;
+  status: "pending" | "active" | null;
 };
 
 type Mesaj = {
@@ -22,19 +22,20 @@ type Mesaj = {
 export default function DestekAdmin() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
+
   const [sohbetler, setSohbetler] = useState<Sohbet[]>([]);
   const [selectedChat, setSelectedChat] = useState<Sohbet | null>(null);
+
   const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
+
   const chanRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () =>
-    setTimeout(() => {
-      boxRef.current?.scrollTo(0, boxRef.current.scrollHeight);
-    }, 50);
+    setTimeout(() => boxRef.current?.scrollTo(0, boxRef.current.scrollHeight), 50);
 
-  // Yetki kontrolü
+  // Yetki kontrolü + ilk yük
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const u = data?.user;
@@ -49,7 +50,7 @@ export default function DestekAdmin() {
     };
   }, []);
 
-  // Sohbet listesini çek
+  // Sohbet listesi
   const fetchSohbetler = async () => {
     const { data, error } = await supabase
       .from("destek_sohbetleri")
@@ -60,7 +61,7 @@ export default function DestekAdmin() {
       console.error(error);
       return;
     }
-    setSohbetler(data || []);
+    setSohbetler((data || []) as Sohbet[]);
   };
 
   // Mesajları çek
@@ -72,7 +73,7 @@ export default function DestekAdmin() {
       .order("gonderilme_tarihi", { ascending: true });
 
     if (!error) {
-      setMesajlar((data as Mesaj[]) || []);
+      setMesajlar((data || []) as Mesaj[]);
       scrollToBottom();
     }
   };
@@ -81,18 +82,16 @@ export default function DestekAdmin() {
   const openChat = async (sohbet: Sohbet) => {
     setSelectedChat(sohbet);
 
-    // Eski kanalı kapat
     if (chanRef.current) {
       supabase.removeChannel(chanRef.current);
       chanRef.current = null;
     }
 
-    // Sohbeti active yap
+    // Kullanıcı tarafında "katıldı" göstermek için
     await supabase.from("destek_sohbetleri").update({ status: "active" }).eq("id", sohbet.id);
 
     await fetchMesajlar(sohbet.id);
 
-    // Realtime dinleme
     const ch = supabase
       .channel(`realtime-destek-${sohbet.id}`)
       .on(
@@ -123,7 +122,6 @@ export default function DestekAdmin() {
     else console.error(error);
   };
 
-  // Kanaldan çık
   const kanaldanCik = () => {
     if (chanRef.current) {
       supabase.removeChannel(chanRef.current);

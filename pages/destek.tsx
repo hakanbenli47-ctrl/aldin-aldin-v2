@@ -17,29 +17,50 @@ export default function Destek() {
   const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
   const [status, setStatus] = useState<"pending" | "active">("pending");
+
   const chanRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const kutuRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () =>
-    setTimeout(() => {
-      kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight);
-    }, 50);
+    setTimeout(() => kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight), 50);
 
-  // Açılışta varsa e-postayı ve sohbeti geri yükle
+  // Açılışta localStorage MIGRASYON + yükleme
   useEffect(() => {
-    const saved = localStorage.getItem("destekEmail");
+    let em: string | null = null;
+    let chatId: number | null = null;
+
+    // email
+    const savedEmail = localStorage.getItem("destekEmail");
+    if (savedEmail) {
+      try { em = JSON.parse(savedEmail); } catch {}
+    }
+
+    // chatId (eski sürümde obje saklanmış olabilir)
     const savedChat = localStorage.getItem("destekChat");
-    if (saved && savedChat) {
-      const em = JSON.parse(saved) as string;
-      const chatId = JSON.parse(savedChat) as number;
+    if (savedChat) {
+      try {
+        const parsed = JSON.parse(savedChat);
+        if (typeof parsed === "number") {
+          chatId = parsed;
+        } else if (parsed && typeof parsed === "object") {
+          chatId = parsed.sohbetId ?? parsed.id ?? null;
+          if (!em && parsed.userEmail) em = parsed.userEmail;
+          if (parsed.status === "active" || parsed.status === "pending") setStatus(parsed.status);
+        }
+      } catch {}
+    }
+
+    // Normalize et ve bağlan
+    if (em && chatId) {
       setUserEmail(em);
       setSohbetId(chatId);
+      localStorage.setItem("destekEmail", JSON.stringify(em));
+      localStorage.setItem("destekChat", JSON.stringify(chatId)); // 🔧 artık sadece sayı
       subscribeRealtime(chatId);
       fetchMesajlar(chatId);
     }
-    return () => {
-      if (chanRef.current) supabase.removeChannel(chanRef.current);
-    };
+
+    return () => { if (chanRef.current) supabase.removeChannel(chanRef.current); };
   }, []);
 
   // Realtime kanal
@@ -48,7 +69,7 @@ export default function Destek() {
 
     const ch = supabase
       .channel(`realtime-destek-${chatId}`)
-      // yeni mesaj
+      // yeni mesajlar
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "destek_mesajlari", filter: `sohbet_id=eq.${chatId}` },
@@ -57,14 +78,12 @@ export default function Destek() {
           scrollToBottom();
         }
       )
-      // sohbet durumu güncelleme (destek tarafı aktif ettiğinde)
+      // destek status güncellemesi
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "destek_sohbetleri", filter: `id=eq.${chatId}` },
         (payload) => {
-          if (payload.new.status) {
-            setStatus(payload.new.status);
-          }
+          if ((payload.new as any)?.status) setStatus((payload.new as any).status);
         }
       )
       .subscribe();
@@ -90,13 +109,10 @@ export default function Destek() {
       return;
     }
 
-    // önce sohbet kaydı aç
+    // sohbet kaydı (tek satır)
     const { data: sohbetData, error } = await supabase
       .from("destek_sohbetleri")
-      .insert({
-        kullanici_email: em,
-        status: "pending",
-      })
+      .insert({ kullanici_email: em, status: "pending" })
       .select("id")
       .single();
 
@@ -109,7 +125,7 @@ export default function Destek() {
     setUserEmail(em);
     setSohbetId(sohbetData.id);
     localStorage.setItem("destekEmail", JSON.stringify(em));
-    localStorage.setItem("destekChat", JSON.stringify(sohbetData.id));
+    localStorage.setItem("destekChat", JSON.stringify(sohbetData.id)); // 🔧 sayı olarak yaz
 
     subscribeRealtime(sohbetData.id);
 
@@ -127,7 +143,7 @@ export default function Destek() {
     if (!yeniMesaj.trim() || !userEmail || !sohbetId) return;
 
     const { error } = await supabase.from("destek_mesajlari").insert({
-      sohbet_id: sohbetId, // ✅ bigint doğru
+      sohbet_id: sohbetId,           // ✅ BIGINT doğru tip
       gonderen_email: userEmail,
       mesaj_metni: yeniMesaj.trim(),
       rol: "kullanici",
@@ -154,16 +170,7 @@ export default function Destek() {
         />
         <button
           onClick={baslatSohbet}
-          style={{
-            background: "#1648b0",
-            color: "#fff",
-            borderRadius: 8,
-            padding: "10px 16px",
-            border: "none",
-            fontWeight: 600,
-            cursor: "pointer",
-            width: "100%",
-          }}
+          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer", width: "100%" }}
         >
           Sohbeti Başlat
         </button>
@@ -178,15 +185,7 @@ export default function Destek() {
 
       <div
         ref={kutuRef}
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 10,
-          height: 420,
-          overflowY: "auto",
-          padding: 12,
-          background: "#f9fafb",
-          marginBottom: 12,
-        }}
+        style={{ border: "1px solid #e5e7eb", borderRadius: 10, height: 420, overflowY: "auto", padding: 12, background: "#f9fafb", marginBottom: 12 }}
       >
         {mesajlar.map((m) => (
           <div key={m.id} style={{ textAlign: m.rol === "kullanici" ? "right" : "left", marginBottom: 10 }}>
@@ -226,15 +225,7 @@ export default function Destek() {
         />
         <button
           onClick={gonder}
-          style={{
-            background: "#1648b0",
-            color: "#fff",
-            borderRadius: 8,
-            padding: "10px 16px",
-            border: "none",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
+          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer" }}
         >
           Gönder
         </button>
