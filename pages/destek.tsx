@@ -48,12 +48,23 @@ export default function Destek() {
 
     const ch = supabase
       .channel(`realtime-destek-${chatId}`)
+      // yeni mesaj
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "destek_mesajlari", filter: `sohbet_id=eq.${chatId}` },
         (payload) => {
           setMesajlar((prev) => [...prev, payload.new as Mesaj]);
           scrollToBottom();
+        }
+      )
+      // sohbet durumu güncelleme (destek tarafı aktif ettiğinde)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "destek_sohbetleri", filter: `id=eq.${chatId}` },
+        (payload) => {
+          if (payload.new.status) {
+            setStatus(payload.new.status);
+          }
         }
       )
       .subscribe();
@@ -79,7 +90,7 @@ export default function Destek() {
       return;
     }
 
-    // Sohbet aç
+    // önce sohbet kaydı aç
     const { data: sohbetData, error } = await supabase
       .from("destek_sohbetleri")
       .insert({
@@ -102,7 +113,7 @@ export default function Destek() {
 
     subscribeRealtime(sohbetData.id);
 
-    // İlk mesaj (bilgilendirme)
+    // ilk bilgilendirme mesajı
     await supabase.from("destek_mesajlari").insert({
       sohbet_id: sohbetData.id,
       gonderen_email: em,
@@ -116,7 +127,7 @@ export default function Destek() {
     if (!yeniMesaj.trim() || !userEmail || !sohbetId) return;
 
     const { error } = await supabase.from("destek_mesajlari").insert({
-      sohbet_id: sohbetId,
+      sohbet_id: sohbetId, // ✅ bigint doğru
       gonderen_email: userEmail,
       mesaj_metni: yeniMesaj.trim(),
       rol: "kullanici",
@@ -129,7 +140,7 @@ export default function Destek() {
     }
   };
 
-  // E-posta formu
+  // e-posta formu
   if (!userEmail || !sohbetId) {
     return (
       <div style={{ maxWidth: 420, margin: "40px auto", textAlign: "center" }}>
@@ -143,7 +154,16 @@ export default function Destek() {
         />
         <button
           onClick={baslatSohbet}
-          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer", width: "100%" }}
+          style={{
+            background: "#1648b0",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "10px 16px",
+            border: "none",
+            fontWeight: 600,
+            cursor: "pointer",
+            width: "100%",
+          }}
         >
           Sohbeti Başlat
         </button>
@@ -151,14 +171,22 @@ export default function Destek() {
     );
   }
 
-  // Sohbet ekranı
+  // sohbet ekranı
   return (
     <div style={{ maxWidth: 680, margin: "20px auto", padding: 16 }}>
       <h2 style={{ color: "#1648b0", marginBottom: 8 }}>💬 Canlı Destek</h2>
 
       <div
         ref={kutuRef}
-        style={{ border: "1px solid #e5e7eb", borderRadius: 10, height: 420, overflowY: "auto", padding: 12, background: "#f9fafb", marginBottom: 12 }}
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          height: 420,
+          overflowY: "auto",
+          padding: 12,
+          background: "#f9fafb",
+          marginBottom: 12,
+        }}
       >
         {mesajlar.map((m) => (
           <div key={m.id} style={{ textAlign: m.rol === "kullanici" ? "right" : "left", marginBottom: 10 }}>
@@ -176,6 +204,17 @@ export default function Destek() {
             </span>
           </div>
         ))}
+
+        {status === "pending" && (
+          <div style={{ textAlign: "center", color: "#999", marginTop: 10 }}>
+            🔔 Destek ekibinin sohbete katılması bekleniyor...
+          </div>
+        )}
+        {status === "active" && (
+          <div style={{ textAlign: "center", color: "green", marginTop: 10 }}>
+            ✅ Destek ekibi sohbete katıldı.
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
@@ -187,7 +226,15 @@ export default function Destek() {
         />
         <button
           onClick={gonder}
-          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer" }}
+          style={{
+            background: "#1648b0",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "10px 16px",
+            border: "none",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
           Gönder
         </button>
