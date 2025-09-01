@@ -2,28 +2,30 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
 
-const DESTEK_EMAILS = ["destek80bir@gmail.com"];
+const DESTEK_EMAILS = ["destek80bir@gmail.com"]; // buraya destek personeli maillerini ekle
 
-type Row = {
+type Sohbet = {
   id: number;
   kullanici_email: string;
+  status: string;
+};
+
+type Mesaj = {
+  id: number;
+  sohbet_id: number;
   gonderen_email: string | null;
   mesaj_metni: string;
   gonderilme_tarihi: string | null;
   rol: "kullanici" | "destek";
-  status?: "pending" | "active";
 };
 
 export default function DestekAdmin() {
   const router = useRouter();
   const [me, setMe] = useState<any>(null);
-
-  const [sohbetler, setSohbetler] = useState<{ kullanici_email: string; status: string }[]>([]);
-  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
-
-  const [mesajlar, setMesajlar] = useState<Row[]>([]);
+  const [sohbetler, setSohbetler] = useState<Sohbet[]>([]);
+  const [selectedChat, setSelectedChat] = useState<Sohbet | null>(null);
+  const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
-
   const chanRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +34,7 @@ export default function DestekAdmin() {
       boxRef.current?.scrollTo(0, boxRef.current.scrollHeight);
     }, 50);
 
-  // Yetki + ilk yük
+  // Yetki kontrolü
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const u = data?.user;
@@ -47,58 +49,57 @@ export default function DestekAdmin() {
     };
   }, []);
 
-  // Sol liste: tek tablodan benzersiz mail
+  // Sohbet listesini çek
   const fetchSohbetler = async () => {
     const { data, error } = await supabase
       .from("destek_sohbetleri")
-      .select("kullanici_email, status, gonderilme_tarihi")
-      .order("gonderilme_tarihi", { ascending: false });
+      .select("id, kullanici_email, status")
+      .order("baslangic_tarihi", { ascending: false });
 
     if (error) {
       console.error(error);
       return;
     }
-    const unique = Array.from(new Map((data || []).map((r: any) => [r.kullanici_email, r])).values());
-    setSohbetler(unique as any);
+    setSohbetler(data || []);
   };
 
-  // Sağ panel: geçmiş mesajlar (admin tarafında dursun)
-  const fetchMesajlar = async (email: string) => {
+  // Mesajları çek
+  const fetchMesajlar = async (chatId: number) => {
     const { data, error } = await supabase
-      .from("destek_sohbetleri")
+      .from("destek_mesajlari")
       .select("*")
-      .eq("kullanici_email", email)
+      .eq("sohbet_id", chatId)
       .order("gonderilme_tarihi", { ascending: true });
 
     if (!error) {
-      setMesajlar((data || []) as Row[]);
+      setMesajlar((data as Mesaj[]) || []);
       scrollToBottom();
     }
   };
 
-  // Sohbet seç
-  const openChat = async (email: string) => {
-    setSelectedEmail(email);
+  // Sohbet aç
+  const openChat = async (sohbet: Sohbet) => {
+    setSelectedChat(sohbet);
 
-    // Eski kanal varsa kapat
+    // Eski kanalı kapat
     if (chanRef.current) {
       supabase.removeChannel(chanRef.current);
       chanRef.current = null;
     }
 
-    // Kullanıcıya katıldığımızı göster
-    await supabase.from("destek_sohbetleri").update({ status: "active" }).eq("kullanici_email", email);
+    // Sohbeti active yap
+    await supabase.from("destek_sohbetleri").update({ status: "active" }).eq("id", sohbet.id);
 
-    await fetchMesajlar(email);
+    await fetchMesajlar(sohbet.id);
 
     // Realtime dinleme
     const ch = supabase
-      .channel(`realtime-destek-${email}`)
+      .channel(`realtime-destek-${sohbet.id}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "destek_sohbetleri", filter: `kullanici_email=eq.${email}` },
+        { event: "INSERT", schema: "public", table: "destek_mesajlari", filter: `sohbet_id=eq.${sohbet.id}` },
         (payload) => {
-          setMesajlar((prev) => [...prev, payload.new as Row]);
+          setMesajlar((prev) => [...prev, payload.new as Mesaj]);
           scrollToBottom();
         }
       )
@@ -109,44 +110,43 @@ export default function DestekAdmin() {
 
   // Mesaj gönder
   const gonder = async () => {
-    if (!yeniMesaj.trim() || !selectedEmail || !me) return;
+    if (!yeniMesaj.trim() || !selectedChat || !me) return;
 
-    const { error } = await supabase.from("destek_sohbetleri").insert({
-      kullanici_email: selectedEmail,
+    const { error } = await supabase.from("destek_mesajlari").insert({
+      sohbet_id: selectedChat.id,
       gonderen_email: me.email,
       mesaj_metni: yeniMesaj.trim(),
       rol: "destek",
-      status: "active",
     });
 
     if (!error) setYeniMesaj("");
     else console.error(error);
   };
 
-  // Kanal kapatma
+  // Kanaldan çık
   const kanaldanCik = () => {
     if (chanRef.current) {
       supabase.removeChannel(chanRef.current);
       chanRef.current = null;
     }
-    setSelectedEmail(null);
+    setSelectedChat(null);
     setMesajlar([]);
   };
 
   return (
     <div style={{ maxWidth: 1000, margin: "20px auto", display: "flex", gap: 20 }}>
-      {/* SOL: sohbetler */}
+      {/* SOL: sohbet listesi */}
       <div style={{ flex: 1, border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
         <h3>📋 Sohbetler</h3>
         {sohbetler.map((s) => (
           <div
-            key={s.kullanici_email}
-            onClick={() => openChat(s.kullanici_email)}
+            key={s.id}
+            onClick={() => openChat(s)}
             style={{
               borderBottom: "1px solid #eee",
               padding: 8,
               cursor: "pointer",
-              background: selectedEmail === s.kullanici_email ? "#f3f4f6" : "transparent",
+              background: selectedChat?.id === s.id ? "#f3f4f6" : "transparent",
               display: "flex",
               justifyContent: "space-between",
             }}
@@ -157,11 +157,11 @@ export default function DestekAdmin() {
         ))}
       </div>
 
-      {/* SAĞ: mesajlar */}
+      {/* SAĞ: mesaj paneli */}
       <div style={{ flex: 2, border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h3>💬 Sohbet</h3>
-          {selectedEmail && (
+          {selectedChat && (
             <button
               onClick={kanaldanCik}
               style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700 }}
@@ -171,7 +171,7 @@ export default function DestekAdmin() {
           )}
         </div>
 
-        {selectedEmail ? (
+        {selectedChat ? (
           <>
             <div ref={boxRef} style={{ height: 430, overflowY: "auto", marginBottom: 10, paddingRight: 4 }}>
               {mesajlar.map((m) => (

@@ -86,33 +86,6 @@ export default function App({ Component, pageProps }: AppProps) {
       </Head>
 
       <Component {...pageProps} />
-
-      {showButton && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "20px",
-            right: "20px",
-            zIndex: 9999,
-          }}
-        >
-          <button
-            onClick={() => router.push("/destek")}
-            style={{
-              backgroundColor: "#1648b0",
-              color: "#fff",
-              border: "none",
-              borderRadius: "999px",
-              padding: "12px 18px",
-              fontWeight: "bold",
-              boxShadow: "0 0 8px rgba(0,0,0,0.2)",
-              cursor: "pointer",
-            }}
-          >
-            💬 Destek
-          </button>
-        </div>
-      )}
     </>
   );
 }
