@@ -47,6 +47,15 @@ export default function DestekAdmin() {
     return () => { if (chanRef.current) supabase.removeChannel(chanRef.current); };
   }, []);
 
+  // --- 5 saniyede bir otomatik yenileme (liste + seçili sohbet mesajları)
+  useEffect(() => {
+    const int = setInterval(() => {
+      fetchSohbetler();
+      if (selectedChat) fetchMesajlar(selectedChat.id);
+    }, 5000);
+    return () => clearInterval(int);
+  }, [selectedChat?.id]);
+
   async function fetchSohbetler() {
     const { data, error } = await supabase
       .from("destek_sohbetleri")
@@ -80,6 +89,7 @@ export default function DestekAdmin() {
     await supabase.from("destek_sohbetleri").update({ status: "active" }).eq("id", sohbet.id);
     await fetchMesajlar(sohbet.id);
 
+    // Realtime da dursun (varsa anlık düşürür)
     const ch = supabase
       .channel(`realtime-destek-${sohbet.id}`)
       .on(
