@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 type Mesaj = {
@@ -18,11 +18,68 @@ export default function Destek() {
   const [emailInput, setEmailInput] = useState("");
   const [status, setStatus] = useState<"pending" | "active">("pending");
   const kutuRef = useRef<HTMLDivElement>(null);
+  const [channel, setChannel] = useState<any>(null);
 
   const scrollToBottom = () =>
     setTimeout(() => {
       kutuRef.current?.scrollTo(0, kutuRef.current.scrollHeight);
     }, 80);
+
+  // Sayfa yenilenince localStorage’dan yükle
+  useEffect(() => {
+    const savedChat = localStorage.getItem("destekChat");
+    if (savedChat) {
+      const parsed = JSON.parse(savedChat);
+      setSohbetId(parsed.sohbetId);
+      setUserEmail(parsed.userEmail);
+      setStatus(parsed.status);
+
+      // Realtime yeniden bağlan
+      subscribeRealtime(parsed.sohbetId);
+    }
+  }, []);
+
+  // Realtime subscribe fonksiyonu
+  const subscribeRealtime = (id: number) => {
+    const ch = supabase
+      .channel(`realtime-destek-${id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "destek_mesajlari",
+          filter: `sohbet_id=eq.${id}`,
+        },
+        (payload) => {
+          const row = payload.new as any;
+          setMesajlar((prev) => [...prev, row]);
+          scrollToBottom();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "destek_sohbetleri",
+          filter: `id=eq.${id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setStatus(updated.status);
+          // localStorage’ı güncelle
+          const saved = JSON.parse(localStorage.getItem("destekChat") || "{}");
+          localStorage.setItem(
+            "destekChat",
+            JSON.stringify({ ...saved, status: updated.status })
+          );
+        }
+      )
+      .subscribe();
+
+    setChannel(ch);
+  };
 
   // Sohbet başlat
   const baslatSohbet = async () => {
@@ -54,37 +111,17 @@ export default function Destek() {
     setSohbetId(ins.id);
     setStatus(ins.status as "pending" | "active");
 
-    // ✅ Realtime: hem mesajlar hem sohbet status dinleniyor
-    supabase
-      .channel(`realtime-destek-${ins.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "destek_mesajlari",
-          filter: `sohbet_id=eq.${ins.id}`,
-        },
-        (payload) => {
-          const row = payload.new as any;
-          setMesajlar((prev) => [...prev, row]);
-          scrollToBottom();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "destek_sohbetleri",
-          filter: `id=eq.${ins.id}`,
-        },
-        (payload) => {
-          const updated = payload.new as any;
-          setStatus(updated.status); // pending → active
-        }
-      )
-      .subscribe();
+    // ✅ localStorage’a kaydet
+    localStorage.setItem(
+      "destekChat",
+      JSON.stringify({
+        sohbetId: ins.id,
+        userEmail: emailInput,
+        status: ins.status,
+      })
+    );
+
+    subscribeRealtime(ins.id);
   };
 
   // Mesaj gönder
@@ -117,6 +154,14 @@ export default function Destek() {
     }
   };
 
+  // ✅ component kapanınca kanal kapat
+  useEffect(() => {
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [channel]);
+
+  // Eğer sohbet yoksa e-posta formunu göster
   if (!sohbetId) {
     return (
       <div style={{ maxWidth: 400, margin: "40px auto", textAlign: "center" }}>
@@ -153,6 +198,7 @@ export default function Destek() {
     );
   }
 
+  // Sohbet başladıysa mesajlaşma ekranını göster
   return (
     <div style={{ maxWidth: 640, margin: "20px auto", padding: 16 }}>
       <h2 style={{ color: "#1648b0", marginBottom: 8 }}>💬 Canlı Destek</h2>
@@ -175,7 +221,13 @@ export default function Destek() {
         {mesajlar.map((m) => {
           const benim = m.rol === "kullanici";
           return (
-            <div key={m.id} style={{ textAlign: benim ? "right" : "left", marginBottom: 10 }}>
+            <div
+              key={m.id}
+              style={{
+                textAlign: benim ? "right" : "left",
+                marginBottom: 10,
+              }}
+            >
               <span
                 style={{
                   display: "inline-block",
@@ -210,7 +262,12 @@ export default function Destek() {
           value={yeniMesaj}
           onChange={(e) => setYeniMesaj(e.target.value)}
           placeholder="Mesajınızı yazın…"
-          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}
+          style={{
+            flex: 1,
+            padding: 10,
+            borderRadius: 8,
+            border: "1px solid #d1d5db",
+          }}
         />
         <button
           onClick={gonder}
