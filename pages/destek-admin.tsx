@@ -11,6 +11,7 @@ export default function DestekAdmin() {
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [mesajlar, setMesajlar] = useState<any[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
+  const [activeChannel, setActiveChannel] = useState<any>(null); // ✅ aktif kanal ref
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -48,6 +49,12 @@ export default function DestekAdmin() {
   const sohbetiBaslat = async (chat: any) => {
     setSelectedChat(chat);
 
+    // ✅ önce varsa eski kanalı kapat
+    if (activeChannel) {
+      supabase.removeChannel(activeChannel);
+      setActiveChannel(null);
+    }
+
     // ✅ status aktif yap → kullanıcıya "destek katıldı" gitsin
     await supabase
       .from("destek_sohbetleri")
@@ -57,8 +64,8 @@ export default function DestekAdmin() {
     // geçmiş mesajları yükle
     await fetchMesajlar(chat.id);
 
-    // realtime dinleme
-    supabase
+    // ✅ realtime dinleme başlat
+    const channel = supabase
       .channel(`realtime-destek-${chat.id}`)
       .on(
         "postgres_changes",
@@ -74,6 +81,8 @@ export default function DestekAdmin() {
         }
       )
       .subscribe();
+
+    setActiveChannel(channel); // aktif kanal sakla
   };
 
   const gonder = async () => {
@@ -86,6 +95,15 @@ export default function DestekAdmin() {
     });
     setYeniMesaj("");
   };
+
+  // ✅ cleanup (sayfa kapanırken veya component unmount olunca)
+  useEffect(() => {
+    return () => {
+      if (activeChannel) {
+        supabase.removeChannel(activeChannel);
+      }
+    };
+  }, [activeChannel]);
 
   return (
     <div style={{ maxWidth: 900, margin: "20px auto", display: "flex", gap: 20 }}>
