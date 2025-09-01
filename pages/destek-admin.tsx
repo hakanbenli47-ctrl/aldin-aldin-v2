@@ -47,15 +47,17 @@ export default function DestekAdmin() {
 
   const sohbetiBaslat = async (chat: any) => {
     setSelectedChat(chat);
+
+    // ✅ status aktif yap → kullanıcıya "destek katıldı" gitsin
     await supabase
       .from("destek_sohbetleri")
       .update({ status: "active" })
       .eq("id", chat.id);
 
-    // ✅ geçmiş mesajları yükle
+    // geçmiş mesajları yükle
     await fetchMesajlar(chat.id);
 
-    // ✅ realtime dinleme
+    // realtime dinleme
     supabase
       .channel(`realtime-destek-${chat.id}`)
       .on(

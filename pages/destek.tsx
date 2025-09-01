@@ -54,7 +54,7 @@ export default function Destek() {
     setSohbetId(ins.id);
     setStatus(ins.status as "pending" | "active");
 
-    // ✅ Realtime dinleme (sadece anlık mesajlar)
+    // ✅ Realtime: hem mesajlar hem sohbet status dinleniyor
     supabase
       .channel(`realtime-destek-${ins.id}`)
       .on(
@@ -69,6 +69,19 @@ export default function Destek() {
           const row = payload.new as any;
           setMesajlar((prev) => [...prev, row]);
           scrollToBottom();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "destek_sohbetleri",
+          filter: `id=eq.${ins.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setStatus(updated.status); // pending → active
         }
       )
       .subscribe();
@@ -182,6 +195,12 @@ export default function Destek() {
         {status === "pending" && (
           <div style={{ textAlign: "center", color: "#999", marginTop: 10 }}>
             🔔 Destek ekibinin sohbete katılması bekleniyor...
+          </div>
+        )}
+
+        {status === "active" && (
+          <div style={{ textAlign: "center", color: "green", marginTop: 10 }}>
+            ✅ Destek ekibi sohbete katıldı.
           </div>
         )}
       </div>
