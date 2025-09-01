@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { supabase } from "../lib/supabaseClient";
 import { useRouter } from "next/router";
-
+import Destek from "./destek"; 
 type MobileTab = { id: string; label: string };
 type Order = {
   id: number;
@@ -233,9 +233,11 @@ const handleProfileDelete = async () => {
     { id: "qnbTrendyol", label: "QNB Trendyol", badge: "YENİ" }
   ];
   const accountHelpItems = [
+    { id: "canliDestek", label: "💬 Canlı Destek" },
     { id: "hesapBilgilerim", label: "Hesap Bilgilerim" },
     { id: "guvenlikAyarlarim", label: "Güvenlik Ayarlarım" },
     { id: "yardim", label: "Yardım" }
+
   ];
   useEffect(() => {
     if (!user) return;
@@ -1098,6 +1100,16 @@ if (selectedMenu === "tekrarSatinAl") {
       <ul style={{ listStyle:"none", padding:0, margin:0 }}>
         {historyOrders.map((o: Order) => renderOrderCard(o, true))}
       </ul>
+    </div>
+  );
+}
+if (selectedMenu === "canliDestek") {
+  return (
+    <div>
+      <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>
+        Canlı Destek
+      </h2>
+      <Destek />  {/* ✅ destek.tsx bileşenini çağırıyoruz */}
     </div>
   );
 }
