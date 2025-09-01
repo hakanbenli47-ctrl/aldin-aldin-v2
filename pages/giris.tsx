@@ -8,6 +8,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 
 const ADMIN_EMAILS = ["80birinfo@gmail.com"]; // buraya admin mailleri ekle
+const DESTEK_EMAILS = ["destek80bir@gmail.com", "destek1@80bir.com"]; // ✅ destek admin mailleri
 
 // ✅ Senin Firebase config'in
 const firebaseConfig = {
@@ -123,7 +124,7 @@ export default function Giris() {
         return;
       }
 
-      // ✅ Admin kontrolü: adminse OTP yok & token kaydı → yönlendirme
+      // ✅ Admin kontrolü
       if (data.user && ADMIN_EMAILS.includes(data.user.email?.toLowerCase() || "")) {
         await saveFcmToken(data.user.id);
         setMessage("👑 Admin girişi başarılı, yönlendiriliyorsunuz...");
@@ -131,6 +132,15 @@ export default function Giris() {
         return;
       }
 
+      // ✅ Destek kontrolü
+      if (data.user && DESTEK_EMAILS.includes(data.user.email?.toLowerCase() || "")) {
+        await saveFcmToken(data.user.id);
+        setMessage("🎧 Destek paneline giriş başarılı...");
+        setTimeout(() => router.push("/destek-admin"), 500);
+        return;
+      }
+
+      // OTP akışı
       try {
         const c = await fetch("/api/auth/check-trust", {
           method: "POST",
@@ -140,7 +150,6 @@ export default function Giris() {
         if (c.ok) {
           const { trusted } = await c.json();
           if (trusted) {
-            // 🔸 trusted akış: token kaydet + yönlendir
             await saveFcmToken(data.user!.id);
             setMessage("🔓 Güvenilir IP - OTP istenmedi.");
             const role = (data.user?.user_metadata?.role as "alici" | "satici" | undefined) ?? undefined;
@@ -153,7 +162,6 @@ export default function Giris() {
         }
       } catch {}
 
-      // OTP akışı için signOut
       await supabase.auth.signOut();
 
       const base = `${window.location.origin}/api/auth/start-otp`;
@@ -230,7 +238,6 @@ export default function Giris() {
       return;
     }
 
-    // 🔸 Burada token kaydı (OTP akışı sonrası kesin kullanıcı var)
     try {
       await saveFcmToken(data.user!.id);
     } catch {}
@@ -240,6 +247,15 @@ export default function Giris() {
       setMessage("👑 Admin girişi başarılı, yönlendiriliyorsunuz...");
       setTimeout(() => {
         router.push("/admin/saticilar");
+      }, 900);
+      return;
+    }
+
+    // ✅ Destek kontrolü
+    if (data.user && DESTEK_EMAILS.includes(data.user.email?.toLowerCase() || "")) {
+      setMessage("🎧 Destek paneline giriş başarılı...");
+      setTimeout(() => {
+        router.push("/destek-admin");
       }, 900);
       return;
     }
@@ -390,7 +406,7 @@ export default function Giris() {
         )}
 
         {message && (
-          <p style={{ marginTop: 10, color: message.startsWith("✅") || message.startsWith("👑") ? "#16a34a" : "#111" }}>
+          <p style={{ marginTop: 10, color: message.startsWith("✅") || message.startsWith("👑") || message.startsWith("🎧") ? "#16a34a" : "#111" }}>
             {message}
           </p>
         )}
@@ -402,47 +418,20 @@ export default function Giris() {
         </div>
 
         {/* ✅ Şifre sıfırlama linki */}
-        <div style={{ textAlign: "center", marginTop: 12 }}>
-          <a href="/sifre-sifirla" style={{ color: "#ef4444", textDecoration: "underline", fontSize: 14 }}>
-            Şifremi Unuttum
-          </a>
-        </div>
-
-        {/* ✅ Google ile giriş (redirect ettiği için bu sayfada token kaydı zor;
-              ama parolalı girişler artık tabloya kaydediliyor.) */}
-        <div style={{ textAlign: "center", marginTop: 20 }}>
-          <button
-            onClick={async () => {
-              const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
-              if (error) setMessage("❌ Google ile giriş başarısız: " + error.message);
-            }}
-            style={{
-              background: "#fff",
-              border: "1px solid #ddd",
-              padding: "10px 16px",
-              borderRadius: 8,
-              fontWeight: 600,
-              cursor: "pointer",
-              width: "100%",
-            }}
-          >
-            🔑 Google ile Giriş Yap
-          </button>
-        </div>
+        
+        {/* ✅ Google ile giriş */}
+        
       </div>
 
       {/* Android'e özel görünümler */}
       <style jsx global>{`
-        /* Üstteki site header/pwa header varsa gizle */
         .login-android .pwa-header,
         .login-android header,
         .login-android .site-header {
           display: none !important;
         }
-
-        /* Android: ilk anda tam ortada olsun, klavye/dinamik bar oynamasın */
         .login-android .login-shell {
-          min-height: 100dvh !important; /* adres çubuğu yüksekliğini hesaba katar */
+          min-height: 100dvh !important;
           display: flex !important;
           align-items: center !important;
           justify-content: center !important;
@@ -450,16 +439,14 @@ export default function Giris() {
           padding: env(safe-area-inset-top) env(safe-area-inset-right)
             env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
-
         .login-android .login-card {
           width: 100vw !important;
           max-width: 480px !important;
-          border-radius: 0 !important; /* mobilde düz kenar – istersen kaldır */
+          border-radius: 0 !important;
           box-shadow: none !important;
           padding: 24px 16px !important;
           min-width: auto !important;
         }
-
         .login-android input {
           height: 52px !important;
           font-size: 16px !important;
