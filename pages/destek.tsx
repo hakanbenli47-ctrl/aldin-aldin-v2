@@ -1,4 +1,3 @@
-// pages/destek.tsx
 import { useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
@@ -55,7 +54,7 @@ export default function Destek() {
     setSohbetId(ins.id);
     setStatus(ins.status as "pending" | "active");
 
-    // ✅ Realtime dinleme (sadece anlık)
+    // ✅ Realtime dinleme (sadece anlık mesajlar)
     supabase
       .channel(`realtime-destek-${ins.id}`)
       .on(
