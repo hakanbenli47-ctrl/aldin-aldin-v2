@@ -1776,27 +1776,28 @@ useEffect(() => {
               )}
 
               {/* SON BAKTIKLARIN (FULL-BLEED) */}
-              {recentlyViewed.length > 0 && (
-                 <section className="section-block"  
-                
-                style={{ marginTop:24, padding:0 }}>
-                  <div className="inner">
-                    <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🕒 Son Baktıkların</h2>
-                    <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
-                      {recentlyViewed.map(p=>(
-                        <div key={p.id}
-                          onClick={()=> goToProduct(p.id,'recent')}
-                          style={{ minWidth:200, border:'1px solid #e5e7eb', background:'#fff', borderRadius:12, padding:10, cursor:'pointer' }}>
-                          <img src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
-                            alt={p.title}
-                            style={{ width:'100%', height:90, objectFit:'cover', borderRadius:8 }} />
-                          <div style={{ fontWeight:800, fontSize:14, marginTop:6 }}>{p.title}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              )}
+              {isLoggedIn && recentlyViewed.length > 0 && (
+  <section className="section-block" style={{ marginTop:24, padding:0 }}>
+    <div className="inner">
+      <h2>🕒 Son Baktıkların</h2>
+      <div style={{ display:'flex', gap:12, overflowX:'auto', paddingBottom:6 }}>
+        {recentlyViewed.map(p=>(
+          <div key={p.id}
+            onClick={()=> goToProduct(p.id,'recent')}
+            style={{ minWidth:200, border:'1px solid #e5e7eb', background:'#fff', borderRadius:12, padding:10, cursor:'pointer' }}>
+            <img
+              src={Array.isArray(p.resim_url) ? p.resim_url[0] || "/placeholder.jpg" : p.resim_url || "/placeholder.jpg"}
+              alt={p.title}
+              style={{ width:'100%', height:90, objectFit:'cover', borderRadius:8 }}
+            />
+            <div style={{ fontWeight:800, fontSize:14, marginTop:6 }}>{p.title}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+)}
+
             </main>
           </div>
 
