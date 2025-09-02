@@ -1724,35 +1724,7 @@ useEffect(() => {
               </section>
 
               {/* TOP MAĞAZALAR (FULL-BLEED) */}
-              {topMagazalar.length > 0 && (
-                <section className="section-block"  style={{ marginTop:24, padding:0 }}>
-                  <div className="inner">
-                    <h2 style={{ fontSize:22, fontWeight:900, color:'#0f172a', marginBottom:12 }}>🏆 Top Mağazalar</h2>
-                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
-                      {topMagazalar.map(m=>(
-                        <div key={m.email}
-                          onClick={()=> window.location.href=`/firma-yorumlar/${m.email}`}
-                          style={{ cursor:'pointer', background:'#fff', border:'1px solid #e5e7eb', borderRadius:12, padding:12, display:'flex', gap:10, alignItems:'center' }}>
-                          <div style={{
-                            width:44, height:44, borderRadius:12, background:'#eef2ff', display:'grid', placeItems:'center',
-                            fontWeight:900, color:'#334155'
-                          }}>
-                            {m.ad?.slice(0,2).toUpperCase()}
-                          </div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontWeight:800, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{m.ad}</div>
-                            <div style={{ fontSize:12, color:'#6b7280' }}>{m.urun} ürün</div>
-                            <div style={{ display:'flex', alignItems:'center', gap:4, color:'#f59e0b', fontSize:14 }}>
-                              <FiStar /> {m.puan.toFixed(1)}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              )}
-
+              
               {/* ÇOK GÖRÜNTÜLENENLER (FULL-BLEED) */}
               {cokGoruntulenenler.length > 0 && (
                <section className="section-block"  style={{ marginTop:24, padding:0 }}>
