@@ -327,16 +327,29 @@ const { data, error } = await supabase
             .in("email", sellerEmails);
           (firms || []).forEach((f: any) => (firmMap[f.email] = f.firma_adi));
         }
+// Önce satıcıların kargo ayarlarını al
+const { data: kargoAyarlar } = await supabase
+  .from("satici_firmalar")
+  .select("user_id, shipping_fee, free_shipping_enabled, free_shipping_threshold")
+  .in("user_id", (ilanlar || []).map((p: any) => p.user_id));
 
-        const withProduct = (cart || []).map((c: any) => {
-          const prod = pMap.get(c.product_id);
-          return {
-            ...c,
-            product: prod ? { ...prod, firma_adi: firmMap[prod.user_email] || "(Firma yok)" } : null,
-          };
-        });
+let kargoMap: Record<string, any> = {};
+(kargoAyarlar || []).forEach((k: any) => {
+  kargoMap[k.user_id] = k;
+});
 
-        setCartItems(withProduct);
+const withProduct = (cart || []).map((c: any) => {
+  const prod = pMap.get(c.product_id);
+  return {
+    ...c,
+    product: prod ? { ...prod, firma_adi: firmMap[prod.user_email] || "(Firma yok)" } : null,
+    kargo: prod ? kargoMap[prod.user_id] : null,   // 👈 BURASI YENİ
+  };
+});
+
+setCartItems(withProduct);
+
+       
       } catch (e) {
         console.error("fetchCart hata:", e);
         setCartItems([]);
@@ -406,18 +419,48 @@ const { data, error } = await supabase
   };
 
   // İNDİRİMLİ FİYATLI TOPLAM!
-  const toplamFiyat = cartItems.reduce((acc, item) => {
-    const indirimVar =
-      item.product?.indirimli_fiyat &&
-      item.product?.indirimli_fiyat !== item.product?.price;
-    const fiyat = indirimVar
-      ? parseFloat(item.product.indirimli_fiyat)
-      : typeof item.product?.price === "string"
-      ? parseFloat(item.product.price)
-      : item.product?.price;
-    const adet = item.adet || 1;
-    return acc + (fiyat || 0) * adet;
-  }, 0);
+  function hesaplaGenelToplam(cartItems: any[]) {
+  const sellerGroups: Record<string, any[]> = {};
+  cartItems.forEach((item) => {
+    const sellerId = item.product?.user_id;
+    if (!sellerId) return;
+    if (!sellerGroups[sellerId]) sellerGroups[sellerId] = [];
+    sellerGroups[sellerId].push(item);
+  });
+
+  let genelToplam = 0;
+
+  for (const sellerId in sellerGroups) {
+    const items = sellerGroups[sellerId];
+    const araToplam = items.reduce((acc, it) => {
+      // 👇 indirim kontrolü burada da yapılıyor
+      const fiyat = it.product?.indirimli_fiyat || it.product?.price || 0;
+      return acc + Number(fiyat) * (it.adet || 1);
+    }, 0);
+
+    const kargoAyar = items[0]?.kargo;
+    let kargoUcret = 0;
+
+    if (kargoAyar) {
+      if (
+        kargoAyar.free_shipping_enabled &&
+        araToplam >= (kargoAyar.free_shipping_threshold || 0)
+      ) {
+        kargoUcret = 0; // ücretsiz
+      } else {
+        kargoUcret = kargoAyar.shipping_fee || 0;
+      }
+    }
+
+    genelToplam += araToplam + kargoUcret;
+  }
+
+  return genelToplam;
+}
+
+// ✅ artık toplamFiyat kargo dahil hesaplanacak
+const toplamFiyat = hesaplaGenelToplam(cartItems);
+
 
   // SİPARİŞ VER — aynı satıcıya tek order
   async function handleSiparisVer(siparisBilgi: any) {
@@ -790,17 +833,46 @@ const { data, error } = await supabase
             })}
 
             <div
-              style={{
-                textAlign: "right",
-                fontWeight: 800,
-                fontSize: 18,
-                marginTop: 10,
-                color: "#223555",
-              }}
-            >
-              Toplam:{" "}
-              {toplamFiyat.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} ₺
-            </div>
+  style={{
+    textAlign: "right",
+    fontWeight: 800,
+    fontSize: 18,
+    marginTop: 10,
+    color: "#223555",
+  }}
+>
+  {cartItems.length > 0 &&
+    [...new Set(cartItems.map((c) => c.product?.user_id))].map((sid) => {
+      const sellerItems = cartItems.filter((ci) => ci.product?.user_id === sid);
+      const araToplam = sellerItems.reduce(
+        (a, ci) =>
+          a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
+        0
+      );
+      const kargo = sellerItems[0]?.kargo;
+      if (!kargo) return null;
+      const ucret =
+        kargo.free_shipping_enabled &&
+        araToplam >= kargo.free_shipping_threshold
+          ? 0
+          : kargo.shipping_fee || 0;
+
+      return (
+        <div key={sid}>
+          <b>{sellerItems[0].product?.firma_adi || "Satıcı"}</b> → Kargo:{" "}
+          {ucret} ₺{" "}
+          {ucret === 0 && kargo?.free_shipping_enabled && (
+            <span style={{ color: "green" }}>(Ücretsiz Kargo)</span>
+          )}
+        </div>
+      );
+    })}
+
+  <div style={{ marginTop: 10 }}>
+    Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
+  </div>
+</div>
+
 
             {/* Adres Seçim Alanı */}
             <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
