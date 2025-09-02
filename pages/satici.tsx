@@ -6,6 +6,7 @@ import DopingModal from "../components/DopingModal";
 import type React from "react";
 import Link from "next/link";
 import Analizler from "../components/analizler";
+import KargoAyarlar from "../components/KargoAyarlar";
 function OzellikEtiketleri({ item }: { item: any }) {
   const options = item?.options || {};     // ürünün özellik snapshot’ı
   const selection = item?.selection || {}; // alıcının seçimi (beden/renk/Miktar...)
@@ -58,6 +59,7 @@ const TABS = [
   { key: "ilanlar", label: "Yayındaki İlanlar" },
   { key: "siparisler", label: "Gelen Siparişler" },
   { key: "analizler", label: "Analizler" },
+  { key: "kargo", label: "Kargo Ayarları" }, 
 
 ];
 
@@ -1485,7 +1487,10 @@ const { data: yeniOrders } = await supabase
     <Analizler />
   </div>
 )}
-
+  {/* KARGO AYARLARI 👇 */}
+  {activeTab === "kargo" && (
+    <KargoAyarlar user={user} />
+  )}
       </div>
     </div>
   );
