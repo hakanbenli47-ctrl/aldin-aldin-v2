@@ -842,31 +842,31 @@ const toplamFiyat = hesaplaGenelToplam(cartItems);
   }}
 >
   {cartItems.length > 0 &&
-    [...new Set(cartItems.map((c) => c.product?.user_id))].map((sid) => {
-      const sellerItems = cartItems.filter((ci) => ci.product?.user_id === sid);
-      const araToplam = sellerItems.reduce(
-        (a, ci) =>
-          a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
-        0
-      );
-      const kargo = sellerItems[0]?.kargo;
-      if (!kargo) return null;
-      const ucret =
-        kargo.free_shipping_enabled &&
-        araToplam >= kargo.free_shipping_threshold
-          ? 0
-          : kargo.shipping_fee || 0;
+  [...new Set(cartItems.map((c) => c.product?.user_id))].map((sid) => {
+    const sellerItems = cartItems.filter((ci) => ci.product?.user_id === sid);
+    const araToplam = sellerItems.reduce(
+      (a, ci) =>
+        a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
+      0
+    );
+    const kargo = sellerItems[0]?.kargo;
+    if (!kargo) return null;
+    const ucret =
+      kargo.free_shipping_enabled &&
+      araToplam >= kargo.free_shipping_threshold
+        ? 0
+        : kargo.shipping_fee || 0;
 
-      return (
-        <div key={sid}>
-          <b>{sellerItems[0].product?.firma_adi || "Satıcı"}</b> → Kargo:{" "}
-          {ucret} ₺{" "}
-          {ucret === 0 && kargo?.free_shipping_enabled && (
-            <span style={{ color: "green" }}>(Ücretsiz Kargo)</span>
-          )}
-        </div>
-      );
-    })}
+    return (
+      <div key={sid}>
+        Kargo: {ucret} ₺{" "}
+        {ucret === 0 && kargo?.free_shipping_enabled && (
+          <span style={{ color: "green" }}>(Ücretsiz Kargo)</span>
+        )}
+      </div>
+    );
+  })}
+
 
   <div style={{ marginTop: 10 }}>
     Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
