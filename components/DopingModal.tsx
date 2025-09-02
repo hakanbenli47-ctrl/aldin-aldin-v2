@@ -27,6 +27,9 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
   const [userEmail, setUserEmail] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
 
+  // promosyon kodu
+  const [promoCode, setPromoCode] = useState("");
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const u = data?.user;
@@ -48,6 +51,32 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
 
   async function handleOdeVeOnaCikar() {
     if (!paket) return alert("Lütfen bir paket seçin.");
+
+    // ✅ Promosyon kodu kontrolü
+    if (promoCode.trim().toUpperCase() === "FREEWEEK") {
+      const until = new Date();
+      until.setDate(until.getDate() + 7);
+
+      const { error } = await supabase
+        .from("ilan")
+        .update({
+          doped: true,
+          doped_expiration: until.toISOString(),
+        })
+        .eq("id", ilan.id);
+
+      if (error) {
+        alert("Ücretsiz öne çıkarma sırasında hata: " + error.message);
+        return;
+      }
+
+      alert("✅ Promosyon kodu ile ilan 1 hafta ücretsiz öne çıkarıldı!");
+      onSuccess();
+      onClose();
+      return; // ödeme kısmına girmeden çık
+    }
+
+    // ---- Normal ödeme akışı ----
     const numRaw = card.number.replace(/\s/g, "");
     if (!card.name || numRaw.length !== 16 || !/^\d{2}\/\d{2}$/.test(card.expiry) || card.cvc.length < 3) {
       alert("Kart bilgilerini eksiksiz girin.");
@@ -93,7 +122,7 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
         }),
       });
 
-      // 2) Response'u güvenli çöz (boş/HTML gelirse JSON hatası vermesin)
+      // 2) Response güvenli çöz
       const text = await res.text();
       let payJson: any = null;
       try { payJson = JSON.parse(text); } catch { /* no-op */ }
@@ -168,6 +197,14 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
             </label>
           ))}
         </div>
+
+        {/* Promosyon kodu */}
+        <input
+          placeholder="Promosyon Kodu (opsiyonel)"
+          value={promoCode}
+          onChange={(e) => setPromoCode(e.target.value)}
+          style={inp}
+        />
 
         {/* Kart bilgileri */}
         <input
