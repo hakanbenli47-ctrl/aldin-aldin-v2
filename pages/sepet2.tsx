@@ -711,58 +711,59 @@ export default function Sepet2() {
 </h3>
 
 {/* ✅ Seçilmiş ürün özelliklerini göster */}
-{Object.entries(prodOpts).map(([ozellik, secenekler]) => {
-  const arr = Array.isArray(secenekler) ? secenekler.filter(Boolean) : [];
-  if (arr.length === 0) return null;
+{/* ✅ Sadece dolu olan özellikleri göster */}
+{Object.entries(prodOpts)
+  .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0) // ❗ boş arrayleri ele
+  .map(([ozellik, secenekler]) => {
+    const arr = secenekler.filter(Boolean);
+    const seciliDeger =
+      (item.ozellikler && item.ozellikler[ozellik]) ||
+      (arr.length === 1 ? arr[0] : "");
 
-  const seciliDeger =
-    (item.ozellikler && item.ozellikler[ozellik]) ||
-    (arr.length === 1 ? arr[0] : "");
+    // ✅ Tek seçenek → sadece yazıyla göster
+    if (arr.length === 1) {
+      return (
+        <div key={ozellik} style={{ marginBottom: 4 }}>
+          <b>{prettyLabel(ozellik)}:</b>{" "}
+          <span style={{ color: "#334155" }}>{arr[0]}</span>
+        </div>
+      );
+    }
 
-  // ✅ Tek seçenek → sadece yazıyla göster
-  if (arr.length === 1) {
+    // ✅ Çok seçenek → select ile değiştirilebilir
     return (
       <div key={ozellik} style={{ marginBottom: 4 }}>
         <b>{prettyLabel(ozellik)}:</b>{" "}
-        <span style={{ color: "#334155" }}>{arr[0]}</span>
+        <select
+          value={seciliDeger}
+          onChange={async (e) => {
+            const yeniDeger = e.target.value;
+            const mevcutOzellikler =
+              item.ozellikler && Object.keys(item.ozellikler).length > 0
+                ? item.ozellikler
+                : {};
+            const yeniOzellikler = {
+              ...mevcutOzellikler,
+              [ozellik]: yeniDeger,
+            };
+            await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
+            setCartItems((prev) =>
+              prev.map((urun) =>
+                urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
+              )
+            );
+          }}
+        >
+          <option value="">Seçiniz</option>
+          {arr.map((secenek: string) => (
+            <option key={secenek} value={secenek}>
+              {secenek}
+            </option>
+          ))}
+        </select>
       </div>
     );
-  }
-
-  // ✅ Çok seçenek → select ile değiştirilebilir
-  return (
-    <div key={ozellik} style={{ marginBottom: 4 }}>
-      <b>{prettyLabel(ozellik)}:</b>{" "}
-      <select
-        value={seciliDeger}
-        onChange={async (e) => {
-          const yeniDeger = e.target.value;
-          const mevcutOzellikler =
-            item.ozellikler && Object.keys(item.ozellikler).length > 0
-              ? item.ozellikler
-              : {};
-          const yeniOzellikler = {
-            ...mevcutOzellikler,
-            [ozellik]: yeniDeger,
-          };
-          await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
-          setCartItems((prev) =>
-            prev.map((urun) =>
-              urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
-            )
-          );
-        }}
-      >
-        <option value="">Seçiniz</option>
-        {arr.map((secenek: string) => (
-          <option key={secenek} value={secenek}>
-            {secenek}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-})}
+  })}
 
 
                     <div>
