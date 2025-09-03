@@ -9,14 +9,14 @@ import type { User } from "@supabase/supabase-js";
 interface Ilan {
   id: number;
   title: string;
-  price: number;
-  resim_url: string[] | string;
+  price: string;                 // CHANGED: DB text -> string
+  resim_url: string;             // CHANGED: DB text -> string
   kategori_id?: number;
   user_email?: string;
   doped?: boolean;
   desc?: string;
   ozellikler?: Record<string, string[]>;
-  kategori?: { ad: string };
+  kategori?: { ad: string } | null; // CHANGED: null olabiliyor
 }
 
 function renderStars(rating: number, max = 5) {
@@ -32,10 +32,24 @@ function renderStars(rating: number, max = 5) {
   );
 }
 
+// küçük yardımcılar
+function parseResimler(raw: string): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) return arr.filter(Boolean);
+  } catch {/* string tek url */}
+  return [raw];
+}
+
 export async function getServerSideProps(context: any) {
   // id’yi güvenli sayıya çevir
   const idParam = Array.isArray(context.params?.id) ? context.params.id[0] : context.params?.id;
   const idNum = Number(idParam);
+  if (!Number.isFinite(idNum)) {
+    // CHANGED: NaN id 500'e düşmesin
+    return { notFound: true };
+  }
 
   // İlanı ilişkili tablo olmadan çek
   const { data: ilanRaw, error: ilanErr } = await supabase
@@ -44,49 +58,59 @@ export async function getServerSideProps(context: any) {
     .eq("id", idNum)
     .maybeSingle();
 
+  if (ilanErr) {
+    console.error("ilanErr:", ilanErr); // CHANGED: log
+  }
   if (ilanErr || !ilanRaw) return { notFound: true };
 
   // Kategori adını ayrı sorgu ile al
   let kategoriAd: string | null = null;
   if (ilanRaw.kategori_id != null) {
-    const { data: kat } = await supabase
+    const { data: kat, error: katErr } = await supabase
       .from("kategori")
       .select("ad")
       .eq("id", ilanRaw.kategori_id)
       .maybeSingle();
+    if (katErr) console.error("kategoriErr:", katErr); // CHANGED
     kategoriAd = kat?.ad ?? null;
   }
 
   // UI ile uyum için { kategori: { ad } } şeklinde ekle
-  const ilan = { ...ilanRaw, kategori: kategoriAd ? { ad: kategoriAd } : null };
+  const ilan: Ilan = { ...ilanRaw, kategori: kategoriAd ? { ad: kategoriAd } : null };
 
   // Firma bilgisi
   let firmaAdi: string | null = null;
   let firmaPuan = 0;
-  if (ilan.user_email) {
-    const { data: firma } = await supabase
+  if (ilan.user_email && ilan.user_email.trim()) { // CHANGED: guard
+    const { data: firma, error: firmaErr } = await supabase
       .from("satici_firmalar")
       .select("firma_adi, puan")
       .eq("email", ilan.user_email)
       .maybeSingle();
+    if (firmaErr) console.error("firmaErr:", firmaErr); // CHANGED
     firmaAdi = firma?.firma_adi ?? null;
-    firmaPuan = firma?.puan ?? 0;
+    firmaPuan = Number(firma?.puan ?? 0);
   }
 
-  // Benzer ürünler
-  const { data: benzerler } = await supabase
-    .from("ilan")
-    .select("id, title, price, resim_url")
-    .eq("kategori_id", ilan.kategori_id)
-    .neq("id", ilan.id)
-    .limit(8);
+  // Benzer ürünler (kategori_id yoksa sorgulama)
+  let benzerler: Pick<Ilan, "id"|"title"|"price"|"resim_url">[] = [];
+  if (ilan.kategori_id != null) { // CHANGED: guard
+    const { data: benzerData, error: benzerErr } = await supabase
+      .from("ilan")
+      .select("id, title, price, resim_url")
+      .eq("kategori_id", ilan.kategori_id)
+      .neq("id", ilan.id)
+      .limit(8);
+    if (benzerErr) console.error("benzerlerErr:", benzerErr); // CHANGED
+    benzerler = benzerData || [];
+  }
 
   return {
     props: {
       ilan,
       firmaAdi,
       firmaPuan,
-      benzerler: benzerler || [],
+      benzerler,
     },
   };
 }
@@ -111,10 +135,9 @@ export default function UrunDetay({
   const [shareUrl, setShareUrl] = useState("");
   const ozellikler = ilan.ozellikler ?? {};
   const [yorumlar, setYorumlar] = useState<any[]>([]);
-  // Yorum yazan kullanıcıların adı/soyadı için küçük bir cache
-const [yorumUserMap, setYorumUserMap] = useState<
-  Record<string, { first_name: string | null; last_name: string | null }>
->({});
+  const [yorumUserMap, setYorumUserMap] = useState<
+    Record<string, { first_name: string | null; last_name: string | null }>
+  >({});
   const [yorum, setYorum] = useState("");
   const [puan, setPuan] = useState(5);
   const [secilenOzellikler, setSecilenOzellikler] = useState<Record<string, string>>({});
@@ -129,41 +152,42 @@ const [yorumUserMap, setYorumUserMap] = useState<
   const anasayfaPath = from === "index2" ? "/index2" : "/";
   const sepetPath = from === "index2" ? "/sepet2" : "/sepet";
 
+  // CHANGED: resimler array'i her render'da güvenli hesapla
+  const resimler = useMemo(() => parseResimler(ilan.resim_url), [ilan.resim_url]);
+
   async function fetchYorumlar() {
-  // 1) Yorumları al
-  const { data: yData } = await supabase
-    .from("yorumlar")
-    .select("*")
-    .eq("urun_id", ilan.id)
-    .order("created_at", { ascending: false });
+    const { data: yData, error } = await supabase
+      .from("yorumlar")
+      .select("*")
+      .eq("urun_id", ilan.id)
+      .order("created_at", { ascending: false });
 
-  setYorumlar(yData || []);
+    if (error) {
+      console.error("yorumlarErr:", error);
+    }
+    setYorumlar(yData || []);
 
-  // 2) Yorum yazan benzersiz user_id’leri topla
-  const ids = Array.from(
-    new Set((yData || []).map((y: any) => y.user_id).filter(Boolean))
-  );
+    const ids = Array.from(new Set((yData || []).map((y: any) => y.user_id).filter(Boolean)));
+    if (ids.length === 0) {
+      setYorumUserMap({});
+      return;
+    }
 
-  if (ids.length === 0) {
-    setYorumUserMap({});
-    return;
+    const { data: profs, error: profErr } = await supabase
+      .from("user_profiles")
+      .select("user_id, first_name, last_name")
+      .in("user_id", ids);
+
+    if (profErr) console.error("user_profilesErr:", profErr);
+
+    const map: Record<string, { first_name: string | null; last_name: string | null }> =
+      Object.fromEntries((profs || []).map((p: any) => [
+        p.user_id,
+        { first_name: p.first_name, last_name: p.last_name }
+      ]));
+
+    setYorumUserMap(map);
   }
-
-  // 3) user_profiles'tan ad/soyad çek
-  const { data: profs } = await supabase
-    .from("user_profiles")
-    .select("user_id, first_name, last_name")
-    .in("user_id", ids);
-
-  const map: Record<string, { first_name: string | null; last_name: string | null }> =
-    Object.fromEntries((profs || []).map((p: any) => [
-      p.user_id,
-      { first_name: p.first_name, last_name: p.last_name }
-    ]));
-
-  setYorumUserMap(map);
-}
-
 
   // Ortalama ürün puanı
   const ortalamaPuan = useMemo(() => {
@@ -181,20 +205,17 @@ const [yorumUserMap, setYorumUserMap] = useState<
   // İlk yükleme
   useEffect(() => {
     setShareUrl(window.location.href);
-    setMainImg(
-      Array.isArray(ilan.resim_url)
-        ? ilan.resim_url[0] || "/placeholder.jpg"
-        : (ilan.resim_url as string) || "/placeholder.jpg"
-    );
+    // CHANGED: güvenli ana görsel seçimi
+    setMainImg(resimler[0] || "/placeholder.jpg");
     fetchYorumlar();
-  }, [ilan.resim_url, ilan.id]);
+  }, [ilan.id, resimler]);
 
   // Oturum kullanıcıyı getir
   useEffect(() => {
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
-      const newUser = data?.session?.user || null;
+      const newUser = (data?.session?.user as User) || null;
       setUser((prev) => (prev?.id === newUser?.id ? prev : newUser));
     });
     return () => {
@@ -227,7 +248,7 @@ const [yorumUserMap, setYorumUserMap] = useState<
     };
   }, [user?.id, ilan.id]);
 
-  // ürün detay sayfası açıldığında görüntülenme sayısını +1 arttır
+  // görüntülenme sayısını +1 arttır (client'da çalışır; hata logla)
   useEffect(() => {
     async function artir() {
       if (!ilan?.id) return;
@@ -267,7 +288,7 @@ const [yorumUserMap, setYorumUserMap] = useState<
           user_id: userId,
           product_id: urun.id,
           adet: 1,
-          ozellikler: secilenOzellikler // seçilen özellikleri ekliyoruz
+          ozellikler: secilenOzellikler
         }]);
     }
     alert("Sepete eklendi!");
@@ -305,10 +326,10 @@ const [yorumUserMap, setYorumUserMap] = useState<
 
   const badge = ilan.doped ? "Fırsat" : "Yeni";
 
-  const fiyatText =
-    typeof ilan.price === "number"
-      ? `${ilan.price.toLocaleString("tr-TR")} ₺`
-      : (ilan.price ? `${ilan.price} ₺` : "Fiyat bilgisi yok");
+  // CHANGED: fiyat number değil string -> Number() ile formatla
+  const fiyatText = ilan.price
+    ? `${Number(ilan.price).toLocaleString("tr-TR")} ₺`
+    : "Fiyat bilgisi yok";
 
   // === YORUM GÖNDER / GÜNCELLE ===
   async function yorumGonder() {
@@ -323,7 +344,6 @@ const [yorumUserMap, setYorumUserMap] = useState<
     }
 
     try {
-      // Aynı kullanıcının aynı ürüne yorumunu güncelle
       const mevcut = yorumlar.find((y) => y.user_id === user.id);
       if (mevcut) {
         await supabase
@@ -347,30 +367,29 @@ const [yorumUserMap, setYorumUserMap] = useState<
     }
   }
 
-  // Yardımcı: tarih
   function formatDate(d?: string) {
     if (!d) return "";
     try {
       return new Date(d).toLocaleString("tr-TR");
     } catch {
-      return d;
+      return d || "";
     }
   }
-function maskedName(uid?: string) {
-  if (!uid) return "Anonim";
-  const p = yorumUserMap[uid];
 
-  if (!p) {
-    // profil bulunamazsa eski davranış
-    return (uid || "").slice(0, 8) || "Anonim";
+  function maskedName(uid?: string) {
+    if (!uid) return "Anonim";
+    const p = yorumUserMap[uid];
+
+    if (!p) {
+      return (uid || "").slice(0, 8) || "Anonim";
+    }
+
+    const f = (p.first_name || "").trim().slice(0, 9);
+    const l = (p.last_name || "").trim().slice(0, 2);
+    const label = `${f} ${l}`.trim();
+
+    return label || "Anonim";
   }
-
-  const f = (p.first_name || "").trim().slice(0, 9);
-  const l = (p.last_name || "").trim().slice(0, 2);
-  const label = `${f} ${l}`.trim();
-
-  return label || "Anonim";
-}
 
   return (
     <>
@@ -422,9 +441,9 @@ function maskedName(uid?: string) {
           </div>
 
           {/* THUMBS */}
-          {Array.isArray(ilan.resim_url) && ilan.resim_url.length > 1 && (
+          {resimler.length > 1 && (
             <div className="thumbRow">
-              {ilan.resim_url.map((url: string, idx: number) => (
+              {resimler.map((url: string, idx: number) => (
                 <Image
                   key={idx}
                   src={url}
@@ -461,30 +480,29 @@ function maskedName(uid?: string) {
           </div>
 
           {/* ÖZELLİKLER */}
-          {/* ÖZELLİKLER sadece gıda ve giyim için */}
           {ilan?.kategori?.ad &&
-          ["gıda", "giyim"].includes(ilan.kategori.ad.toLowerCase()) &&
-          Object.keys(ozellikler).length > 0 && (
-            <div className="opts">
-              {Object.keys(ozellikler).map((ozellik) => (
-                <div key={ozellik} className="opt">
-                  <label className="optLabel">{ozellik}</label>
-                  <select
-                    value={secilenOzellikler[ozellik] || ""}
-                    onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
-                    className="optSelect"
-                  >
-                    <option value="">Seçiniz</option>
-                    {ozellikler[ozellik]?.map((deger: string, idx: number) => (
-                      <option key={idx} value={deger}>
-                        {deger}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
+            ["gıda", "giyim"].includes(ilan.kategori.ad.toLowerCase()) &&
+            Object.keys(ozellikler).length > 0 && (
+              <div className="opts">
+                {Object.keys(ozellikler).map((ozellik) => (
+                  <div key={ozellik} className="opt">
+                    <label className="optLabel">{ozellik}</label>
+                    <select
+                      value={secilenOzellikler[ozellik] || ""}
+                      onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
+                      className="optSelect"
+                    >
+                      <option value="">Seçiniz</option>
+                      {ozellikler[ozellik]?.map((deger: string, idx: number) => (
+                        <option key={idx} value={deger}>
+                          {deger}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
 
           {/* FİYAT */}
           <div className="price">{fiyatText}</div>
@@ -524,13 +542,12 @@ function maskedName(uid?: string) {
                 rows={4}
               />
               <button
-  className="reviewSend"
-  onClick={yorumGonder}
-  style={{ background:'#000', color:'#fff', border:'1px solid #000' }}
->
-  {benimYorumum ? "Güncelle" : "Gönder"}
-</button>
-
+                className="reviewSend"
+                onClick={yorumGonder}
+                style={{ background:'#000', color:'#fff', border:'1px solid #000' }}
+              >
+                {benimYorumum ? "Güncelle" : "Gönder"}
+              </button>
             </div>
           ) : (
             <div className="loginHint">
@@ -561,36 +578,34 @@ function maskedName(uid?: string) {
           <section className="similar">
             <h2>Benzer Ürünler</h2>
             <div className="simGrid">
-              {benzerler.map((b) => (
-                <div
-                  key={b.id}
-                  className="simCard"
-                  onClick={() => router.push(`/urun/${b.id}?from=${from || ""}`)}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <div className="simImgWrap">
-                    <Image
-                      src={
-                        Array.isArray(b.resim_url)
-                          ? (b.resim_url[0] || "/placeholder.jpg")
-                          : (b.resim_url as string) || "/placeholder.jpg"
-                      }
-                      alt={b.title}
-                      width={220}
-                      height={220}
-                      sizes="(max-width: 640px) 40vw, 220px"
-                      className="simImg"
-                    />
+              {benzerler.map((b) => {
+                const firstImg = parseResimler((b as any).resim_url)[0] || "/placeholder.jpg"; // CHANGED
+                const priceTxt = (b as any).price
+                  ? `${Number((b as any).price).toLocaleString("tr-TR")} ₺`
+                  : "—"; // CHANGED
+                return (
+                  <div
+                    key={b.id}
+                    className="simCard"
+                    onClick={() => router.push(`/urun/${b.id}?from=${from || ""}`)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="simImgWrap">
+                      <Image
+                        src={firstImg}
+                        alt={b.title}
+                        width={220}
+                        height={220}
+                        sizes="(max-width: 640px) 40vw, 220px"
+                        className="simImg"
+                      />
+                    </div>
+                    <div className="simTitle" title={b.title}>{b.title}</div>
+                    <div className="simPrice">{priceTxt}</div>
                   </div>
-                  <div className="simTitle" title={b.title}>{b.title}</div>
-                  <div className="simPrice">
-                    {typeof b.price === "number"
-                      ? `${b.price.toLocaleString("tr-TR")} ₺`
-                      : (b.price ? `${b.price} ₺` : "—")}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )}
@@ -716,7 +731,7 @@ function maskedName(uid?: string) {
           font-size: 22px;
           line-height: 1.25;
           font-weight: 800;
-          color: var(--text);
+          color: #191c1f;
           margin: 10px 0 8px;
         }
         .firmRow {
@@ -788,7 +803,6 @@ function maskedName(uid?: string) {
           font-size: 15px;
         }
 
-        /* --- YORUMLAR --- */
         .reviews{
           width:100%;
           max-width: 800px;
@@ -841,7 +855,6 @@ function maskedName(uid?: string) {
         .reviewMeta{ color:#64748b; font-size:12px; }
         .empty{ color:#64748b; font-weight:600; }
 
-        /* Benzerler */
         .similar {
           width: 100%;
           max-width: 1200px;
@@ -893,7 +906,6 @@ function maskedName(uid?: string) {
           color: var(--brand);
         }
 
-        /* --------- Mobile (<=640px) ---------- */
         @media (max-width: 640px) {
           .topbarInner { padding: 12px 14px; }
           .brand { font-size: 20px; }
@@ -930,7 +942,6 @@ function maskedName(uid?: string) {
           .simPrice { font-size: 13px; }
         }
 
-        /* Tablet (641px - 1024px) */
         @media (min-width: 641px) and (max-width: 1024px) {
           .simGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
