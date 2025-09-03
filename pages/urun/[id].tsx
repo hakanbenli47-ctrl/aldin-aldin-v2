@@ -32,7 +32,7 @@ function renderStars(rating: number, max = 5) {
   );
 }
 
-/** ---- Yardımcı normalizasyonlar (500’e karşı güvenlik) ---- **/
+/* ----------------- Güvenli normalizasyonlar ----------------- */
 function normalizeResimler(raw: string[] | string | null | undefined): string[] {
   if (Array.isArray(raw)) return raw.filter(Boolean);
   if (!raw) return [];
@@ -57,17 +57,22 @@ function normalizeOzellikler(raw: unknown): Record<string, string[]> {
   return typeof raw === "object" ? (raw as Record<string, string[]>) : {};
 }
 
-/** ---- SSR ---- **/
+function prettyLabel(key: string) {
+  // küçük güzelleştirme: camelCase/sık yazım -> “Ağırlık Birim” gibi
+  return key
+    .replace(/([a-z])([A-ZĞÜŞİÖÇ])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/(^|\s)([a-zöçşiğü])/g, (m) => m.toUpperCase())
+    .replace(/Iyi|Iş|Ig/gi, (m) => m); // türkçe harf bozulmasın
+}
+
+/* ----------------- SSR ----------------- */
 export async function getServerSideProps(context: any) {
   try {
-    // id’yi güvenli sayıya çevir
     const idParam = Array.isArray(context.params?.id) ? context.params.id[0] : context.params?.id;
     const idNum = Number(idParam);
-    if (!Number.isFinite(idNum)) {
-      return { notFound: true };
-    }
+    if (!Number.isFinite(idNum)) return { notFound: true };
 
-    // İlanı çek
     const { data: ilanRaw, error: ilanErr } = await supabase
       .from("ilan")
       .select("id, title, price, resim_url, kategori_id, user_email, doped, desc, ozellikler")
@@ -105,7 +110,7 @@ export async function getServerSideProps(context: any) {
       firmaPuan = Number(firma?.puan ?? 0);
     }
 
-    // Benzer ürünler (kategori yoksa sorgulama)
+    // Benzer ürünler (aynı kategori)
     let benzerler: Pick<Ilan, "id" | "title" | "price" | "resim_url">[] = [];
     if (ilan.kategori_id != null) {
       const { data: b, error: benzerErr } = await supabase
@@ -118,23 +123,16 @@ export async function getServerSideProps(context: any) {
       benzerler = b || [];
     }
 
-    // Sadece serileştirilebilir props dön
     return {
-      props: {
-        ilan,
-        firmaAdi,
-        firmaPuan,
-        benzerler,
-      },
+      props: { ilan, firmaAdi, firmaPuan, benzerler },
     };
   } catch (e) {
     console.error("SSR /urun/[id] error:", e);
-    // 500 yerine 404
-    return { notFound: true };
+    return { notFound: true }; // 500 yerine 404 ver
   }
 }
 
-/** ---- COMPONENT ---- **/
+/* ----------------- COMPONENT ----------------- */
 export default function UrunDetay({
   ilan,
   firmaAdi,
@@ -226,6 +224,17 @@ export default function UrunDetay({
     fetchYorumlar();
   }, [ilan.id, resimler]);
 
+  // Özellik: tek değerli olanları otomatik seç
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    Object.entries(ozellikler).forEach(([k, v]) => {
+      if (Array.isArray(v) && v.length === 1) next[k] = v[0];
+    });
+    if (Object.keys(next).length) {
+      setSecilenOzellikler((prev) => ({ ...next, ...prev }));
+    }
+  }, [ozellikler]);
+
   // Oturum
   useEffect(() => {
     let mounted = true;
@@ -280,7 +289,19 @@ export default function UrunDetay({
       router.push("/giris");
       return;
     }
-    const userId = user.id;
+
+    // Eğer çok değerli bir özellik varsa ve seçilmemişse uyar
+    const kategori = ilan?.kategori?.ad?.toLowerCase() || "";
+    if (["gıda", "giyim"].includes(kategori)) {
+      for (const [k, arr] of Object.entries(ozellikler)) {
+        if (Array.isArray(arr) && arr.length > 1 && !secilenOzellikler[k]) {
+          alert(`Lütfen "${prettyLabel(k)}" seçiniz.`);
+          return;
+        }
+      }
+    }
+
+    const userId = (user as any).id as string;
 
     const { data: sepetteVar } = await supabase
       .from("cart")
@@ -290,14 +311,19 @@ export default function UrunDetay({
       .single();
 
     if (sepetteVar) {
-      await supabase.from("cart").update({ adet: sepetteVar.adet + 1 }).eq("id", sepetteVar.id);
+      await supabase
+        .from("cart")
+        .update({ adet: sepetteVar.adet + 1 })
+        .eq("id", sepetteVar.id);
     } else {
-      await supabase.from("cart").insert([{
-        user_id: userId,
-        product_id: urun.id,
-        adet: 1,
-        ozellikler: secilenOzellikler
-      }]);
+      await supabase
+        .from("cart")
+        .insert([{
+          user_id: userId,
+          product_id: urun.id,
+          adet: 1,
+          ozellikler: secilenOzellikler
+        }]);
     }
     alert("Sepete eklendi!");
   };
@@ -309,58 +335,40 @@ export default function UrunDetay({
       router.push("/giris");
       return;
     }
-    const userId = user.id;
+    const userId = (user as any).id as string;
     if (favori) {
-      await supabase.from("favoriler").delete().eq("user_id", userId).eq("ilan_id", ilan.id);
+      await supabase
+        .from("favoriler")
+        .delete()
+        .eq("user_id", userId)
+        .eq("ilan_id", ilan.id);
       setFavori(false);
     } else {
-      await supabase.from("favoriler").insert([{ user_id: userId, ilan_id: ilan.id }]);
+      await supabase
+        .from("favoriler")
+        .insert([{ user_id: userId, ilan_id: ilan.id }]);
       setFavori(true);
     }
   };
 
-  const sepeteGit = () => router.push(from === "index2" ? "/sepet2" : "/sepet");
-  const logoClick = () => router.push(from === "index2" ? "/index2" : "/");
+  const sepeteGit = () => router.push(sepetPath);
+  const logoClick = () => router.push(anasayfaPath);
 
   const badge = ilan.doped ? "Fırsat" : "Yeni";
 
-  // Fiyatı güvenli formatla (string/number)
+  // Fiyat (string/number güvenli)
   const priceNum = Number((ilan as any).price);
   const fiyatText = Number.isFinite(priceNum)
     ? `${priceNum.toLocaleString("tr-TR")} ₺`
     : (ilan?.price ? `${ilan.price}` : "Fiyat bilgisi yok");
 
-  // Yorum gönder/güncelle
-  async function yorumGonder() {
-    if (!user) {
-      alert("Yorum yapmak için giriş yapınız.");
-      router.push("/giris");
-      return;
-    }
-    if (puan < 1 || puan > 5) {
-      alert("Lütfen 1-5 arasında bir puan seçin.");
-      return;
-    }
-    try {
-      const mevcut = yorumlar.find((y) => y.user_id === user.id);
-      if (mevcut) {
-        await supabase.from("yorumlar").update({ yorum: yorum.trim(), puan }).eq("id", mevcut.id);
-      } else {
-        await supabase.from("yorumlar").insert([{
-          urun_id: ilan.id,
-          user_id: user.id,
-          yorum: yorum.trim(),
-          puan
-        }]);
-      }
-      setYorum("");
-      await fetchYorumlar();
-      alert("Teşekkürler! Yorumun kaydedildi.");
-    } catch (e) {
-      console.error(e);
-      alert("Yorum gönderilirken bir hata oluştu.");
-    }
-  }
+  // Görünecek özellik alanları:
+  const visibleOzellikEntries = useMemo(() => {
+    const kategori = ilan?.kategori?.ad?.toLowerCase() || "";
+    if (!["gıda", "giyim"].includes(kategori)) return [];
+    return Object.entries(ozellikler)
+      .filter(([, v]) => Array.isArray(v) && v.length > 0);
+  }, [ozellikler, ilan?.kategori?.ad]);
 
   function formatDate(d?: string) {
     if (!d) return "";
@@ -442,6 +450,7 @@ export default function UrunDetay({
 
           <h1 className="title">{ilan.title}</h1>
 
+          {/* Firma + Puan */}
           {firmaAdi && (
             <div className="firmRow">
               <span>Firma: <b>{firmaAdi}</b></span>
@@ -450,41 +459,56 @@ export default function UrunDetay({
             </div>
           )}
 
+          {/* Ürün Açıklaması */}
+          {ilan.desc && (
+            <div className="descBox">
+              <p className="descText">{ilan.desc}</p>
+            </div>
+          )}
+
+          {/* Ürün ortalama puan */}
           <div className="productRatingRow">
             <span className="stars">{renderStars(ortalamaPuan)}</span>
             <span className="score">({ortalamaPuan.toFixed(1)} / 5 • {yorumlar.length} yorum)</span>
           </div>
 
           {/* ÖZELLİKLER (sadece gıda/giyim) */}
-          {ilan?.kategori?.ad &&
-            ["gıda", "giyim"].includes(ilan.kategori.ad.toLowerCase()) &&
-            Object.keys(ozellikler).length > 0 && (
-              <div className="opts">
-                {Object.keys(ozellikler).map((ozellik) => {
-                  const degerler = Array.isArray((ozellikler as any)[ozellik])
-                    ? (ozellikler as any)[ozellik]
-                    : [];
+          {visibleOzellikEntries.length > 0 && (
+            <div className="opts">
+              {visibleOzellikEntries.map(([ozellik, degerler]) => {
+                const arr = (degerler as string[]).filter(Boolean);
+                if (arr.length <= 1) {
+                  // Tek seçenek: dropdown yok, seçili kabul edilir
                   return (
                     <div key={ozellik} className="opt">
-                      <label className="optLabel">{ozellik}</label>
-                      <select
-                        value={secilenOzellikler[ozellik] || ""}
-                        onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
-                        className="optSelect"
-                      >
-                        <option value="">Seçiniz</option>
-                        {degerler.map((deger: string, idx: number) => (
-                          <option key={idx} value={deger}>{deger}</option>
-                        ))}
-                      </select>
+                      <label className="optLabel">{prettyLabel(ozellik)}</label>
+                      <div className="singleValue">{arr[0] || "—"}</div>
                     </div>
                   );
-                })}
-              </div>
-            )}
+                }
+                return (
+                  <div key={ozellik} className="opt">
+                    <label className="optLabel">{prettyLabel(ozellik)}</label>
+                    <select
+                      value={secilenOzellikler[ozellik] || ""}
+                      onChange={(e) => handleOzellikSec(ozellik, e.target.value)}
+                      className="optSelect"
+                    >
+                      <option value="">Seçiniz</option>
+                      {arr.map((deger: string, idx: number) => (
+                        <option key={idx} value={deger}>{deger}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
+          {/* Fiyat */}
           <div className="price">{fiyatText}</div>
 
+          {/* Butonlar */}
           <button className="btnAdd" onClick={() => sepeteEkle(ilan)}>🛒 Sepete Ekle</button>
           <button className="btnGo" onClick={sepeteGit}>Sepete Git</button>
         </section>
@@ -550,7 +574,7 @@ export default function UrunDetay({
           </div>
         </section>
 
-        {/* BENZER ÜRÜNLER */}
+        {/* BENZER ÜRÜNLER (aynı kategori) */}
         {benzerler && benzerler.length > 0 && (
           <section className="similar">
             <h2>Benzer Ürünler</h2>
@@ -629,12 +653,16 @@ export default function UrunDetay({
         .stars { color: #f59e0b; font-size: 18px; }
         .score { color: var(--muted); font-size: 14px; }
 
+        .descBox { background: #f8fafc; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 8px 0; text-align: left; }
+        .descText { color: #111827; font-size: 14px; line-height: 1.45; white-space: pre-line; }
+
         .productRatingRow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 8px; font-weight: 700; color: #334155; }
 
         .opts { margin: 8px 0 12px; text-align: left; }
         .opt { margin-bottom: 10px; }
         .optLabel { display: block; font-weight: 700; font-size: 14px; margin-bottom: 4px; color: #1f2937; }
         .optSelect { width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 14px; background: #fff; }
+        .singleValue { width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px dashed #d1d5db; font-size: 14px; background: #f9fafb; color:#334155; }
 
         .price { font-size: 22px; font-weight: 800; color: var(--brand); margin: 8px 0 16px; }
         .btnAdd, .btnGo { width: 100%; border: none; cursor: pointer; border-radius: 10px; font-weight: 700; box-shadow: 0 2px 10px #00000011; }
