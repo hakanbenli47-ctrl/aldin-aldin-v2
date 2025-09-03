@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
-import { useRef } from "react";
 
 // ----- MAIL GÖNDERME
 async function sendOrderEmails({
@@ -39,6 +38,28 @@ async function sendOrderEmails({
       html: `<h2>Yeni Sipariş Geldi!</h2><p><b>Ürün:</b> ${urunBaslik}</p><p><b>Fiyat:</b> ${urunFiyat}₺</p><p><b>Sipariş No:</b> #${siparisNo}</p>`,
     }),
   });
+}
+
+/* ---------- Yardımcılar: özellik normalizasyonu & label ---------- */
+function normalizeOzellikler(raw: any): Record<string, string[]> {
+  if (!raw) return {};
+  if (typeof raw === "string") {
+    try {
+      const obj = JSON.parse(raw);
+      if (obj && typeof obj === "object") return obj as Record<string, string[]>;
+    } catch {
+      return {};
+    }
+  }
+  if (typeof raw === "object") return raw as Record<string, string[]>;
+  return {};
+}
+
+function prettyLabel(key: string) {
+  return key
+    .replace(/([a-z])([A-ZĞÜŞİÖÇ])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/(^|\s)([a-zöçşiğü])/g, (m) => m.toUpperCase());
 }
 
 export default function Sepet2() {
@@ -94,7 +115,7 @@ export default function Sepet2() {
     marginBottom: "10px",
     outline: "none",
     transition: "0.2s",
-  };
+  } as const;
 
   async function handleNewAddressSave() {
     if (
@@ -185,27 +206,25 @@ export default function Sepet2() {
       return;
     }
 
-  // ---- Kartı kaydet ----
-const maskedCardNumber = newCard.card_number.slice(-4).padStart(newCard.card_number.length, "*");
-const maskedCVV = newCard.cvv.replace(/./g, "*").slice(0, -1) + newCard.cvv.slice(-1);
+    // ---- Kartı kaydet ----
+    const maskedCardNumber = newCard.card_number.slice(-4).padStart(newCard.card_number.length, "*");
+    const maskedCVV = newCard.cvv.replace(/./g, "*").slice(0, -1) + newCard.cvv.slice(-1);
 
-const { data, error } = await supabase
-  .from("user_cards")
-  .insert([
-    {
-      user_id: currentUser.id,
-      name_on_card: newCard.name_on_card,
-      card_number: maskedCardNumber,  // ✅ DB'ye sadece maskelenmiş hali
-      expiry: newCard.expiry,
-      cvv: maskedCVV,                 // ✅ yıldızlı şekilde
-      title: newCard.title,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-  ])
-  .select();
-
-
+    const { data, error } = await supabase
+      .from("user_cards")
+      .insert([
+        {
+          user_id: currentUser.id,
+          name_on_card: newCard.name_on_card,
+          card_number: maskedCardNumber, // ✅ DB'ye maskeli
+          expiry: newCard.expiry,
+          cvv: maskedCVV,                 // ✅ yıldızlı
+          title: newCard.title,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ])
+      .select();
 
     if (error) {
       console.error("Kart ekleme hatası:", error);
@@ -277,7 +296,7 @@ const { data, error } = await supabase
     );
   }
 
-  // KULLANICIYI AL — BUNU EKLE
+  // KULLANICIYI AL
   useEffect(() => {
     async function getUser() {
       const { data } = await supabase.auth.getUser();
@@ -308,7 +327,7 @@ const { data, error } = await supabase
         const { data: ilanlar, error: perr } = await supabase
           .from("ilan")
           .select(
-            "id, title, price, indirimli_fiyat, resim_url, stok, user_email, user_id, ozellikler"
+            "id, title, price, indirimli_fiyat, resim_url, stok, user_email, user_id, ozellikler, kategori_id"
           )
           .in("id", productIds);
 
@@ -327,29 +346,28 @@ const { data, error } = await supabase
             .in("email", sellerEmails);
           (firms || []).forEach((f: any) => (firmMap[f.email] = f.firma_adi));
         }
-// Önce satıcıların kargo ayarlarını al
-const { data: kargoAyarlar } = await supabase
-  .from("satici_firmalar")
-  .select("user_id, shipping_fee, free_shipping_enabled, free_shipping_threshold")
-  .in("user_id", (ilanlar || []).map((p: any) => p.user_id));
 
-let kargoMap: Record<string, any> = {};
-(kargoAyarlar || []).forEach((k: any) => {
-  kargoMap[k.user_id] = k;
-});
+        // Kargo ayarları
+        const { data: kargoAyarlar } = await supabase
+          .from("satici_firmalar")
+          .select("user_id, shipping_fee, free_shipping_enabled, free_shipping_threshold")
+          .in("user_id", (ilanlar || []).map((p: any) => p.user_id));
 
-const withProduct = (cart || []).map((c: any) => {
-  const prod = pMap.get(c.product_id);
-  return {
-    ...c,
-    product: prod ? { ...prod, firma_adi: firmMap[prod.user_email] || "(Firma yok)" } : null,
-    kargo: prod ? kargoMap[prod.user_id] : null,   // 👈 BURASI YENİ
-  };
-});
+        let kargoMap: Record<string, any> = {};
+        (kargoAyarlar || []).forEach((k: any) => {
+          kargoMap[k.user_id] = k;
+        });
 
-setCartItems(withProduct);
+        const withProduct = (cart || []).map((c: any) => {
+          const prod = pMap.get(c.product_id);
+          return {
+            ...c,
+            product: prod ? { ...prod, firma_adi: firmMap[prod.user_email] || "(Firma yok)" } : null,
+            kargo: prod ? kargoMap[prod.user_id] : null,
+          };
+        });
 
-       
+        setCartItems(withProduct);
       } catch (e) {
         console.error("fetchCart hata:", e);
         setCartItems([]);
@@ -404,7 +422,7 @@ setCartItems(withProduct);
     return () => clearTimeout(t);
   }, []);
 
-  // ADET GÜNCELLEME --->
+  // ADET GÜNCELLEME
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
     if (yeniAdet < 1 || yeniAdet > stok) return;
     await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
@@ -418,49 +436,46 @@ setCartItems(withProduct);
     setCartItems((prev) => prev.filter((c) => c.id !== cartId));
   };
 
-  // İNDİRİMLİ FİYATLI TOPLAM!
+  // İNDİRİMLİ FİYATLI TOPLAM + KARGO
   function hesaplaGenelToplam(cartItems: any[]) {
-  const sellerGroups: Record<string, any[]> = {};
-  cartItems.forEach((item) => {
-    const sellerId = item.product?.user_id;
-    if (!sellerId) return;
-    if (!sellerGroups[sellerId]) sellerGroups[sellerId] = [];
-    sellerGroups[sellerId].push(item);
-  });
+    const sellerGroups: Record<string, any[]> = {};
+    cartItems.forEach((item) => {
+      const sellerId = item.product?.user_id;
+      if (!sellerId) return;
+      if (!sellerGroups[sellerId]) sellerGroups[sellerId] = [];
+      sellerGroups[sellerId].push(item);
+    });
 
-  let genelToplam = 0;
+    let genelToplam = 0;
 
-  for (const sellerId in sellerGroups) {
-    const items = sellerGroups[sellerId];
-    const araToplam = items.reduce((acc, it) => {
-      // 👇 indirim kontrolü burada da yapılıyor
-      const fiyat = it.product?.indirimli_fiyat || it.product?.price || 0;
-      return acc + Number(fiyat) * (it.adet || 1);
-    }, 0);
+    for (const sellerId in sellerGroups) {
+      const items = sellerGroups[sellerId];
+      const araToplam = items.reduce((acc, it) => {
+        const fiyat = it.product?.indirimli_fiyat || it.product?.price || 0;
+        return acc + Number(fiyat) * (it.adet || 1);
+      }, 0);
 
-    const kargoAyar = items[0]?.kargo;
-    let kargoUcret = 0;
+      const kargoAyar = items[0]?.kargo;
+      let kargoUcret = 0;
 
-    if (kargoAyar) {
-      if (
-        kargoAyar.free_shipping_enabled &&
-        araToplam >= (kargoAyar.free_shipping_threshold || 0)
-      ) {
-        kargoUcret = 0; // ücretsiz
-      } else {
-        kargoUcret = kargoAyar.shipping_fee || 0;
+      if (kargoAyar) {
+        if (
+          kargoAyar.free_shipping_enabled &&
+          araToplam >= (kargoAyar.free_shipping_threshold || 0)
+        ) {
+          kargoUcret = 0;
+        } else {
+          kargoUcret = kargoAyar.shipping_fee || 0;
+        }
       }
+
+      genelToplam += araToplam + kargoUcret;
     }
 
-    genelToplam += araToplam + kargoUcret;
+    return genelToplam;
   }
 
-  return genelToplam;
-}
-
-// ✅ artık toplamFiyat kargo dahil hesaplanacak
-const toplamFiyat = hesaplaGenelToplam(cartItems);
-
+  const toplamFiyat = hesaplaGenelToplam(cartItems);
 
   // SİPARİŞ VER — aynı satıcıya tek order
   async function handleSiparisVer(siparisBilgi: any) {
@@ -490,6 +505,7 @@ const toplamFiyat = hesaplaGenelToplam(cartItems);
       }
 
       for (const [, grup] of gruplar) {
+        // Ürünlerin ozelliklerini ekle (seçilmemiş tekil değer varsa yine de objede kalır)
         const items = grup.items.map((item: any) => ({
           product_id: item.product?.id ?? item.product_id,
           title: item.product?.title,
@@ -657,6 +673,10 @@ const toplamFiyat = hesaplaGenelToplam(cartItems);
                 item.product?.indirimli_fiyat &&
                 item.product?.indirimli_fiyat !== item.product?.price;
               const stok = item.product?.stok ?? 99;
+
+              // ✅ Ürün özelliklerini normalize et
+              const prodOpts = normalizeOzellikler(item.product?.ozellikler);
+
               return (
                 <div
                   key={item.id}
@@ -685,51 +705,67 @@ const toplamFiyat = hesaplaGenelToplam(cartItems);
                       {item.product?.title}
                     </h3>
 
-                    {/* Ürün Özellikleri Düzenleme */}
-                   {/* Ürün Özellikleri Sadece Giyim (3) ve Gıda (7) kategorilerinde */}
-{([3, 7].includes(item.product?.kategori_id) &&
-  Object.entries(item.product?.ozellikler || {}).map(([ozellik, _secenekler]) => {
-    const seciliDeger = item.ozellikler?.[ozellik] || "";
-    return (
-      <div key={ozellik as string} style={{ marginBottom: 4 }}>
-        <b>{ozellik}:</b>{" "}
-        <select
-          value={seciliDeger as string}
-          onChange={async (e) => {
-            const yeniDeger = e.target.value;
-            const mevcutOzellikler =
-              item.ozellikler && Object.keys(item.ozellikler).length > 0
-                ? item.ozellikler
-                : {};
-            const yeniOzellikler = {
-              ...mevcutOzellikler,
-              [ozellik as string]: yeniDeger,
-            };
-            await supabase
-              .from("cart")
-              .update({ ozellikler: yeniOzellikler })
-              .eq("id", item.id);
-            setCartItems((prev) =>
-              prev.map((urun) =>
-                urun.id === item.id
-                  ? { ...urun, ozellikler: yeniOzellikler }
-                  : urun
-              )
-            );
-          }}
-        >
-          <option value="">Seçiniz</option>
-          {(item.product?.ozellikler?.[ozellik as string] || [seciliDeger]).map(
-            (secenek: string) => (
-              <option key={secenek} value={secenek}>
-                {secenek}
-              </option>
-            )
-          )}
-        </select>
-      </div>
-    );
-  }))}
+                    {/* ✅ Üründe özellik varsa burada göster */}
+                    {Object.keys(prodOpts).length > 0 &&
+                      Object.entries(prodOpts).map(([ozellik, secenekler]) => {
+                        const arr = Array.isArray(secenekler)
+                          ? secenekler.filter(Boolean)
+                          : [];
+                        if (arr.length === 0) return null;
+
+                        const seciliDeger =
+                          (item.ozellikler && item.ozellikler[ozellik]) ||
+                          (arr.length === 1 ? arr[0] : "");
+
+                        // Tek seçenek → dropdown değil; düz metin
+                        if (arr.length === 1) {
+                          return (
+                            <div key={ozellik} style={{ marginBottom: 4 }}>
+                              <b>{prettyLabel(ozellik)}:</b>{" "}
+                              <span style={{ color: "#334155" }}>{arr[0]}</span>
+                            </div>
+                          );
+                        }
+
+                        // Çok seçenek → select
+                        return (
+                          <div key={ozellik} style={{ marginBottom: 4 }}>
+                            <b>{prettyLabel(ozellik)}:</b>{" "}
+                            <select
+                              value={seciliDeger}
+                              onChange={async (e) => {
+                                const yeniDeger = e.target.value;
+                                const mevcutOzellikler =
+                                  item.ozellikler && Object.keys(item.ozellikler).length > 0
+                                    ? item.ozellikler
+                                    : {};
+                                const yeniOzellikler = {
+                                  ...mevcutOzellikler,
+                                  [ozellik]: yeniDeger,
+                                };
+                                await supabase
+                                  .from("cart")
+                                  .update({ ozellikler: yeniOzellikler })
+                                  .eq("id", item.id);
+                                setCartItems((prev) =>
+                                  prev.map((urun) =>
+                                    urun.id === item.id
+                                      ? { ...urun, ozellikler: yeniOzellikler }
+                                      : urun
+                                  )
+                                );
+                              }}
+                            >
+                              <option value="">Seçiniz</option>
+                              {arr.map((secenek: string) => (
+                                <option key={secenek} value={secenek}>
+                                  {secenek}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
 
                     <div>
                       {indirimVar ? (
@@ -833,46 +869,45 @@ const toplamFiyat = hesaplaGenelToplam(cartItems);
             })}
 
             <div
-  style={{
-    textAlign: "right",
-    fontWeight: 800,
-    fontSize: 18,
-    marginTop: 10,
-    color: "#223555",
-  }}
->
-  {cartItems.length > 0 &&
-  [...new Set(cartItems.map((c) => c.product?.user_id))].map((sid) => {
-    const sellerItems = cartItems.filter((ci) => ci.product?.user_id === sid);
-    const araToplam = sellerItems.reduce(
-      (a, ci) =>
-        a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
-      0
-    );
-    const kargo = sellerItems[0]?.kargo;
-    if (!kargo) return null;
-    const ucret =
-      kargo.free_shipping_enabled &&
-      araToplam >= kargo.free_shipping_threshold
-        ? 0
-        : kargo.shipping_fee || 0;
+              style={{
+                textAlign: "right",
+                fontWeight: 800,
+                fontSize: 18,
+                marginTop: 10,
+                color: "#223555",
+              }}
+            >
+              {cartItems.length > 0 &&
+                [...new Set(cartItems.map((c) => c.product?.user_id))].map((sid) => {
+                  const sellerItems = cartItems.filter((ci) => ci.product?.user_id === sid);
+                  const araToplam = sellerItems.reduce(
+                    (a, ci) =>
+                      a +
+                      Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
+                    0
+                  );
+                  const kargo = sellerItems[0]?.kargo;
+                  if (!kargo) return null;
+                  const ucret =
+                    kargo.free_shipping_enabled &&
+                    araToplam >= kargo.free_shipping_threshold
+                      ? 0
+                      : kargo.shipping_fee || 0;
 
-    return (
-      <div key={sid}>
-        Kargo: {ucret} ₺{" "}
-        {ucret === 0 && kargo?.free_shipping_enabled && (
-          <span style={{ color: "green" }}>(Ücretsiz Kargo)</span>
-        )}
-      </div>
-    );
-  })}
+                  return (
+                    <div key={sid}>
+                      Kargo: {ucret} ₺{" "}
+                      {ucret === 0 && kargo?.free_shipping_enabled && (
+                        <span style={{ color: "green" }}>(Ücretsiz Kargo)</span>
+                      )}
+                    </div>
+                  );
+                })}
 
-
-  <div style={{ marginTop: 10 }}>
-    Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
-  </div>
-</div>
-
+              <div style={{ marginTop: 10 }}>
+                Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
+              </div>
+            </div>
 
             {/* Adres Seçim Alanı */}
             <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
@@ -1215,12 +1250,12 @@ const toplamFiyat = hesaplaGenelToplam(cartItems);
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      action: "payRaw", // kart numarası ile tek seferlik ödeme
+                      action: "payRaw",
                       amount: Number(toplamFiyat.toFixed(2)),
                       card: {
                         name_on_card: card.name_on_card,
-                        card_number: card.card_number, // DB'de mevcut
-                        expiry: card.expiry, // "MM/YY"
+                        card_number: card.card_number,
+                        expiry: card.expiry,
                         cvv: card.cvv,
                       },
                       buyer: {
