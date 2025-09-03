@@ -58,12 +58,10 @@ function normalizeOzellikler(raw: unknown): Record<string, string[]> {
 }
 
 function prettyLabel(key: string) {
-  // küçük güzelleştirme: camelCase/sık yazım -> “Ağırlık Birim” gibi
   return key
     .replace(/([a-z])([A-ZĞÜŞİÖÇ])/g, "$1 $2")
     .replace(/_/g, " ")
-    .replace(/(^|\s)([a-zöçşiğü])/g, (m) => m.toUpperCase())
-    .replace(/Iyi|Iş|Ig/gi, (m) => m); // türkçe harf bozulmasın
+    .replace(/(^|\s)([a-zöçşiğü])/g, (m) => m.toUpperCase());
 }
 
 /* ----------------- SSR ----------------- */
@@ -128,7 +126,7 @@ export async function getServerSideProps(context: any) {
     };
   } catch (e) {
     console.error("SSR /urun/[id] error:", e);
-    return { notFound: true }; // 500 yerine 404 ver
+    return { notFound: true };
   }
 }
 
@@ -370,6 +368,41 @@ export default function UrunDetay({
       .filter(([, v]) => Array.isArray(v) && v.length > 0);
   }, [ozellikler, ilan?.kategori?.ad]);
 
+  // --- YORUM GÖNDER / GÜNCELLE (EKLENDİ) ---
+  const yorumGonder = async () => {
+    if (!user) {
+      alert("Yorum yapmak için giriş yapınız.");
+      router.push("/giris");
+      return;
+    }
+    if (puan < 1 || puan > 5) {
+      alert("Lütfen 1-5 arasında bir puan seçin.");
+      return;
+    }
+    try {
+      const mevcut = yorumlar.find((y) => y.user_id === (user as any).id);
+      if (mevcut) {
+        await supabase
+          .from("yorumlar")
+          .update({ yorum: yorum.trim(), puan })
+          .eq("id", mevcut.id);
+      } else {
+        await supabase.from("yorumlar").insert([{
+          urun_id: ilan.id,
+          user_id: (user as any).id,
+          yorum: yorum.trim(),
+          puan
+        }]);
+      }
+      setYorum("");
+      await fetchYorumlar();
+      alert("Teşekkürler! Yorumun kaydedildi.");
+    } catch (e) {
+      console.error(e);
+      alert("Yorum gönderilirken bir hata oluştu.");
+    }
+  };
+
   function formatDate(d?: string) {
     if (!d) return "";
     try { return new Date(d).toLocaleString("tr-TR"); }
@@ -478,7 +511,6 @@ export default function UrunDetay({
               {visibleOzellikEntries.map(([ozellik, degerler]) => {
                 const arr = (degerler as string[]).filter(Boolean);
                 if (arr.length <= 1) {
-                  // Tek seçenek: dropdown yok, seçili kabul edilir
                   return (
                     <div key={ozellik} className="opt">
                       <label className="optLabel">{prettyLabel(ozellik)}</label>
@@ -510,7 +542,7 @@ export default function UrunDetay({
 
           {/* Butonlar */}
           <button className="btnAdd" onClick={() => sepeteEkle(ilan)}>🛒 Sepete Ekle</button>
-          <button className="btnGo" onClick={sepeteGit}>Sepete Git</button>
+          <button className="btnGo" onClick={() => router.push(sepetPath)}>Sepete Git</button>
         </section>
 
         {/* YORUMLAR & PUANLAMA */}
@@ -647,7 +679,7 @@ export default function UrunDetay({
         .thumb { border-radius: 8px; border: 2px solid var(--border); cursor: pointer; object-fit: cover; flex: 0 0 auto; }
         .thumb.active { border-color: var(--brand); }
 
-        .title { font-size: 22px; line-height: 1.25; font-weight: 800; color: var(--text); margin: 10px 0 8px; }
+        .title { font-size: 22px; line-height: 1.25; font-weight: 800; color: #1a1a1a; margin: 10px 0 8px; }
 
         .firmRow { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 15px; color: #31806c; margin-bottom: 10px; flex-wrap: wrap; }
         .stars { color: #f59e0b; font-size: 18px; }
