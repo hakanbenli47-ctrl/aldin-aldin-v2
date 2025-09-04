@@ -5,7 +5,6 @@ import { useRouter } from "next/router";
 import Image from "next/image";
 import Papa, { ParseResult } from "papaparse";
 import * as XLSX from "xlsx"; // ← Excel desteği
-import TopluPanelForm from "../components/TopluPanelForm";
 import { FiImage, FiTag, FiBox, FiLayers, FiHash, FiUploadCloud } from "react-icons/fi";
 const ONECIKAR_PLANS = {
   "7g":  { price: 49.90, days: 7,  label: "7 Gün"  },
@@ -952,31 +951,26 @@ const handleDownloadExcelTemplate = () => {
 
   {/* ✅ Yeni Panelden ekleme butonu */}
   <button
-    type="button"
-    onClick={() => setShowManualForm(true)}
-    style={{
-      marginTop: 10,
-      padding: "8px 12px",
-      borderRadius: 6,
-      border: "1px solid #e4e9ef",
-      background: "#f8fafc",
-      cursor: "pointer",
-      fontSize: 13,
-      fontWeight: 600,
-      color: "#199957",
-    }}
-  >
-    Panelden Ürün Yükle
-  </button>
+  type="button"
+  onClick={() => router.push("/panelden-ekle")}
+  style={{
+    marginTop: 10,
+    padding: "8px 12px",
+    borderRadius: 6,
+    border: "1px solid #e4e9ef",
+    background: "#f8fafc",
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#199957",
+  }}
+>
+  Panelden Ürün Yükle
+</button>
+
 
   {/* ✅ Yeni Panel formunu çağır */}
-  {showManualForm && (
-  <TopluPanelForm
-    kategoriler={kategoriler}
-    onAddProducts={(products) => setCsvProducts((prev) => [...prev, ...products])}
-    onClose={() => setShowManualForm(false)}
-  />
-)}
+
 
 
   {csvProducts.length > 0 && (
