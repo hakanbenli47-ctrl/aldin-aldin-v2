@@ -769,53 +769,53 @@ for (const [key, val] of Object.entries(prodOpts)) {
 
                     {/* ✅ Özelliklerin gösterimi (tekil → yazı, çoklu → select) */}
                     {Object.entries(combinedOpts)
-                      .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0)
-                      .map(([ozellik, secenekler]) => {
-                        const arr = secenekler.filter(Boolean);
-                        const seciliDeger =
-                          (item.ozellikler && item.ozellikler[ozellik]) ||
-                          (arr.length === 1 ? arr[0] : "");
+  .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0)
+  .map(([ozellik, secenekler]) => {
+    const arr = secenekler.filter(Boolean);
+    const seciliDeger =
+      (item.ozellikler && item.ozellikler[ozellik]) ||
+      (arr.length === 1 ? arr[0] : "");
 
-                        if (arr.length === 1) {
-                          return (
-                            <div key={ozellik} style={{ marginBottom: 4 }}>
-                              <b>{prettyLabel(ozellik)}:</b>{" "}
-                              <span style={{ color: "#334155" }}>{arr[0]}</span>
-                            </div>
-                          );
-                        }
+    // ✅ Eğer sadece 1 seçenek varsa select gösterme → düz yazı
+    if (arr.length === 1) {
+      return (
+        <div key={ozellik} style={{ marginBottom: 4 }}>
+          <b>{prettyLabel(ozellik)}:</b>{" "}
+          <span style={{ color: "#334155" }}>{arr[0]}</span>
+        </div>
+      );
+    }
 
-                        return (
-                          <div key={ozellik} style={{ marginBottom: 4 }}>
-                            <b>{prettyLabel(ozellik)}:</b>{" "}
-                            <select
-                              value={seciliDeger}
-                              onChange={async (e) => {
-                                const yeniOzellikler = {
-                                  ...(item.ozellikler || {}),
-                                  [ozellik]: e.target.value,
-                                };
-                                await supabase
-                                  .from("cart")
-                                  .update({ ozellikler: yeniOzellikler })
-                                  .eq("id", item.id);
-                                setCartItems((prev) =>
-                                  prev.map((urun) =>
-                                    urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
-                                  )
-                                );
-                              }}
-                            >
-                              <option value="">Seçiniz</option>
-                              {arr.map((secenek) => (
-                                <option key={secenek} value={secenek}>
-                                  {secenek}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        );
-                      })}
+    // ✅ Birden fazla varsa select göster
+    return (
+      <div key={ozellik} style={{ marginBottom: 4 }}>
+        <b>{prettyLabel(ozellik)}:</b>{" "}
+        <select
+          value={seciliDeger}
+          onChange={async (e) => {
+            const yeniOzellikler = {
+              ...(item.ozellikler || {}),
+              [ozellik]: e.target.value,
+            };
+            await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
+            setCartItems((prev) =>
+              prev.map((urun) =>
+                urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
+              )
+            );
+          }}
+        >
+          <option value="">Seçiniz</option>
+          {arr.map((secenek) => (
+            <option key={secenek} value={secenek}>
+              {secenek}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  })}
+
 
                     <div>
                       {indirimVar ? (
