@@ -41,10 +41,8 @@ async function sendOrderEmails({
 }
 
 /* ---------- Yardımcılar: özellik normalizasyonu & label ---------- */
-// 🔄 GÜNCEL: Tekil değerleri de tek öğelik diziye çevirir (örn. {sonTuketim:"2026-12-31"} -> ["2026-12-31"])
 function normalizeOzellikler(raw: any): Record<string, string[]> {
   if (!raw) return {};
-
   let obj: any = raw;
   if (typeof raw === "string") {
     try {
@@ -54,7 +52,6 @@ function normalizeOzellikler(raw: any): Record<string, string[]> {
     }
   }
   if (typeof obj !== "object" || obj === null) return {};
-
   const out: Record<string, string[]> = {};
   for (const [key, val] of Object.entries(obj)) {
     if (Array.isArray(val)) {
@@ -74,21 +71,119 @@ function prettyLabel(key: string) {
     .replace(/(^|\s)([a-zöçşiğü])/g, (m) => m.toUpperCase());
 }
 
-// Gıda alanlarına diakritikli/diakr. olmayan olası anahtar karşılıkları
-const FOOD_KEYS = {
-  sonTuketim: ["Son Tüketim", "Son Tuketim", "sonTuketim", "TETT"],
-  agirlikBirim: ["Ağırlık Birim", "Agirlik Birim", "AgirlikBirim", "AğırlıkBirim", "Birim"],
-  agirlikMiktar: ["Ağırlık Miktar", "Agirlik Miktar", "AgirlikMiktar", "Miktar"],
+/* --------- Gıda alanları için esnek eşleştirme yardımcıları --------- */
+// Türkçe karakterleri sadeleştir + boşluk, noktalama sil + küçült
+function normKey(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/ç/g, "c")
+    .replace(/ğ/g, "g")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ş/g, "s")
+    .replace(/ü/g, "u")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const FOOD_SYNS = {
+  sonTuketim: [
+    "sontuketim",
+    "sonkullanma",
+    "sonkullanimtarihi",
+    "tett",
+    "sontarih",
+  ],
+  agirlikBirim: [
+    "agirlikbirim",
+    "agirlikbirimi",
+    "birim",
+    "birimbilgisi",
+    "unit",
+  ],
+  agirlikMiktar: ["agirlikmiktar", "agirlikmiktari", "miktar", "miktari", "adet"],
+  agirlikTekAlan: ["agirlik", "netagirlik", "brutagirlik", "weight", "netweight"],
 };
 
-function pickFirst(opts: Record<string, string[]>, keys: string[]) {
-  for (const k of keys) {
-    const v = opts[k];
-    if (v && v.length && v[0]) return v[0];
+function buildNormMap(opts: Record<string, string[]>) {
+  const map: Record<string, { orig: string; vals: string[] }> = {};
+  for (const [k, v] of Object.entries(opts)) {
+    map[normKey(k)] = { orig: k, vals: v };
+  }
+  return map;
+}
+
+function pickFirstFlex(
+  opts: Record<string, string[]>,
+  synonyms: string[],
+  extraPredicate?: (nk: string) => boolean
+): string | null {
+  const nm = buildNormMap(opts);
+  // 1) Tam eşleşen sinonimler
+  for (const syn of synonyms) {
+    const hit = nm[syn];
+    if (hit && hit.vals?.length) return hit.vals[0];
+  }
+  // 2) Esnek: predicate
+  if (extraPredicate) {
+    for (const [nk, rec] of Object.entries(nm)) {
+      if (extraPredicate(nk) && rec.vals?.length) return rec.vals[0];
+    }
   }
   return null;
 }
 
+// "1 kg", "500 gr" gibi metni miktar/birim’e böl
+function parseWeight(valRaw: string) {
+  const val = String(valRaw).trim();
+  const numMatch = val.match(/[\d.,]+/);
+  let miktar: string | null = null;
+  let birim: string | null = null;
+  if (numMatch) miktar = numMatch[0].replace(",", ".");
+  const tail = val.replace(numMatch ? numMatch[0] : "", "").trim().toLowerCase();
+  if (tail) {
+    // en sık kullanılanlar
+    if (/\b(kg|kilo)\b/.test(tail)) birim = "kg";
+    else if (/\b(gr|g|gram)\b/.test(tail)) birim = "gr";
+    else if (/\b(lt|l|litre)\b/.test(tail)) birim = "lt";
+    else birim = tail;
+  }
+  return { miktar, birim };
+}
+
+function extractFoodFields(opts: Record<string, string[]>) {
+  const nk = buildNormMap(opts);
+
+  // Son Tüketim
+  const sonTuketim =
+    pickFirstFlex(opts, FOOD_SYNS.sonTuketim) ||
+    pickFirstFlex(opts, [], (k) => k.includes("sontuket"));
+
+  // Birim & Miktar doğrudan alanlardan
+  let birim =
+    pickFirstFlex(opts, FOOD_SYNS.agirlikBirim, (k) => k.includes("birim") && k.includes("agirlik")) ||
+    pickFirstFlex(opts, ["birim"]); // son çare
+
+  let miktar =
+    pickFirstFlex(opts, FOOD_SYNS.agirlikMiktar, (k) => k.includes("miktar") && k.includes("agirlik")) ||
+    pickFirstFlex(opts, ["miktar"]);
+
+  // Eğer tek bir "Ağırlık" alanı varsa ve değer "1 kg" gibi ise parçala
+  if (!birim || !miktar) {
+    for (const syn of FOOD_SYNS.agirlikTekAlan) {
+      const rec = nk[syn];
+      if (rec?.vals?.length) {
+        const parsed = parseWeight(rec.vals[0]);
+        if (!miktar && parsed.miktar) miktar = parsed.miktar;
+        if (!birim && parsed.birim) birim = parsed.birim;
+        break;
+      }
+    }
+  }
+
+  return { sonTuketim, birim, miktar };
+}
+
+/* ------------------------ Bileşen ------------------------ */
 export default function Sepet2() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
@@ -158,12 +253,10 @@ export default function Sepet2() {
       alert("Lütfen tüm alanları doldurun!");
       return;
     }
-
     if (!/^(05\d{9})$/.test(newAddress.phone)) {
       alert("Geçerli bir telefon numarası girin!");
       return;
     }
-
     const { data, error } = await supabase
       .from("user_addresses")
       .insert([
@@ -182,13 +275,11 @@ export default function Sepet2() {
         },
       ])
       .select();
-
     if (error) {
       console.error("Adres ekleme hatası:", error);
       alert("Adres kaydedilemedi: " + error.message);
       return;
     }
-
     setAddresses((prev) => [...prev, data![0]]);
     setShowNewAddressForm(false);
     setSelectedAddressId(data![0].id);
@@ -222,18 +313,15 @@ export default function Sepet2() {
       alert("Geçerli bir kart numarası girin! (16 haneli olmalı)");
       return;
     }
-
     if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(newCard.expiry)) {
       alert("Son kullanma tarihi geçersiz! (AA/YY formatında olmalı)");
       return;
     }
-
     if (!/^\d{3,4}$/.test(newCard.cvv)) {
       alert("Geçerli bir CVV girin! (3 veya 4 haneli olmalı)");
       return;
     }
 
-    // ---- Kartı kaydet ----
     const maskedCardNumber = newCard.card_number.slice(-4).padStart(newCard.card_number.length, "*");
     const maskedCVV = newCard.cvv.replace(/./g, "*").slice(0, -1) + newCard.cvv.slice(-1);
 
@@ -243,9 +331,9 @@ export default function Sepet2() {
         {
           user_id: currentUser.id,
           name_on_card: newCard.name_on_card,
-          card_number: maskedCardNumber, // ✅ DB'ye maskeli
+          card_number: maskedCardNumber,
           expiry: newCard.expiry,
-          cvv: maskedCVV, // ✅ yıldızlı
+          cvv: maskedCVV,
           title: newCard.title,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -258,11 +346,9 @@ export default function Sepet2() {
       alert("Kart kaydedilemedi: " + error.message);
       return;
     }
-
     setCards((prev) => [...prev, data![0]]);
     setShowNewCardForm(false);
     setSelectedCardId(data![0].id);
-
     alert("Kart başarıyla kaydedildi ✅");
   }
 
@@ -409,9 +495,7 @@ export default function Sepet2() {
         .order("id", { ascending: true });
 
       setAddresses(addrData || []);
-      if (!addrData || addrData.length === 0) {
-        setShowNewAddressForm(true);
-      }
+      if (!addrData || addrData.length === 0) setShowNewAddressForm(true);
 
       const { data: cardData } = await supabase
         .from("user_cards")
@@ -420,9 +504,7 @@ export default function Sepet2() {
         .order("id", { ascending: true });
 
       setCards(cardData || []);
-      if (!cardData || cardData.length === 0) {
-        setShowNewCardForm(true);
-      }
+      if (!cardData || cardData.length === 0) setShowNewCardForm(true);
     };
 
     fetchCart();
@@ -445,14 +527,12 @@ export default function Sepet2() {
         openModalBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }, 120);
-
     return () => clearTimeout(t);
   }, []);
 
   // ADET GÜNCELLEME
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
     if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
-
     await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
     setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
   };
@@ -473,7 +553,6 @@ export default function Sepet2() {
     });
 
     let genelToplam = 0;
-
     for (const sellerId in sellerGroups) {
       const items = sellerGroups[sellerId];
       const araToplam = items.reduce((acc, it) => {
@@ -483,7 +562,6 @@ export default function Sepet2() {
 
       const kargoAyar = items[0]?.kargo;
       let kargoUcret = 0;
-
       if (kargoAyar) {
         if (kargoAyar.free_shipping_enabled && araToplam >= (kargoAyar.free_shipping_threshold || 0)) {
           kargoUcret = 0;
@@ -491,10 +569,8 @@ export default function Sepet2() {
           kargoUcret = kargoAyar.shipping_fee || 0;
         }
       }
-
       genelToplam += araToplam + kargoUcret;
     }
-
     return genelToplam;
   }
 
@@ -522,7 +598,8 @@ export default function Sepet2() {
         const sellerEmail = it?.product?.user_email || "";
         const firmaAdi = it?.product?.firma_adi;
         if (!sellerId) continue;
-        if (!gruplar.has(sellerId)) gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
+        if (!gruplar.has(sellerId))
+          gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
         gruplar.get(sellerId)!.items.push(it);
       }
 
@@ -530,8 +607,7 @@ export default function Sepet2() {
         const items = grup.items.map((sepetItem: any) => {
           const prodOpts = normalizeOzellikler(sepetItem.product?.ozellikler) || {};
 
-          // ⚠️ GIDA için default EKLEME — KALDIRILDI
-          // Sadece Giyim gibi diğer kategorilerde defaultları ekleyelim (Renk, Beden vs.)
+          // GIDA için default ekleme YOK; Giyim vb. için hafif defaultlar
           let kategoriOzellikleri: Record<string, string[]> = {};
           if (sepetItem.product?.kategori_id === 3) {
             if (!prodOpts["Renk"]) kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
@@ -594,7 +670,7 @@ export default function Sepet2() {
           .single();
         if (orderError) throw orderError;
 
-        // 2️⃣ Satıcı için kayıt (kart bilgisi yok)
+        // 2️⃣ Satıcı için kayıt
         const sellerPayload: any = {
           seller_id: grup.sellerId,
           order_id: insertedOrder.id,
@@ -616,8 +692,8 @@ export default function Sepet2() {
         const { error: sellerError } = await supabase.from("seller_orders").insert([sellerPayload]);
         if (sellerError) throw sellerError;
 
-        // Mail
-        const urunBaslik = items.length > 1 ? `${items[0].title} +${items.length - 1} ürün` : items[0].title;
+        const urunBaslik =
+          items.length > 1 ? `${items[0].title} +${items.length - 1} ürün` : items[0].title;
 
         await sendOrderEmails({
           aliciMail: currentUser.email,
@@ -628,7 +704,6 @@ export default function Sepet2() {
         });
       }
 
-      // Sepeti temizle
       await supabase.from("cart").delete().eq("user_id", currentUser.id);
       setCartItems([]);
       alert("Sipariş(ler) başarıyla oluşturuldu!");
@@ -649,7 +724,7 @@ export default function Sepet2() {
           <p style={{ margin: 40, color: "#e11d48" }}>
             ❌ Sepete ürün eklemek için <b>giriş yapmalısınız!</b>
           </p>
-        </div>
+          </div>
       </div>
     );
   }
@@ -703,20 +778,19 @@ export default function Sepet2() {
           <>
             {cartItems.map((item) => {
               const indirimVar =
-                item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
+                item.product?.indirimli_fiyat &&
+                item.product?.indirimli_fiyat !== item.product?.price;
               const stok = item.product?.stok ?? 99;
 
-              // ✅ Satıcının girdiği tüm özellikleri al
               const prodOpts = normalizeOzellikler(item.product?.ozellikler) || {};
 
-              // ✅ Kategoriye özel ek alanlar (GİYİM için; GIDA için ekleme YOK)
+              // Sadece Giyim’e default; Gıda’ya yok
               let kategoriOzellikleri: Record<string, string[]> = {};
               if (item.product?.kategori_id === 3) {
                 if (!prodOpts["Renk"]) kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
                 if (!prodOpts["Beden"]) kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
               }
 
-              // ✅ Satıcı + kategori birleşimi (satıcı girdiyse kategori defaultunu ez)
               const combinedOpts: Record<string, string[]> = { ...kategoriOzellikleri };
               for (const [key, val] of Object.entries(prodOpts)) {
                 combinedOpts[key] = val as string[];
@@ -750,34 +824,33 @@ export default function Sepet2() {
                       {item.product?.title}
                     </h3>
 
-                    {/* GIDA: sabit sıra ve sadece satıcının girdikleri */}
+                    {/* GIDA: sabit sıra ve sadece satıcının girdikleri (esnek eşleşmeli) */}
                     {item.product?.kategori_id === 7 ? (
-                      <>
-                        {(() => {
-                          const st = pickFirst(prodOpts, FOOD_KEYS.sonTuketim);
-                          const birim = pickFirst(prodOpts, FOOD_KEYS.agirlikBirim);
-                          const miktar = pickFirst(prodOpts, FOOD_KEYS.agirlikMiktar);
-                          return (
-                            <>
-                              {st && (
-                                <div style={{ marginBottom: 4 }}>
-                                  <b>Son Tüketim:</b> <span style={{ color: "#334155" }}>{st}</span>
-                                </div>
-                              )}
-                              {birim && (
-                                <div style={{ marginBottom: 4 }}>
-                                  <b>Ağırlık Birim:</b> <span style={{ color: "#334155" }}>{birim}</span>
-                                </div>
-                              )}
-                              {miktar && (
-                                <div style={{ marginBottom: 4 }}>
-                                  <b>Ağırlık Miktar:</b> <span style={{ color: "#334155" }}>{miktar}</span>
-                                </div>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </>
+                      (() => {
+                        const { sonTuketim, birim, miktar } = extractFoodFields(prodOpts);
+                        return (
+                          <>
+                            {sonTuketim && (
+                              <div style={{ marginBottom: 4 }}>
+                                <b>Son Tüketim:</b>{" "}
+                                <span style={{ color: "#334155" }}>{sonTuketim}</span>
+                              </div>
+                            )}
+                            {birim && (
+                              <div style={{ marginBottom: 4 }}>
+                                <b>Ağırlık Birim:</b>{" "}
+                                <span style={{ color: "#334155" }}>{birim}</span>
+                              </div>
+                            )}
+                            {miktar && (
+                              <div style={{ marginBottom: 4 }}>
+                                <b>Ağırlık Miktar:</b>{" "}
+                                <span style={{ color: "#334155" }}>{miktar}</span>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()
                     ) : (
                       // DİĞER KATEGORİLER: tek seçenek → yazı, çok seçenek → select
                       Object.entries(combinedOpts)
@@ -787,7 +860,6 @@ export default function Sepet2() {
                           const seciliDeger =
                             (item.ozellikler && item.ozellikler[ozellik]) ||
                             (arr.length === 1 ? arr[0] : "");
-
                           if (arr.length === 1) {
                             return (
                               <div key={ozellik} style={{ marginBottom: 4 }}>
@@ -796,7 +868,6 @@ export default function Sepet2() {
                               </div>
                             );
                           }
-
                           return (
                             <div key={ozellik} style={{ marginBottom: 4 }}>
                               <b>{prettyLabel(ozellik)}:</b>{" "}
@@ -807,7 +878,10 @@ export default function Sepet2() {
                                     ...(item.ozellikler || {}),
                                     [ozellik]: e.target.value,
                                   };
-                                  await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
+                                  await supabase
+                                    .from("cart")
+                                    .update({ ozellikler: yeniOzellikler })
+                                    .eq("id", item.id);
                                   setCartItems((prev) =>
                                     prev.map((urun) =>
                                       urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
@@ -904,7 +978,9 @@ export default function Sepet2() {
                       >
                         +
                       </button>
-                      <span style={{ color: "#999", fontSize: 13, marginLeft: 5 }}>Stok: {stok}</span>
+                      <span style={{ color: "#999", fontSize: 13, marginLeft: 5 }}>
+                        Stok: {stok}
+                      </span>
                     </div>
                   </div>
                   <button
@@ -939,13 +1015,15 @@ export default function Sepet2() {
                 [...new Set(cartItems.map((c) => c.product?.user_id))].map((sid) => {
                   const sellerItems = cartItems.filter((ci) => ci.product?.user_id === sid);
                   const araToplam = sellerItems.reduce(
-                    (a, ci) => a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
+                    (a, ci) =>
+                      a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
                     0
                   );
                   const kargo = sellerItems[0]?.kargo;
                   if (!kargo) return null;
                   const ucret =
-                    kargo.free_shipping_enabled && araToplam >= kargo.free_shipping_threshold
+                    kargo.free_shipping_enabled &&
+                    araToplam >= kargo.free_shipping_threshold
                       ? 0
                       : kargo.shipping_fee || 0;
 
