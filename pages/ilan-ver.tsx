@@ -899,27 +899,7 @@ const handleDownloadExcelTemplate = () => {
           )}
 
           {/* CSV/EXCEL BÖLÜMÜ */}
-          <div style={{ marginTop: 22, padding: "10px 0 0 0", borderTop: "1px dashed #c1c8d8" }}>
-            <div
-              style={{
-                fontWeight: 700,
-                fontSize: 14,
-                color: "#1648b0",
-                marginBottom: 7,
-                letterSpacing: ".1px",
-              }}
-            >
-              <FiUploadCloud size={15} style={{ marginRight: 4 }} />
-              Toplu Ürün Yükle (CSV / Excel)
-            </div>
-
-            <a
-              href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
-              download="urun-sablon.csv"
-              style={{ color: "#199957", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}
-            >
-              CSV şablonunu indir
-            </a>
+          
     {/* CSV/EXCEL BÖLÜMÜ başlığı altında, CSV linkinin hemen yanına */}
   {/* CSV/EXCEL/PANEL BÖLÜMÜ */}
 <div style={{ marginTop: 22, padding: "10px 0 0 0", borderTop: "1px dashed #c1c8d8" }}>
