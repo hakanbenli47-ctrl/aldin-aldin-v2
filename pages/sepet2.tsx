@@ -41,18 +41,30 @@ async function sendOrderEmails({
 }
 
 /* ---------- Yardımcılar: özellik normalizasyonu & label ---------- */
+// 🔄 GÜNCEL: Tekil değerleri de tek öğelik diziye çevirir (örn. {sonTuketim:"2026-12-31"} -> ["2026-12-31"])
 function normalizeOzellikler(raw: any): Record<string, string[]> {
   if (!raw) return {};
+
+  let obj: any = raw;
   if (typeof raw === "string") {
     try {
-      const obj = JSON.parse(raw);
-      if (obj && typeof obj === "object") return obj as Record<string, string[]>;
+      obj = JSON.parse(raw);
     } catch {
       return {};
     }
   }
-  if (typeof raw === "object") return raw as Record<string, string[]>;
-  return {};
+  if (typeof obj !== "object" || obj === null) return {};
+
+  const out: Record<string, string[]> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (Array.isArray(val)) {
+      const arr = val.map((v) => String(v)).filter(Boolean);
+      if (arr.length) out[key] = arr;
+    } else if (val !== null && val !== undefined && String(val).trim() !== "") {
+      out[key] = [String(val)];
+    }
+  }
+  return out;
 }
 
 function prettyLabel(key: string) {
@@ -424,17 +436,16 @@ export default function Sepet2() {
 
   // ADET GÜNCELLEME
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
-  // ❌ 1’den küçük olamaz
-  // ❌ stoktan fazla olamaz
-  // ❌ 10’dan fazla olamaz
-  if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
+    // ❌ 1’den küçük olamaz
+    // ❌ stoktan fazla olamaz
+    // ❌ 10’dan fazla olamaz
+    if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
 
-  await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
-  setCartItems((prev) =>
-    prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c))
-  );
-};
-
+    await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
+    setCartItems((prev) =>
+      prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c))
+    );
+  };
 
   const removeFromCart = async (cartId: number) => {
     await supabase.from("cart").delete().eq("id", cartId);
@@ -510,15 +521,39 @@ export default function Sepet2() {
       }
 
       for (const [, grup] of gruplar) {
-        // Ürünlerin ozelliklerini ekle (seçilmemiş tekil değer varsa yine de objede kalır)
-        const items = grup.items.map((item: any) => ({
-          product_id: item.product?.id ?? item.product_id,
-          title: item.product?.title,
-          price: item.product?.price,
-          adet: item.adet,
-          resim_url: item.product?.resim_url,
-          ozellikler: item.ozellikler || {},
-        }));
+        // 🔄 GÜNCEL: tek seçenekli/tekil alanları da siparişe düşür
+        const items = grup.items.map((sepetItem: any) => {
+          const prodOpts = normalizeOzellikler(sepetItem.product?.ozellikler) || {};
+          let kategoriOzellikleri: Record<string, string[]> = {};
+          if (sepetItem.product?.kategori_id === 7) {
+            // 1 = Gıda (kendi id'ine göre değiştir)
+            kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
+          } else if (sepetItem.product?.kategori_i === 3) {
+            // 2 = Giyim
+            kategoriOzellikleri = {
+              Renk: ["Beyaz", "Siyah", "Kırmızı"],
+              Beden: ["S", "M", "L", "XL"],
+            };
+          }
+          const combined: Record<string, string[]> = { ...kategoriOzellikleri, ...prodOpts };
+
+          // tek seçenek/tekil alanları varsayılan kabul et
+          const defaults: Record<string, string> = {};
+          for (const [k, arr] of Object.entries(combined)) {
+            const a = (arr || []).filter(Boolean);
+            if (a.length === 1) defaults[k] = a[0];
+          }
+          const finalOzellikler = { ...defaults, ...(sepetItem.ozellikler || {}) };
+
+          return {
+            product_id: sepetItem.product?.id ?? sepetItem.product_id,
+            title: sepetItem.product?.title,
+            price: sepetItem.product?.price,
+            adet: sepetItem.adet,
+            resim_url: sepetItem.product?.resim_url,
+            ozellikler: finalOzellikler,
+          };
+        });
 
         const total = items.reduce(
           (acc: number, it: any) =>
@@ -679,8 +714,27 @@ export default function Sepet2() {
                 item.product?.indirimli_fiyat !== item.product?.price;
               const stok = item.product?.stok ?? 99;
 
-              // ✅ Ürün özelliklerini normalize et
-              const prodOpts = normalizeOzellikler(item.product?.ozellikler);
+              // ✅ Satıcının girdiği tüm özellikleri al
+              const prodOpts = normalizeOzellikler(item.product?.ozellikler) || {};
+
+              // ✅ Kategoriye özel ek alanlar (id'lerini kendi sistemine göre düzenle)
+              let kategoriOzellikleri: Record<string, string[]> = {};
+              if (item.product?.kategori_id === 7) {
+                // 1 = Gıda
+                kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
+              } else if (item.product?.kategori_id === 3) {
+                // 2 = Giyim
+                kategoriOzellikleri = {
+                  Renk: ["Beyaz", "Siyah", "Kırmızı"],
+                  Beden: ["S", "M", "L", "XL"],
+                };
+              }
+
+              // ✅ Satıcı + kategori birleşimi
+              const combinedOpts: Record<string, string[]> = {
+                ...kategoriOzellikleri,
+                ...prodOpts,
+              };
 
               return (
                 <div
@@ -701,70 +755,64 @@ export default function Sepet2() {
                   />
                   <div style={{ flex: 1 }}>
                     <h3
-  style={{
-    margin: "0 0 4px",
-    fontWeight: 700,
-    color: "#333",
-  }}
->
-  {item.product?.title}
-</h3>
+                      style={{
+                        margin: "0 0 4px",
+                        fontWeight: 700,
+                        color: "#333",
+                      }}
+                    >
+                      {item.product?.title}
+                    </h3>
 
-{/* ✅ Seçilmiş ürün özelliklerini göster */}
-{/* ✅ Sadece dolu olan özellikleri göster */}
-{Object.entries(prodOpts)
-  .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0) // ❗ boş arrayleri ele
-  .map(([ozellik, secenekler]) => {
-    const arr = secenekler.filter(Boolean);
-    const seciliDeger =
-      (item.ozellikler && item.ozellikler[ozellik]) ||
-      (arr.length === 1 ? arr[0] : "");
+                    {/* ✅ Özelliklerin gösterimi (tekil → yazı, çoklu → select) */}
+                    {Object.entries(combinedOpts)
+                      .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0)
+                      .map(([ozellik, secenekler]) => {
+                        const arr = secenekler.filter(Boolean);
+                        const seciliDeger =
+                          (item.ozellikler && item.ozellikler[ozellik]) ||
+                          (arr.length === 1 ? arr[0] : "");
 
-    // ✅ Tek seçenek → sadece yazıyla göster
-    if (arr.length === 1) {
-      return (
-        <div key={ozellik} style={{ marginBottom: 4 }}>
-          <b>{prettyLabel(ozellik)}:</b>{" "}
-          <span style={{ color: "#334155" }}>{arr[0]}</span>
-        </div>
-      );
-    }
+                        if (arr.length === 1) {
+                          return (
+                            <div key={ozellik} style={{ marginBottom: 4 }}>
+                              <b>{prettyLabel(ozellik)}:</b>{" "}
+                              <span style={{ color: "#334155" }}>{arr[0]}</span>
+                            </div>
+                          );
+                        }
 
-    // ✅ Çok seçenek → select ile değiştirilebilir
-    return (
-      <div key={ozellik} style={{ marginBottom: 4 }}>
-        <b>{prettyLabel(ozellik)}:</b>{" "}
-        <select
-          value={seciliDeger}
-          onChange={async (e) => {
-            const yeniDeger = e.target.value;
-            const mevcutOzellikler =
-              item.ozellikler && Object.keys(item.ozellikler).length > 0
-                ? item.ozellikler
-                : {};
-            const yeniOzellikler = {
-              ...mevcutOzellikler,
-              [ozellik]: yeniDeger,
-            };
-            await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
-            setCartItems((prev) =>
-              prev.map((urun) =>
-                urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
-              )
-            );
-          }}
-        >
-          <option value="">Seçiniz</option>
-          {arr.map((secenek: string) => (
-            <option key={secenek} value={secenek}>
-              {secenek}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  })}
-
+                        return (
+                          <div key={ozellik} style={{ marginBottom: 4 }}>
+                            <b>{prettyLabel(ozellik)}:</b>{" "}
+                            <select
+                              value={seciliDeger}
+                              onChange={async (e) => {
+                                const yeniOzellikler = {
+                                  ...(item.ozellikler || {}),
+                                  [ozellik]: e.target.value,
+                                };
+                                await supabase
+                                  .from("cart")
+                                  .update({ ozellikler: yeniOzellikler })
+                                  .eq("id", item.id);
+                                setCartItems((prev) =>
+                                  prev.map((urun) =>
+                                    urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
+                                  )
+                                );
+                              }}
+                            >
+                              <option value="">Seçiniz</option>
+                              {arr.map((secenek) => (
+                                <option key={secenek} value={secenek}>
+                                  {secenek}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        );
+                      })}
 
                     <div>
                       {indirimVar ? (
