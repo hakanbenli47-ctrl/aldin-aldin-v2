@@ -1,10 +1,9 @@
-// components/TopluPanelForm.tsx
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 type Kategori = { id: number; ad: string };
 
-type PanelProduct = {
+export type PanelProduct = {
   title: string;
   desc?: string;
   price: string;
@@ -16,16 +15,22 @@ type PanelProduct = {
 
 type Props = {
   kategoriler: Kategori[];
-  onAddProduct: (p: PanelProduct) => void;
+  onAddProducts: (p: PanelProduct[]) => void; // ⬅️ toplu ürün
   onClose: () => void;
 };
 
-export default function TopluPanelForm({ kategoriler, onAddProduct, onClose }: Props) {
+export default function TopluPanelForm({
+  kategoriler,
+  onAddProducts,
+  onClose,
+}: Props) {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
   const [stok, setStok] = useState(1);
-  const [kategoriId, setKategoriId] = useState<number>(kategoriler[0]?.id || 1);
+  const [kategoriId, setKategoriId] = useState<number>(
+    kategoriler[0]?.id || 1
+  );
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -33,27 +38,36 @@ export default function TopluPanelForm({ kategoriler, onAddProduct, onClose }: P
     setLoading(true);
     let photoUrl: string | undefined;
 
+    // 📷 Fotoğraf varsa supabase'e yükle
     if (file) {
       const ext = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const fileName = `${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.${ext}`;
+
       const { error } = await supabase.storage
         .from("ilan-fotograflari")
         .upload(fileName, file);
 
       if (!error) {
-        const { data } = supabase.storage.from("ilan-fotograflari").getPublicUrl(fileName);
+        const { data } = supabase.storage
+          .from("ilan-fotograflari")
+          .getPublicUrl(fileName);
         photoUrl = data.publicUrl;
       }
     }
 
-    onAddProduct({
-      title,
-      desc,
-      price,
-      stok,
-      kategori_id: kategoriId,
-      resim_url: photoUrl,
-    });
+    // ✅ Tek ürünü bile array içinde gönderiyoruz
+    onAddProducts([
+      {
+        title,
+        desc,
+        price,
+        stok,
+        kategori_id: kategoriId,
+        resim_url: photoUrl,
+      },
+    ]);
 
     setLoading(false);
     onClose();
@@ -69,7 +83,9 @@ export default function TopluPanelForm({ kategoriler, onAddProduct, onClose }: P
         marginTop: 10,
       }}
     >
-      <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Panelden Ürün Ekle</h3>
+      <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
+        Panelden Ürün Ekle
+      </h3>
 
       <input
         type="text"
@@ -115,7 +131,11 @@ export default function TopluPanelForm({ kategoriler, onAddProduct, onClose }: P
         ))}
       </select>
 
-      <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+      />
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <button

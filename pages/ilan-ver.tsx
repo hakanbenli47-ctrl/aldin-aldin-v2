@@ -971,12 +971,13 @@ const handleDownloadExcelTemplate = () => {
 
   {/* ✅ Yeni Panel formunu çağır */}
   {showManualForm && (
-    <TopluPanelForm
-      kategoriler={kategoriler}
-      onAddProduct={(prod) => setCsvProducts((prev) => [...prev, prod])}
-      onClose={() => setShowManualForm(false)}
-    />
-  )}
+  <TopluPanelForm
+    kategoriler={kategoriler}
+    onAddProducts={(products) => setCsvProducts((prev) => [...prev, ...products])}
+    onClose={() => setShowManualForm(false)}
+  />
+)}
+
 
   {csvProducts.length > 0 && (
     <>
