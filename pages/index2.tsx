@@ -383,70 +383,17 @@ useEffect(() => {
   
 useEffect(() => {
   async function fetchHeroSlides() {
-    // Elektronik
-    const { data: elektronik } = await supabase
-      .from("ilan")
-      .select("id, title, resim_url")
-      .eq("kategori_id", 1)
-      .limit(3);
-
-    // Giyim
-    const { data: giyim } = await supabase
-      .from("ilan")
-      .select("id, title, resim_url")
-      .eq("kategori_id", 2)
-      .limit(3);
-
-    // Spor
-    const { data: spor } = await supabase
-      .from("ilan")
-      .select("id, title, resim_url")
-      .eq("kategori_id", 3)
-      .limit(3);
-
-    // Gıda  ✅ yeni eklenen
-    const { data: gida } = await supabase
-      .from("ilan")
-      .select("id, title, resim_url")
-      .eq("kategori_id", 7)   // senin Supabase’de gıda kategori_id’si kaçsa onu yaz
-      .limit(3);
-
-    setHeroSlides([
-      {
-        id: "h1",
-        title: "Lezzetli Gıdalar",
-        sub: gida?.[0]?.title || "Taze Kuruyemiş & Atıştırmalıklar",
-        cta: "Fırsatları Gör",
-        href: gida?.[0] ? `/urun/${gida[0].id}` : "/?kategori=Gıda",
-        img: Array.isArray(gida?.[0]?.resim_url)
-          ? gida[0].resim_url[0]
-          : gida?.[0]?.resim_url || "/banner-1.jpg",
-      },
-      {
-        id: "h2",
-        title: "Doğal & Sağlıklı",
-        sub: gida?.[1]?.title || "Gıda Ürünleri",
-        cta: "Hemen İncele",
-        href: gida?.[1] ? `/urun/${gida[1].id}` : "/?kategori=Gıda",
-        img: Array.isArray(gida?.[1]?.resim_url)
-          ? gida[1].resim_url[0]
-          : gida?.[1]?.resim_url || "/banner-2.jpg",
-      },
-      {
-        id: "h3",
-        title: "Süper Gıda Fırsatları",
-        sub: gida?.[2]?.title || "En Çok Tercih Edilenler",
-        cta: "Keşfet",
-        href: gida?.[2] ? `/urun/${gida[2].id}` : "/?kategori=Gıda",
-        img: Array.isArray(gida?.[2]?.resim_url)
-          ? gida[2].resim_url[0]
-          : gida?.[2]?.resim_url || "/banner-3.jpg",
-      },
-    ]);
+    const { data, error } = await supabase
+      .from("hero_slides")
+      .select("*")
+      .eq("aktif", true)
+      .order("id", { ascending: true });
+    if (error) console.error(error);
+    setHeroSlides(data || []);
   }
-
   fetchHeroSlides();
 }, []);
+
 
 
 
