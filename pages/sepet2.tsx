@@ -731,10 +731,13 @@ export default function Sepet2() {
               }
 
               // ✅ Satıcı + kategori birleşimi
-              const combinedOpts: Record<string, string[]> = {
-                ...kategoriOzellikleri,
-                ...prodOpts,
-              };
+              // ✅ Satıcı + kategori birleşimi (satıcı girdiyse kategori defaultunu ez)
+const combinedOpts: Record<string, string[]> = { ...kategoriOzellikleri };
+
+for (const [key, val] of Object.entries(prodOpts)) {
+  combinedOpts[key] = val; // satıcı varsa öncelikli olsun
+}
+
 
               return (
                 <div
