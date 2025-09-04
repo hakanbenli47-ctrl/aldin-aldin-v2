@@ -768,7 +768,7 @@ for (const [key, val] of Object.entries(prodOpts)) {
                     </h3>
 
                     {/* ✅ Özelliklerin gösterimi (tekil → yazı, çoklu → select) */}
-                    {Object.entries(combinedOpts)
+                   {Object.entries(combinedOpts)
   .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0)
   .map(([ozellik, secenekler]) => {
     const arr = secenekler.filter(Boolean);
@@ -776,14 +776,9 @@ for (const [key, val] of Object.entries(prodOpts)) {
       (item.ozellikler && item.ozellikler[ozellik]) ||
       (arr.length === 1 ? arr[0] : "");
 
-    // ✅ Eğer sadece 1 seçenek varsa select gösterme → düz yazı
+    // ✅ Eğer sadece 1 seçenek varsa hiç gösterme
     if (arr.length === 1) {
-      return (
-        <div key={ozellik} style={{ marginBottom: 4 }}>
-          <b>{prettyLabel(ozellik)}:</b>{" "}
-          <span style={{ color: "#334155" }}>{arr[0]}</span>
-        </div>
-      );
+      return null;
     }
 
     // ✅ Birden fazla varsa select göster
@@ -815,6 +810,7 @@ for (const [key, val] of Object.entries(prodOpts)) {
       </div>
     );
   })}
+
 
 
                     <div>
