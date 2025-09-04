@@ -381,65 +381,73 @@ useEffect(() => {
     fetchDopedIlanlar();
   }, []);
   
-  useEffect(() => {
-    async function fetchHeroSlides() {
-      // Elektronik
-      const { data: elektronik } = await supabase
-        .from("ilan")
-        .select("id, title, resim_url")
-        .eq("kategori_id", 1)
-        .limit(3);
+useEffect(() => {
+  async function fetchHeroSlides() {
+    // Elektronik
+    const { data: elektronik } = await supabase
+      .from("ilan")
+      .select("id, title, resim_url")
+      .eq("kategori_id", 1)
+      .limit(3);
 
-      // Giyim
-      const { data: giyim } = await supabase
-        .from("ilan")
-        .select("id, title, resim_url")
-        .eq("kategori_id", 2)
-        .limit(3);
+    // Giyim
+    const { data: giyim } = await supabase
+      .from("ilan")
+      .select("id, title, resim_url")
+      .eq("kategori_id", 2)
+      .limit(3);
 
-      // Spor
-      const { data: spor } = await supabase
-        .from("ilan")
-        .select("id, title, resim_url")
-        .eq("kategori_id", 3)
-        .limit(3);
+    // Spor
+    const { data: spor } = await supabase
+      .from("ilan")
+      .select("id, title, resim_url")
+      .eq("kategori_id", 3)
+      .limit(3);
 
-      setHeroSlides([
-        {
-          id: "h1",
-          title: "Mega Kampanya",
-          sub: elektronik?.[3]?.title || "Elektronik Ürünler",
-          cta: "Fırsatları Gör",
-          href: elektronik?.[3] ? `/urun/${elektronik[3].id}` : "/?kategori=Elektronik",
-          img: Array.isArray(elektronik?.[3]?.resim_url)
-            ? elektronik[3].resim_url[0]
-            : elektronik?.[3]?.resim_url || "/banner-1.jpg",
-        },
-        {
-          id: "h2",
-          title: "En Güçlü Donanımlar",
-          sub: elektronik?.[2]?.title || "Elektronik Ürünleri",
-          cta: "İlham Al",
-          href: elektronik?.[2] ? `/urun/${elektronik[2].id}` : "/?kategori=Elektronik",
-          img: Array.isArray(elektronik?.[2]?.resim_url)
-            ? elektronik[2].resim_url[0]
-            : elektronik?.[2]?.resim_url || "/banner-2.jpg",
-        },
-        {
-          id: "h3",
-          title: "Süper Fırsat",
-          sub: spor?.[0]?.title || "Spor & Outdoor",
-          cta: "Keşfet",
-          href: spor?.[0] ? `/urun/${spor[0].id}` : "/?kategori=Spor%20&%20Outdoor",
-          img: Array.isArray(spor?.[0]?.resim_url)
-            ? spor[0].resim_url[0]
-            : spor?.[0]?.resim_url || "/banner-3.jpg",
-        },
-      ]);
-    }
+    // Gıda  ✅ yeni eklenen
+    const { data: gida } = await supabase
+      .from("ilan")
+      .select("id, title, resim_url")
+      .eq("kategori_id", 7)   // senin Supabase’de gıda kategori_id’si kaçsa onu yaz
+      .limit(3);
 
-    fetchHeroSlides();
-  }, []);
+    setHeroSlides([
+      {
+        id: "h1",
+        title: "Lezzetli Gıdalar",
+        sub: gida?.[0]?.title || "Taze Kuruyemiş & Atıştırmalıklar",
+        cta: "Fırsatları Gör",
+        href: gida?.[0] ? `/urun/${gida[0].id}` : "/?kategori=Gıda",
+        img: Array.isArray(gida?.[0]?.resim_url)
+          ? gida[0].resim_url[0]
+          : gida?.[0]?.resim_url || "/banner-1.jpg",
+      },
+      {
+        id: "h2",
+        title: "Doğal & Sağlıklı",
+        sub: gida?.[1]?.title || "Gıda Ürünleri",
+        cta: "Hemen İncele",
+        href: gida?.[1] ? `/urun/${gida[1].id}` : "/?kategori=Gıda",
+        img: Array.isArray(gida?.[1]?.resim_url)
+          ? gida[1].resim_url[0]
+          : gida?.[1]?.resim_url || "/banner-2.jpg",
+      },
+      {
+        id: "h3",
+        title: "Süper Gıda Fırsatları",
+        sub: gida?.[2]?.title || "En Çok Tercih Edilenler",
+        cta: "Keşfet",
+        href: gida?.[2] ? `/urun/${gida[2].id}` : "/?kategori=Gıda",
+        img: Array.isArray(gida?.[2]?.resim_url)
+          ? gida[2].resim_url[0]
+          : gida?.[2]?.resim_url || "/banner-3.jpg",
+      },
+    ]);
+  }
+
+  fetchHeroSlides();
+}, []);
+
 
 
   // Son bakılanlar
