@@ -525,16 +525,17 @@ export default function Sepet2() {
         const items = grup.items.map((sepetItem: any) => {
           const prodOpts = normalizeOzellikler(sepetItem.product?.ozellikler) || {};
           let kategoriOzellikleri: Record<string, string[]> = {};
-          if (sepetItem.product?.kategori_id === 7) {
-            // 1 = Gıda (kendi id'ine göre değiştir)
-            kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
-          } else if (sepetItem.product?.kategori_i === 3) {
-            // 2 = Giyim
-            kategoriOzellikleri = {
-              Renk: ["Beyaz", "Siyah", "Kırmızı"],
-              Beden: ["S", "M", "L", "XL"],
-            };
-          }
+         if (sepetItem.product?.kategori_id === 7 && !prodOpts["Ağırlık"]) {
+  // Sadece satıcı ağırlık girmemişse default ver
+  kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
+} else if (sepetItem.product?.kategori_id === 3) {
+  if (!prodOpts["Renk"]) {
+    kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
+  }
+  if (!prodOpts["Beden"]) {
+    kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
+  }
+}
           const combined: Record<string, string[]> = { ...kategoriOzellikleri, ...prodOpts };
 
           // tek seçenek/tekil alanları varsayılan kabul et
@@ -719,16 +720,18 @@ export default function Sepet2() {
 
               // ✅ Kategoriye özel ek alanlar (id'lerini kendi sistemine göre düzenle)
               let kategoriOzellikleri: Record<string, string[]> = {};
-              if (item.product?.kategori_id === 7) {
-                // 1 = Gıda
-                kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
-              } else if (item.product?.kategori_id === 3) {
-                // 2 = Giyim
-                kategoriOzellikleri = {
-                  Renk: ["Beyaz", "Siyah", "Kırmızı"],
-                  Beden: ["S", "M", "L", "XL"],
-                };
-              }
+    if (item.product?.kategori_id === 7 && !prodOpts["Ağırlık"]) {
+  kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
+} else if (item.product?.kategori_id === 3) {
+  if (!prodOpts["Renk"]) {
+    kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
+  }
+  if (!prodOpts["Beden"]) {
+    kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
+  }
+}
+
+
 
               // ✅ Satıcı + kategori birleşimi
               // ✅ Satıcı + kategori birleşimi (satıcı girdiyse kategori defaultunu ez)
@@ -768,7 +771,7 @@ for (const [key, val] of Object.entries(prodOpts)) {
                     </h3>
 
                     {/* ✅ Özelliklerin gösterimi (tekil → yazı, çoklu → select) */}
-                   {Object.entries(combinedOpts)
+                    {Object.entries(combinedOpts)
   .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0)
   .map(([ozellik, secenekler]) => {
     const arr = secenekler.filter(Boolean);
@@ -776,9 +779,14 @@ for (const [key, val] of Object.entries(prodOpts)) {
       (item.ozellikler && item.ozellikler[ozellik]) ||
       (arr.length === 1 ? arr[0] : "");
 
-    // ✅ Eğer sadece 1 seçenek varsa hiç gösterme
+    // ✅ Eğer sadece 1 seçenek varsa select gösterme → düz yazı
     if (arr.length === 1) {
-      return null;
+      return (
+        <div key={ozellik} style={{ marginBottom: 4 }}>
+          <b>{prettyLabel(ozellik)}:</b>{" "}
+          <span style={{ color: "#334155" }}>{arr[0]}</span>
+        </div>
+      );
     }
 
     // ✅ Birden fazla varsa select göster
@@ -810,7 +818,7 @@ for (const [key, val] of Object.entries(prodOpts)) {
       </div>
     );
   })}
-
+  
 
 
                     <div>
