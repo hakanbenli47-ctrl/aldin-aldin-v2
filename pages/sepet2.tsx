@@ -58,7 +58,7 @@ function normalizeOzellikler(raw: any): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const [key, val] of Object.entries(obj)) {
     if (Array.isArray(val)) {
-      const arr = val.map((v) => String(v)).filter(Boolean);
+      const arr = (val as any[]).map((v) => String(v)).filter(Boolean);
       if (arr.length) out[key] = arr;
     } else if (val !== null && val !== undefined && String(val).trim() !== "") {
       out[key] = [String(val)];
@@ -72,6 +72,21 @@ function prettyLabel(key: string) {
     .replace(/([a-z])([A-ZĞÜŞİÖÇ])/g, "$1 $2")
     .replace(/_/g, " ")
     .replace(/(^|\s)([a-zöçşiğü])/g, (m) => m.toUpperCase());
+}
+
+// Gıda alanlarına diakritikli/diakr. olmayan olası anahtar karşılıkları
+const FOOD_KEYS = {
+  sonTuketim: ["Son Tüketim", "Son Tuketim", "sonTuketim", "TETT"],
+  agirlikBirim: ["Ağırlık Birim", "Agirlik Birim", "AgirlikBirim", "AğırlıkBirim", "Birim"],
+  agirlikMiktar: ["Ağırlık Miktar", "Agirlik Miktar", "AgirlikMiktar", "Miktar"],
+};
+
+function pickFirst(opts: Record<string, string[]>, keys: string[]) {
+  for (const k of keys) {
+    const v = opts[k];
+    if (v && v.length && v[0]) return v[0];
+  }
+  return null;
 }
 
 export default function Sepet2() {
@@ -230,7 +245,7 @@ export default function Sepet2() {
           name_on_card: newCard.name_on_card,
           card_number: maskedCardNumber, // ✅ DB'ye maskeli
           expiry: newCard.expiry,
-          cvv: maskedCVV,                 // ✅ yıldızlı
+          cvv: maskedCVV, // ✅ yıldızlı
           title: newCard.title,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -436,15 +451,10 @@ export default function Sepet2() {
 
   // ADET GÜNCELLEME
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
-    // ❌ 1’den küçük olamaz
-    // ❌ stoktan fazla olamaz
-    // ❌ 10’dan fazla olamaz
     if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
 
     await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
-    setCartItems((prev) =>
-      prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c))
-    );
+    setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
   };
 
   const removeFromCart = async (cartId: number) => {
@@ -475,10 +485,7 @@ export default function Sepet2() {
       let kargoUcret = 0;
 
       if (kargoAyar) {
-        if (
-          kargoAyar.free_shipping_enabled &&
-          araToplam >= (kargoAyar.free_shipping_threshold || 0)
-        ) {
+        if (kargoAyar.free_shipping_enabled && araToplam >= (kargoAyar.free_shipping_threshold || 0)) {
           kargoUcret = 0;
         } else {
           kargoUcret = kargoAyar.shipping_fee || 0;
@@ -515,33 +522,28 @@ export default function Sepet2() {
         const sellerEmail = it?.product?.user_email || "";
         const firmaAdi = it?.product?.firma_adi;
         if (!sellerId) continue;
-        if (!gruplar.has(sellerId))
-          gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
+        if (!gruplar.has(sellerId)) gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
         gruplar.get(sellerId)!.items.push(it);
       }
 
       for (const [, grup] of gruplar) {
-        // 🔄 GÜNCEL: tek seçenekli/tekil alanları da siparişe düşür
         const items = grup.items.map((sepetItem: any) => {
           const prodOpts = normalizeOzellikler(sepetItem.product?.ozellikler) || {};
+
+          // ⚠️ GIDA için default EKLEME — KALDIRILDI
+          // Sadece Giyim gibi diğer kategorilerde defaultları ekleyelim (Renk, Beden vs.)
           let kategoriOzellikleri: Record<string, string[]> = {};
-         if (sepetItem.product?.kategori_id === 7 && !prodOpts["Ağırlık"]) {
-  // Sadece satıcı ağırlık girmemişse default ver
-  kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
-} else if (sepetItem.product?.kategori_id === 3) {
-  if (!prodOpts["Renk"]) {
-    kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
-  }
-  if (!prodOpts["Beden"]) {
-    kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
-  }
-}
+          if (sepetItem.product?.kategori_id === 3) {
+            if (!prodOpts["Renk"]) kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
+            if (!prodOpts["Beden"]) kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
+          }
+
           const combined: Record<string, string[]> = { ...kategoriOzellikleri, ...prodOpts };
 
           // tek seçenek/tekil alanları varsayılan kabul et
           const defaults: Record<string, string> = {};
           for (const [k, arr] of Object.entries(combined)) {
-            const a = (arr || []).filter(Boolean);
+            const a = (arr || []).filter(Boolean) as string[];
             if (a.length === 1) defaults[k] = a[0];
           }
           const finalOzellikler = { ...defaults, ...(sepetItem.ozellikler || {}) };
@@ -557,8 +559,7 @@ export default function Sepet2() {
         });
 
         const total = items.reduce(
-          (acc: number, it: any) =>
-            acc + (parseFloat(it.price) || 0) * (it.adet || 1),
+          (acc: number, it: any) => acc + (parseFloat(it.price) || 0) * (it.adet || 1),
           0
         );
 
@@ -612,16 +613,11 @@ export default function Sepet2() {
           })),
         };
 
-        const { error: sellerError } = await supabase
-          .from("seller_orders")
-          .insert([sellerPayload]);
+        const { error: sellerError } = await supabase.from("seller_orders").insert([sellerPayload]);
         if (sellerError) throw sellerError;
 
         // Mail
-        const urunBaslik =
-          items.length > 1
-            ? `${items[0].title} +${items.length - 1} ürün`
-            : items[0].title;
+        const urunBaslik = items.length > 1 ? `${items[0].title} +${items.length - 1} ürün` : items[0].title;
 
         await sendOrderEmails({
           aliciMail: currentUser.email,
@@ -643,11 +639,7 @@ export default function Sepet2() {
   }
 
   if (loading) {
-    return (
-      <p style={{ textAlign: "center", padding: 40 }}>
-        ⏳ Kullanıcı bilgisi yükleniyor...
-      </p>
-    );
+    return <p style={{ textAlign: "center", padding: 40 }}>⏳ Kullanıcı bilgisi yükleniyor...</p>;
   }
   if (!currentUser) {
     return (
@@ -692,7 +684,7 @@ export default function Sepet2() {
               alignItems: "center",
               justifyContent: "center",
               outline: "none",
-              scrollMarginTop: 72, // sticky header için
+              scrollMarginTop: 72,
             }}
           >
             <p
@@ -711,36 +703,24 @@ export default function Sepet2() {
           <>
             {cartItems.map((item) => {
               const indirimVar =
-                item.product?.indirimli_fiyat &&
-                item.product?.indirimli_fiyat !== item.product?.price;
+                item.product?.indirimli_fiyat && item.product?.indirimli_fiyat !== item.product?.price;
               const stok = item.product?.stok ?? 99;
 
               // ✅ Satıcının girdiği tüm özellikleri al
               const prodOpts = normalizeOzellikler(item.product?.ozellikler) || {};
 
-              // ✅ Kategoriye özel ek alanlar (id'lerini kendi sistemine göre düzenle)
+              // ✅ Kategoriye özel ek alanlar (GİYİM için; GIDA için ekleme YOK)
               let kategoriOzellikleri: Record<string, string[]> = {};
-    if (item.product?.kategori_id === 7 && !prodOpts["Ağırlık"]) {
-  kategoriOzellikleri = { Ağırlık: ["250 gr", "500 gr", "1 kg"] };
-} else if (item.product?.kategori_id === 3) {
-  if (!prodOpts["Renk"]) {
-    kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
-  }
-  if (!prodOpts["Beden"]) {
-    kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
-  }
-}
+              if (item.product?.kategori_id === 3) {
+                if (!prodOpts["Renk"]) kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
+                if (!prodOpts["Beden"]) kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
+              }
 
-
-
-              // ✅ Satıcı + kategori birleşimi
               // ✅ Satıcı + kategori birleşimi (satıcı girdiyse kategori defaultunu ez)
-const combinedOpts: Record<string, string[]> = { ...kategoriOzellikleri };
-
-for (const [key, val] of Object.entries(prodOpts)) {
-  combinedOpts[key] = val; // satıcı varsa öncelikli olsun
-}
-
+              const combinedOpts: Record<string, string[]> = { ...kategoriOzellikleri };
+              for (const [key, val] of Object.entries(prodOpts)) {
+                combinedOpts[key] = val as string[];
+              }
 
               return (
                 <div
@@ -770,56 +750,82 @@ for (const [key, val] of Object.entries(prodOpts)) {
                       {item.product?.title}
                     </h3>
 
-                    {/* ✅ Özelliklerin gösterimi (tekil → yazı, çoklu → select) */}
-                    {Object.entries(combinedOpts)
-  .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0)
-  .map(([ozellik, secenekler]) => {
-    const arr = secenekler.filter(Boolean);
-    const seciliDeger =
-      (item.ozellikler && item.ozellikler[ozellik]) ||
-      (arr.length === 1 ? arr[0] : "");
+                    {/* GIDA: sabit sıra ve sadece satıcının girdikleri */}
+                    {item.product?.kategori_id === 7 ? (
+                      <>
+                        {(() => {
+                          const st = pickFirst(prodOpts, FOOD_KEYS.sonTuketim);
+                          const birim = pickFirst(prodOpts, FOOD_KEYS.agirlikBirim);
+                          const miktar = pickFirst(prodOpts, FOOD_KEYS.agirlikMiktar);
+                          return (
+                            <>
+                              {st && (
+                                <div style={{ marginBottom: 4 }}>
+                                  <b>Son Tüketim:</b> <span style={{ color: "#334155" }}>{st}</span>
+                                </div>
+                              )}
+                              {birim && (
+                                <div style={{ marginBottom: 4 }}>
+                                  <b>Ağırlık Birim:</b> <span style={{ color: "#334155" }}>{birim}</span>
+                                </div>
+                              )}
+                              {miktar && (
+                                <div style={{ marginBottom: 4 }}>
+                                  <b>Ağırlık Miktar:</b> <span style={{ color: "#334155" }}>{miktar}</span>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      // DİĞER KATEGORİLER: tek seçenek → yazı, çok seçenek → select
+                      Object.entries(combinedOpts)
+                        .filter(([, secenekler]) => Array.isArray(secenekler) && secenekler.length > 0)
+                        .map(([ozellik, secenekler]) => {
+                          const arr = (secenekler as string[]).filter(Boolean);
+                          const seciliDeger =
+                            (item.ozellikler && item.ozellikler[ozellik]) ||
+                            (arr.length === 1 ? arr[0] : "");
 
-    // ✅ Eğer sadece 1 seçenek varsa select gösterme → düz yazı
-    if (arr.length === 1) {
-      return (
-        <div key={ozellik} style={{ marginBottom: 4 }}>
-          <b>{prettyLabel(ozellik)}:</b>{" "}
-          <span style={{ color: "#334155" }}>{arr[0]}</span>
-        </div>
-      );
-    }
+                          if (arr.length === 1) {
+                            return (
+                              <div key={ozellik} style={{ marginBottom: 4 }}>
+                                <b>{prettyLabel(ozellik)}:</b>{" "}
+                                <span style={{ color: "#334155" }}>{arr[0]}</span>
+                              </div>
+                            );
+                          }
 
-    // ✅ Birden fazla varsa select göster
-    return (
-      <div key={ozellik} style={{ marginBottom: 4 }}>
-        <b>{prettyLabel(ozellik)}:</b>{" "}
-        <select
-          value={seciliDeger}
-          onChange={async (e) => {
-            const yeniOzellikler = {
-              ...(item.ozellikler || {}),
-              [ozellik]: e.target.value,
-            };
-            await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
-            setCartItems((prev) =>
-              prev.map((urun) =>
-                urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
-              )
-            );
-          }}
-        >
-          <option value="">Seçiniz</option>
-          {arr.map((secenek) => (
-            <option key={secenek} value={secenek}>
-              {secenek}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  })}
-  
-
+                          return (
+                            <div key={ozellik} style={{ marginBottom: 4 }}>
+                              <b>{prettyLabel(ozellik)}:</b>{" "}
+                              <select
+                                value={seciliDeger}
+                                onChange={async (e) => {
+                                  const yeniOzellikler = {
+                                    ...(item.ozellikler || {}),
+                                    [ozellik]: e.target.value,
+                                  };
+                                  await supabase.from("cart").update({ ozellikler: yeniOzellikler }).eq("id", item.id);
+                                  setCartItems((prev) =>
+                                    prev.map((urun) =>
+                                      urun.id === item.id ? { ...urun, ozellikler: yeniOzellikler } : urun
+                                    )
+                                  );
+                                }}
+                              >
+                                <option value="">Seçiniz</option>
+                                {arr.map((secenek) => (
+                                  <option key={secenek} value={secenek}>
+                                    {secenek}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })
+                    )}
 
                     <div>
                       {indirimVar ? (
@@ -893,14 +899,12 @@ for (const [key, val] of Object.entries(prodOpts)) {
                           color: "#22c55e",
                           cursor: "pointer",
                         }}
-                        disabled={item.adet >= stok || item.adet >= 10} // ✅ 10 sınırı eklendi
+                        disabled={item.adet >= stok || item.adet >= 10}
                         onClick={() => updateAdet(item.id, item.adet + 1, stok)}
                       >
                         +
                       </button>
-                      <span style={{ color: "#999", fontSize: 13, marginLeft: 5 }}>
-                        Stok: {stok}
-                      </span>
+                      <span style={{ color: "#999", fontSize: 13, marginLeft: 5 }}>Stok: {stok}</span>
                     </div>
                   </div>
                   <button
@@ -935,16 +939,13 @@ for (const [key, val] of Object.entries(prodOpts)) {
                 [...new Set(cartItems.map((c) => c.product?.user_id))].map((sid) => {
                   const sellerItems = cartItems.filter((ci) => ci.product?.user_id === sid);
                   const araToplam = sellerItems.reduce(
-                    (a, ci) =>
-                      a +
-                      Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
+                    (a, ci) => a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
                     0
                   );
                   const kargo = sellerItems[0]?.kargo;
                   if (!kargo) return null;
                   const ucret =
-                    kargo.free_shipping_enabled &&
-                    araToplam >= kargo.free_shipping_threshold
+                    kargo.free_shipping_enabled && araToplam >= kargo.free_shipping_threshold
                       ? 0
                       : kargo.shipping_fee || 0;
 
@@ -1041,65 +1042,49 @@ for (const [key, val] of Object.entries(prodOpts)) {
                     type="text"
                     placeholder="İsim"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, first_name: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, first_name: e.target.value })}
                   />
                   <input
                     type="text"
                     placeholder="Soy İsim"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, last_name: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, last_name: e.target.value })}
                   />
                   <input
                     type="text"
                     placeholder="Telefon (05XXXXXXXXX)"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, phone: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })}
                   />
                   <input
                     type="text"
                     placeholder="Adres Başlığı"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, title: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, title: e.target.value })}
                   />
                   <input
                     type="text"
                     placeholder="Açık Adres"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, address: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })}
                   />
                   <input
                     type="text"
                     placeholder="Şehir"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, city: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
                   />
                   <input
                     type="text"
                     placeholder="Posta Kodu"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, postal_code: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, postal_code: e.target.value })}
                   />
                   <input
                     type="text"
                     placeholder="Ülke"
                     style={inputStyle}
-                    onChange={(e) =>
-                      setNewAddress({ ...newAddress, country: e.target.value })
-                    }
+                    onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })}
                   />
 
                   <button
@@ -1193,7 +1178,6 @@ for (const [key, val] of Object.entries(prodOpts)) {
 
               {showNewCardForm && (
                 <div style={{ marginTop: 15, display: "flex", flexDirection: "column", gap: "10px" }}>
-                  {/* Kart Üzerindeki İsim */}
                   <input
                     style={inputStyle}
                     type="text"
@@ -1208,8 +1192,6 @@ for (const [key, val] of Object.entries(prodOpts)) {
                     value={newCard.name_on_card}
                     onChange={(e) => setNewCard({ ...newCard, name_on_card: e.target.value })}
                   />
-
-                  {/* Kart Numarası */}
                   <input
                     style={inputStyle}
                     type="text"
@@ -1218,12 +1200,8 @@ for (const [key, val] of Object.entries(prodOpts)) {
                     placeholder="Kart Numarası"
                     value={newCard.card_number}
                     maxLength={19}
-                    onChange={(e) =>
-                      setNewCard({ ...newCard, card_number: formatCardNumber(e.target.value) })
-                    }
+                    onChange={(e) => setNewCard({ ...newCard, card_number: formatCardNumber(e.target.value) })}
                   />
-
-                  {/* Son Kullanma Tarihi */}
                   <input
                     style={inputStyle}
                     type="text"
@@ -1234,8 +1212,6 @@ for (const [key, val] of Object.entries(prodOpts)) {
                     maxLength={5}
                     onChange={(e) => setNewCard({ ...newCard, expiry: formatExpiry(e.target.value) })}
                   />
-
-                  {/* CVV */}
                   <input
                     style={inputStyle}
                     type="text"
@@ -1246,7 +1222,6 @@ for (const [key, val] of Object.entries(prodOpts)) {
                     maxLength={4}
                     onChange={(e) => setNewCard({ ...newCard, cvv: formatCVV(e.target.value) })}
                   />
-
                   <button
                     style={{
                       background: "#2563eb",
@@ -1272,7 +1247,6 @@ for (const [key, val] of Object.entries(prodOpts)) {
             <button
               ref={openModalBtnRef}
               onClick={async () => {
-                // Basit validasyonlar
                 if (!selectedAddressId) return alert("Adres seçiniz");
                 if (!selectedCardId) return alert("Kart seçiniz");
 
@@ -1281,13 +1255,10 @@ for (const [key, val] of Object.entries(prodOpts)) {
                 if (!addr) return alert("Adres bulunamadı");
                 if (!card) return alert("Kart bulunamadı");
 
-                // Basket'i hazırla
                 const basketItems = cartItems.map((it: any) => {
                   const indirimVar =
                     it.product?.indirimli_fiyat && it.product?.indirimli_fiyat !== it.product?.price;
-                  const birim = indirimVar
-                    ? Number(it.product.indirimli_fiyat)
-                    : Number(it.product?.price);
+                  const birim = indirimVar ? Number(it.product.indirimli_fiyat) : Number(it.product?.price);
                   const toplam = birim * (it.adet || 1);
                   return {
                     id: it.product?.id ?? it.product_id,
@@ -1297,7 +1268,6 @@ for (const [key, val] of Object.entries(prodOpts)) {
                   };
                 });
 
-                // 1) ÖDEME
                 let paymentRes: Response;
                 try {
                   paymentRes = await fetch("/api/payment", {
@@ -1356,7 +1326,6 @@ for (const [key, val] of Object.entries(prodOpts)) {
                   return;
                 }
 
-                // 2) Ödeme başarılı → siparişi kaydet
                 await handleSiparisVer({
                   addressId: parseInt(selectedAddressId),
                   cardId: parseInt(selectedCardId),
