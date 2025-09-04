@@ -157,6 +157,21 @@ Pirinç,5 kg baldo pirinç,289,100,3,https://site.com/pirinc.jpg,,,5,kg,2026-01-
     initPage();
   }, []);
 
+useEffect(() => {
+  const saved = localStorage.getItem("panelProducts");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        setCsvProducts((prev) => [...prev, ...parsed]);
+      }
+    } catch (err) {
+      console.error("panelProducts parse hatası", err);
+    }
+    localStorage.removeItem("panelProducts"); // sadece 1 kere taşınsın
+  }
+}, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
