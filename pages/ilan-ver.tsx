@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import Image from "next/image";
 import Papa, { ParseResult } from "papaparse";
 import * as XLSX from "xlsx"; // ← Excel desteği
+import TopluPanelForm from "../components/TopluPanelForm";
 import { FiImage, FiTag, FiBox, FiLayers, FiHash, FiUploadCloud } from "react-icons/fi";
 const ONECIKAR_PLANS = {
   "7g":  { price: 49.90, days: 7,  label: "7 Gün"  },
@@ -45,6 +46,7 @@ export default function IlanVer() {
   const [kategoriId, setKategoriId] = useState<number>(1);
   const [kategoriler, setKategoriler] = useState<Kategori[]>([]);
   const [message, setMessage] = useState("");
+  const [showManualForm, setShowManualForm] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [csvProducts, setCsvProducts] = useState<CsvUrun[]>([]); // toplu yükleme listesi
 
@@ -919,76 +921,120 @@ const handleDownloadExcelTemplate = () => {
               CSV şablonunu indir
             </a>
     {/* CSV/EXCEL BÖLÜMÜ başlığı altında, CSV linkinin hemen yanına */}
-    <a
-   href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
-   download="urun-sablon.csv"
-   style={{ color: "#199957", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}
-   >
+  {/* CSV/EXCEL/PANEL BÖLÜMÜ */}
+<div style={{ marginTop: 22, padding: "10px 0 0 0", borderTop: "1px dashed #c1c8d8" }}>
+  <div
+    style={{
+      fontWeight: 700,
+      fontSize: 14,
+      color: "#1648b0",
+      marginBottom: 7,
+      letterSpacing: ".1px",
+    }}
+  >
+    <FiUploadCloud size={15} style={{ marginRight: 4 }} />
+    Toplu Ürün Yükle (CSV / Excel / Panel)
+  </div>
+
+  <a
+    href={`data:text/csv;charset=utf-8,${encodeURIComponent(csvSablon)}`}
+    download="urun-sablon.csv"
+    style={{ color: "#199957", fontWeight: 600, fontSize: 13, textDecoration: "underline" }}
+  >
     CSV şablonunu indir
-    </a>
+  </a>
 
-    <button
+  <button
     type="button"
-   onClick={handleDownloadExcelTemplate}
-   style={{
-    marginLeft: 10,
-    padding: "6px 10px",
-    borderRadius: 6,
-    border: "1px solid #e4e9ef",
-    background: "#fff",
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#1648b0",
-   }}
-   title="Excel şablonunu .xlsx olarak indir"
-   > 
-      Excel şablonunu indir
-   </button>
+    onClick={handleDownloadExcelTemplate}
+    style={{
+      marginLeft: 10,
+      padding: "6px 10px",
+      borderRadius: 6,
+      border: "1px solid #e4e9ef",
+      background: "#fff",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#1648b0",
+    }}
+    title="Excel şablonunu .xlsx olarak indir"
+  >
+    Excel şablonunu indir
+  </button>
 
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleCSVUpload}
-              style={{ fontSize: 13, marginLeft: 8, marginTop: 3 }}
-            />
+  <input
+    type="file"
+    accept=".csv,.xlsx,.xls"
+    onChange={handleCSVUpload}
+    style={{ fontSize: 13, marginLeft: 8, marginTop: 3 }}
+  />
 
-            {csvProducts.length > 0 && (
-              <>
-                <div style={{ fontSize: 12, color: "#374151", marginTop: 10 }}>
-                  {csvProducts.length} ürün hazır. İçeri aktarmak için aşağıdaki butona basın.
-                </div>
+  {/* ✅ Yeni Panelden ekleme butonu */}
+  <button
+    type="button"
+    onClick={() => setShowManualForm(true)}
+    style={{
+      marginTop: 10,
+      padding: "8px 12px",
+      borderRadius: 6,
+      border: "1px solid #e4e9ef",
+      background: "#f8fafc",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#199957",
+    }}
+  >
+    Panelden Ürün Yükle
+  </button>
 
-                <button
-                  type="button"
-                  onClick={handleBulkInsert}
-                  disabled={loading}
-                  style={{
-                    background: "linear-gradient(90deg, #199957 0%, #1648b0 90%)",
-                    color: "#fff",
-                    fontWeight: 700,
-                    border: "none",
-                    borderRadius: 8,
-                    padding: "13px 0",
-                    fontSize: 15,
-                    cursor: "pointer",
-                    opacity: loading ? 0.7 : 1,
-                    letterSpacing: "0.2px",
-                    marginTop: 12,
-                    boxShadow: "0 2px 8px #1648b013",
-                    width: "100%",
-                  }}
-                  title="Dosyadaki tüm ürünleri ekle"
-                >
-                  {loading ? "Ekleniyor..." : `📦 Toplu Ürünleri Ekle (${csvProducts.length})`}
-                </button>
-              </>
-            )}
+  {/* ✅ Yeni Panel formunu çağır */}
+  {showManualForm && (
+    <TopluPanelForm
+      kategoriler={kategoriler}
+      onAddProduct={(prod) => setCsvProducts((prev) => [...prev, prod])}
+      onClose={() => setShowManualForm(false)}
+    />
+  )}
 
-            <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
-              Eksik/hatalı satırlar kullanıcıya bildirilir.
-            </div>
-          </div>
+  {csvProducts.length > 0 && (
+    <>
+      <div style={{ fontSize: 12, color: "#374151", marginTop: 10 }}>
+        {csvProducts.length} ürün hazır. İçeri aktarmak için aşağıdaki butona basın.
+      </div>
+
+      <button
+        type="button"
+        onClick={handleBulkInsert}
+        disabled={loading}
+        style={{
+          background: "linear-gradient(90deg, #199957 0%, #1648b0 90%)",
+          color: "#fff",
+          fontWeight: 700,
+          border: "none",
+          borderRadius: 8,
+          padding: "13px 0",
+          fontSize: 15,
+          cursor: "pointer",
+          opacity: loading ? 0.7 : 1,
+          letterSpacing: "0.2px",
+          marginTop: 12,
+          boxShadow: "0 2px 8px #1648b013",
+          width: "100%",
+        }}
+        title="Dosyadaki tüm ürünleri ekle"
+      >
+        {loading ? "Ekleniyor..." : `📦 Toplu Ürünleri Ekle (${csvProducts.length})`}
+      </button>
+    </>
+  )}
+
+  <div style={{ fontSize: 11, color: "#999", marginTop: 2 }}>
+    Eksik/hatalı satırlar kullanıcıya bildirilir.
+  </div>
+</div>
+
         </form>
       </div>
 
