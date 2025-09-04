@@ -98,13 +98,13 @@ export default function PaneldenEkle() {
 
   return (
     <div style={{ padding: 20 }}>
-      <h2 style={{ marginBottom: 15 }}>📦 Excel Tarzı Panelden Ürün Ekle</h2>
+      <h2 style={{ marginBottom: 15 }}>📦 Panelden Toplu Ürün Ekle</h2>
       <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 15 }}>
         <thead>
           <tr>
-            <th style={thStyle}>title</th>
-            <th style={thStyle}>desc</th>
-            <th style={thStyle}>price</th>
+            <th style={thStyle}>title (Başlık)</th>
+            <th style={thStyle}>desc (Açıklama)</th>
+            <th style={thStyle}>price (Fiyat)</th>
             <th style={thStyle}>stok</th>
             <th style={thStyle}>kategori</th>
             <th style={thStyle}>resim</th>
