@@ -36,6 +36,7 @@ type HeroSlide = {
   aktif: boolean;
 };
 
+
 export default function AdminSaticilar() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -151,14 +152,14 @@ export default function AdminSaticilar() {
   };
 
   // HeroSlides fetch
-  const fetchHeroSlides = async () => {
-    const { data, error } = await supabase
-      .from("hero_slides")
-      .select("*")
-      .order("order", { ascending: true });
+   const fetchHeroSlides = async () => {
+  const { data, error } = await supabase
+    .from("hero_slides")
+    .select('id, title, sub, cta, href, img, "order", aktif'); // 👈 order tırnaklı
 
-    if (!error && data) setHeroSlides(data as HeroSlide[]);
-  };
+  if (!error && data) setHeroSlides(data as HeroSlide[]);
+};
+
 
   const addHeroSlide = async () => {
     if (!newSlide.title || !newSlide.img) {
@@ -166,16 +167,17 @@ export default function AdminSaticilar() {
       return;
     }
     const { error } = await supabase.from("hero_slides").insert([
-      {
-        title: newSlide.title,
-        sub: newSlide.sub || "",
-        cta: newSlide.cta || "Keşfet",
-        href: newSlide.href || "/",
-        img: newSlide.img,
-        order: newSlide.order || heroSlides.length + 1,
-        aktif: true,
-      },
-    ]);
+  {
+    title: newSlide.title,
+    sub: newSlide.sub || "",
+    cta: newSlide.cta || "Keşfet",
+    href: newSlide.href || "/",
+    img: newSlide.img,
+    "order": newSlide.order || heroSlides.length + 1, // 👈 order tırnaklı
+    aktif: true,
+  },
+]);
+
     if (error) {
       alert("Hata: " + error.message);
       return;
