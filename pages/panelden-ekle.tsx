@@ -11,8 +11,8 @@ type Row = {
   price: string;
   stok: string;
   kategori_id: string;
-  resim_file?: File | null;
-  resim_url?: string;
+  resim_file?: File | null;   // ✅ dosya
+  resim_url?: string;         // ✅ yüklendikten sonra link
   beden?: string;
   renk?: string;
   agirlikMiktar?: string;
@@ -52,28 +52,42 @@ export default function PaneldenEkle() {
     setRows((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  // 📌 Kaydet: DB yerine localStorage → sonra ilan-ver'e yönlendir
+  // 📌 Kaydet: dosyaları storage’a yükle, sonra ilan-ver'e yönlendir
   const handleSave = async () => {
-    const final = rows.map((row) => ({
-      title: row.title,
-      desc: row.desc,
-      price: row.price,
-      stok: Number(row.stok || 1),
-      kategori_id: Number(row.kategori_id),
-      resim_url: row.resim_url || "",
-      ozellikler: {
-        beden: row.beden ? row.beden.split(",").map((b) => b.trim()) : [],
-        renk: row.renk ? row.renk.split(",").map((r) => r.trim()) : [],
-        agirlikMiktar: row.agirlikMiktar || null,
-        agirlikBirim: row.agirlikBirim || null,
-        sonTuketim: row.sonTuketim || null,
-      },
-    }));
+    const final: Row[] = [];
 
-    // Tarayıcı localStorage'a kaydet
+    for (const row of rows) {
+      let photoUrl = row.resim_url;
+
+      if (row.resim_file) {
+        const ext = row.resim_file.name.split(".").pop();
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${ext}`;
+        const { error } = await supabase.storage
+          .from("ilan-fotograflari")
+          .upload(fileName, row.resim_file);
+
+        if (!error) {
+          const { data } = supabase.storage
+            .from("ilan-fotograflari")
+            .getPublicUrl(fileName);
+          photoUrl = data.publicUrl;
+        }
+      }
+
+      final.push({
+        ...row,
+        stok: row.stok,
+        kategori_id: row.kategori_id,
+        resim_url: photoUrl,
+      });
+    }
+
+    // localStorage’a yaz
     localStorage.setItem("panelProducts", JSON.stringify(final));
 
-    // ilan-ver sayfasına yönlendir
+    // ilan-ver sayfasına dön
     router.push("/ilan-ver");
   };
 
@@ -93,7 +107,7 @@ export default function PaneldenEkle() {
             <th style={thStyle}>price</th>
             <th style={thStyle}>stok</th>
             <th style={thStyle}>kategori</th>
-            <th style={thStyle}>resim_url</th>
+            <th style={thStyle}>resim</th>
             <th style={thStyle}>özellikler</th>
             <th style={thStyle}>sil</th>
           </tr>
@@ -106,23 +120,52 @@ export default function PaneldenEkle() {
 
             return (
               <tr key={i}>
-                <td><input value={row.title} onChange={(e) => handleChange(i, "title", e.target.value)} /></td>
-                <td><input value={row.desc} onChange={(e) => handleChange(i, "desc", e.target.value)} /></td>
-                <td><input value={row.price} onChange={(e) => handleChange(i, "price", e.target.value)} /></td>
-                <td><input type="number" value={row.stok} onChange={(e) => handleChange(i, "stok", e.target.value)} /></td>
                 <td>
-                  <select value={row.kategori_id} onChange={(e) => handleChange(i, "kategori_id", e.target.value)}>
+                  <input
+                    value={row.title}
+                    onChange={(e) => handleChange(i, "title", e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={row.desc}
+                    onChange={(e) => handleChange(i, "desc", e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    value={row.price}
+                    onChange={(e) => handleChange(i, "price", e.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={row.stok}
+                    onChange={(e) => handleChange(i, "stok", e.target.value)}
+                  />
+                </td>
+                <td>
+                  <select
+                    value={row.kategori_id}
+                    onChange={(e) =>
+                      handleChange(i, "kategori_id", e.target.value)
+                    }
+                  >
                     {kategoriler.map((k) => (
-                      <option key={k.id} value={k.id}>{k.ad}</option>
+                      <option key={k.id} value={k.id}>
+                        {k.ad}
+                      </option>
                     ))}
                   </select>
                 </td>
                 <td>
                   <input
-                    type="text"
-                    value={row.resim_url || ""}
-                    onChange={(e) => handleChange(i, "resim_url", e.target.value)}
-                    placeholder="Resim URL"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      handleChange(i, "resim_file", e.target.files?.[0] || null)
+                    }
                   />
                 </td>
                 <td>
@@ -144,24 +187,34 @@ export default function PaneldenEkle() {
                     <>
                       <input
                         value={row.agirlikMiktar || ""}
-                        onChange={(e) => handleChange(i, "agirlikMiktar", e.target.value)}
+                        onChange={(e) =>
+                          handleChange(i, "agirlikMiktar", e.target.value)
+                        }
                         placeholder="Ağırlık"
                       />
                       <input
                         value={row.agirlikBirim || ""}
-                        onChange={(e) => handleChange(i, "agirlikBirim", e.target.value)}
+                        onChange={(e) =>
+                          handleChange(i, "agirlikBirim", e.target.value)
+                        }
                         placeholder="Birim (kg,g,lt,ml)"
                       />
                       <input
                         type="date"
                         value={row.sonTuketim || ""}
-                        onChange={(e) => handleChange(i, "sonTuketim", e.target.value)}
+                        onChange={(e) =>
+                          handleChange(i, "sonTuketim", e.target.value)
+                        }
                       />
                     </>
                   )}
                 </td>
                 <td>
-                  <button type="button" onClick={() => removeRow(i)} style={{ color: "red" }}>
+                  <button
+                    type="button"
+                    onClick={() => removeRow(i)}
+                    style={{ color: "red" }}
+                  >
                     ❌
                   </button>
                 </td>
@@ -171,7 +224,9 @@ export default function PaneldenEkle() {
         </tbody>
       </table>
 
-      <button onClick={addRow} style={{ marginRight: 10 }}>+ Satır Ekle</button>
+      <button onClick={addRow} style={{ marginRight: 10 }}>
+        + Satır Ekle
+      </button>
       <button onClick={handleSave}>Kaydet ve İlan Ver Sayfasına Dön</button>
     </div>
   );
@@ -182,4 +237,3 @@ const thStyle: React.CSSProperties = {
   padding: 6,
   background: "#f1f5f9",
 };
-
