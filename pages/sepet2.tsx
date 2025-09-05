@@ -461,11 +461,13 @@ useEffect(() => {
 
         const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
         setCartItems(
-          guestCart.map((g: any) => ({
-            ...g,
-            product: pMap.get(g.product_id),
-          }))
-        );
+  guestCart.map((g: any) => ({
+    ...g,
+    id: g.product_id,                          // 👈 butonlar item.id kullanmaya devam edebilsin
+    product: pMap.get(g.product_id),
+  }))
+);
+
       }
     } catch (e) {
       console.error("fetchCart hata:", e);
@@ -510,10 +512,19 @@ useEffect(() => {
     // 🔹 Girişsiz kullanıcı için localStorage güncelle
     const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
     const updated = guestCart.map((g: any) =>
-      g.product_id === cartId ? { ...g, adet: yeniAdet } : g
-    );
-    localStorage.setItem("guestCart", JSON.stringify(updated));
-    setCartItems(updated.map((g: any) => ({ ...g, product: g.product })));
+  g.product_id === cartId ? { ...g, adet: yeniAdet } : g
+);
+localStorage.setItem("guestCart", JSON.stringify(updated));
+
+setCartItems(prev =>
+  updated.map((g: any) => ({
+    ...g,
+    id: g.product_id,  // 👈 tutarlı kalsın
+    // önceki state’ten product’ı koru (yeniden fetch etmeye gerek yok)
+    product: prev.find((p: any) => p.product_id === g.product_id)?.product
+  }))
+);
+
   }
 };
 
@@ -527,8 +538,16 @@ useEffect(() => {
     // 🔹 Girişsiz kullanıcı için localStorage’dan sil
     const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
     const updated = guestCart.filter((g: any) => g.product_id !== cartId);
-    localStorage.setItem("guestCart", JSON.stringify(updated));
-    setCartItems(updated.map((g: any) => ({ ...g, product: g.product })));
+localStorage.setItem("guestCart", JSON.stringify(updated));
+
+setCartItems(prev =>
+  updated.map((g: any) => ({
+    ...g,
+    id: g.product_id,  // 👈
+    product: prev.find((p: any) => p.product_id === g.product_id)?.product
+  }))
+);
+
   }
 };
 
