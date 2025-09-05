@@ -501,7 +501,7 @@ useEffect(() => {
 
     setCartItems(cartData || []);
   } else {
-    // 🔹 Kullanıcı giriş yapmamış → localStorage'a kaydet
+    // 🔹 Girişsiz → localStorage’a ürün bilgisiyle beraber kaydet
     let guestCart: any[] = [];
     try {
       guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
@@ -511,13 +511,19 @@ useEffect(() => {
     if (existing) {
       existing.adet += 1;
     } else {
-      guestCart.push({ product_id: urun.id, adet: 1, ozellikler: defaultOzellikler });
+      guestCart.push({
+        product_id: urun.id,
+        adet: 1,
+        ozellikler: defaultOzellikler,
+        product: urun,   // 👈 ürün bilgisi de kaydediliyor
+      });
     }
 
     localStorage.setItem("guestCart", JSON.stringify(guestCart));
-    setCartItems(guestCart);
+    setCartItems(guestCart.map(g => ({ ...g, product: g.product })));
   }
 };
+
 
 
   const sepeteGit = () => { window.location.href = '/sepet2'; };
