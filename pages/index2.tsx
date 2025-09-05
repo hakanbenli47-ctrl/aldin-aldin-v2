@@ -1662,7 +1662,7 @@ useEffect(() => {
                                 alt={product.title}
                                 style={{
                                   width: '100%',
-                                  height: 155,
+                                  
                                   objectFit: 'cover',
                                   borderRadius: 10,
                                   marginBottom: 12,
@@ -2001,37 +2001,17 @@ body { padding-bottom: env(safe-area-inset-bottom); }
 }
 
 /* Tablet ve aşağısı */
-@media (max-width: 1024px) {
-  .layout-3col { flex-direction: column !important; gap: 12px !important; padding: 0 !important; width: 100% !important; }
-  .ads-left, .ads-right { display: none !important; }
-  .ilanGrid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 14px !important; }
-  header input[type="text"] { width: 100% !important; max-width: none !important; }
-}
+
 
 /* Telefon */
-@media (max-width: 640px) {
-  .header-inner{ grid-template-columns: 1fr !important; min-height: 56px !important; padding: 0 12px !important; }
-  .header-left{ display:none !important; }
-  .header-middle{ width:100% !important; gap:8px !important; }
-  .header-middle input[type="text"], .searchBar{ width:100% !important; height:40px !important; }
-  .header-actions{ gap:8px !important; }
-  .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
-  .ilanGrid { grid-template-columns: 1fr !important; }
-}
+
 
 /* Genel güvenlik bandı */
 html, body { max-width: 100vw; overflow-x: hidden; }
 img, video { max-width: 100%; height: auto; display: block; }
 
 /* ANDROID iyileştirmeleri */
-.is-android .ads-left, .is-android .ads-right{ display: none !important; }
-.is-android .layout-3col{ display: block !important; }
-.is-android .main-col{ width: 100% !important; max-width: none !important; padding: 0 !important; }
-.is-android .main-col > .section-block{ margin: 0 0 18px !important; border-radius: 0 !important; padding: 16px 12px !important; }
-.is-android .ilanGrid{ display: grid !important; grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap: 10px !important; }
-@media (max-width: 480px){
-  .is-android .ilanGrid{ grid-template-columns: 1fr !important; }
-}
+
 /* Tüm İlanlar – telefon görünümü: 2 sütun + kare görsel */
 @media (max-width: 640px){
   /* 2 sütun yap, inline gridTemplateColumns stilini ezmek için !important */
@@ -2056,6 +2036,41 @@ img, video { max-width: 100%; height: auto; display: block; }
 /* Çok dar ekranlarda (mini telefonlar) tek sütun */
 @media (max-width: 380px){
   .ilanGrid{ grid-template-columns: 1fr !important; }
+}
+/* ===== Tüm İlanlar – kanonik responsive grid ===== */
+.ilanGrid{
+  display: grid;
+  /* Ekrana göre otomatik kolon; kart min genişliği 180px */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* Büyük tablet / küçük laptop kırılımı */
+@media (max-width: 900px){
+  .ilanGrid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Telefonlar: 2 sütun (düzenli ve kompakt) */
+@media (max-width: 640px){
+  .ilanGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+}
+
+/* Çok dar cihazlar (mini telefonlar): 1 sütun */
+@media (max-width: 380px){
+  .ilanGrid{ grid-template-columns: 1fr; }
+}
+
+/* Görselleri tek oranda topla (kare) */
+.ilanGrid img{
+  width: 100%;
+  height: auto;         /* inline height kaldırdık; bunu kullan */
+  aspect-ratio: 1 / 1;  /* hepsini 1:1 kare yapar */
+  object-fit: cover;
+  border-radius: 10px;
 }
 
           `}</style>
