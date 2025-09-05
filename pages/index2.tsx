@@ -474,23 +474,51 @@ useEffect(() => {
   // Varsayılan özellikler
   let defaultOzellikler: Record<string, string> = {};
   const sepeteEkle = async (urun: Ilan) => {
-   
-    const defaultOzellikler: Record<string, string> = {};
+  const defaultOzellikler: Record<string, string> = {};
+  
+  if (isLoggedIn && user) {
+    // 🔹 Kullanıcı giriş yapmış → Supabase'e kaydet
     const sepette = sepetteVarMi(urun.id);
 
     if (sepette) {
-      await supabase.from("cart").update({ adet: sepette.adet + 1 }).eq("id", sepette.id);
+      await supabase
+        .from("cart")
+        .update({ adet: sepette.adet + 1 })
+        .eq("id", sepette.id);
     } else {
       await supabase.from("cart").insert([{
-        user_id: user.id, product_id: urun.id, adet: 1, ozellikler: defaultOzellikler
+        user_id: user.id,
+        product_id: urun.id,
+        adet: 1,
+        ozellikler: defaultOzellikler
       }]);
     }
+
     const { data: cartData } = await supabase
       .from("cart")
       .select("id, adet, product_id, ozellikler")
       .eq("user_id", user.id);
+
     setCartItems(cartData || []);
-  };
+  } else {
+    // 🔹 Kullanıcı giriş yapmamış → localStorage'a kaydet
+    let guestCart: any[] = [];
+    try {
+      guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+    } catch {}
+
+    const existing = guestCart.find(item => item.product_id === urun.id);
+    if (existing) {
+      existing.adet += 1;
+    } else {
+      guestCart.push({ product_id: urun.id, adet: 1, ozellikler: defaultOzellikler });
+    }
+
+    localStorage.setItem("guestCart", JSON.stringify(guestCart));
+    setCartItems(guestCart);
+  }
+};
+
 
   const sepeteGit = () => { window.location.href = '/sepet2'; };
 
