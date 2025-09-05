@@ -296,21 +296,18 @@ const scrollEndTimer = useRef<number | null>(null);
 
 
   useEffect(() => {
-  if (heroTimer.current) clearInterval(heroTimer.current);
-
-  if (!heroPause && heroSlides.length > 1) {
-    heroTimer.current = setInterval(() => {
-      setHeroIndex(i => {
-        const next = (i + 1) % heroSlides.length;
-        requestAnimationFrame(() => scrollHero(next));
-        return next;
-      });
-    }, 3000); // 3 saniye
-  }
-
-  return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
-}, [heroPause, heroSlides.length]);
-
+    if (heroTimer.current) clearInterval(heroTimer.current);
+    if (!heroPause) {
+      heroTimer.current = setInterval(() => {
+        setHeroIndex(i => {
+          const next = (i + 1) % Math.max(1, heroSlides.length);
+          requestAnimationFrame(() => scrollHero(next));
+          return next;
+        });
+      }, 3500);
+    }
+    return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
+  }, [heroPause, heroSlides.length]);
 
   
 
