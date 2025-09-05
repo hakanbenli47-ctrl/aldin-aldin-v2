@@ -503,14 +503,15 @@ useEffect(() => {
 
   // Yönlendirme + recently_viewed yazma
   const goToProduct = (id: number, from: string) => {
-    try {
-      const raw = localStorage.getItem('recently_viewed');
-      const arr: number[] = raw ? JSON.parse(raw) : [];
-      const updated = [id, ...arr.filter(x => x !== id)].slice(0, 20);
-      localStorage.setItem('recently_viewed', JSON.stringify(updated));
-    } catch {}
-    window.location.href = `/urun/${id}?from=${from}`;
-  };
+  try {
+    const raw = localStorage.getItem('recently_viewed');
+    const arr: number[] = raw ? JSON.parse(raw) : [];
+    const updated = [id, ...arr.filter(x => x !== id)].slice(0, 20);
+    localStorage.setItem('recently_viewed', JSON.stringify(updated));
+  } catch {}
+  router.push(`/urun/${id}?from=${from}`);
+};
+
 
   /** === GELİŞMİŞ FİLTRELEME + SIRALAMA + ÖNERİ === */
   const aktifKategoriId = aktifKategori.id ?? null;
