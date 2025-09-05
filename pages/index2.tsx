@@ -1134,22 +1134,25 @@ useEffect(() => {
             </div>
 
             {/* Kategori çipleri */}
-            <div className="full-bleed">
-              <div className="inner">
-                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginTop:12 }}>
-                  {kategoriSayilari.slice(0,12).map(k=>(
-                    <button key={k.id}
-                      onClick={()=> setAktifKategori({ ad:k.ad, id:k.id })}
-                      style={{
-                        border:'1px solid #e5e7eb', background:'#fff', borderRadius:999, padding:'6px 12px', cursor:'pointer',
-                        fontWeight:800, fontSize:13, display:'flex', alignItems:'center', gap:8
-                      }}>
-                      {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad} <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {kategoriSayilari
+  .filter(k => k.sayi > 0)       // 👈 0 olanları çıkar
+  .slice(0, 12)
+  .map(k => (
+    <button
+      key={k.id}
+      onClick={() => setAktifKategori({ ad:k.ad, id:k.id })}
+      style={{
+        border:'1px solid #e5e7eb', background:'#fff', borderRadius:999,
+        padding:'6px 12px', cursor:'pointer',
+        fontWeight:800, fontSize:13, display:'flex', alignItems:'center', gap:8
+      }}
+    >
+      {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad}
+      <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
+    </button>
+  ))
+}
+
 
             {/* Trend aramalar */}
             {trendingTerms.length > 0 && (
