@@ -276,14 +276,24 @@ useEffect(() => {
   const [heroIndex, setHeroIndex] = useState(0);
   const [heroPause, setHeroPause] = useState(false);
   const heroTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-
+const isAutoScrolling = useRef(false);
+const scrollEndTimer = useRef<number | null>(null);
   const scrollHero = (idx: number) => {
-    const el = heroRef.current;
-    if (!el) return;
-    const target = el.children[idx] as HTMLElement | undefined;
-    const left = target ? target.offsetLeft : idx * el.clientWidth;
-    el.scrollTo({ left, behavior: 'smooth' });
-  };
+  const el = heroRef.current;
+  if (!el) return;
+  const target = el.children[idx] as HTMLElement | undefined;
+  const left = target ? target.offsetLeft : idx * el.clientWidth;
+
+  isAutoScrolling.current = true;               // programatik scroll başlıyor
+  el.scrollTo({ left, behavior: 'smooth' });
+
+  if (scrollEndTimer.current) window.clearTimeout(scrollEndTimer.current);
+  // animasyon bitince onScroll tekrar aktif olsun
+  scrollEndTimer.current = window.setTimeout(() => {
+    isAutoScrolling.current = false;
+  }, 450) as unknown as number;
+};
+
 
   useEffect(() => {
     if (heroTimer.current) clearInterval(heroTimer.current);
@@ -299,20 +309,22 @@ useEffect(() => {
     return () => { if (heroTimer.current) clearInterval(heroTimer.current); };
   }, [heroPause, heroSlides.length]);
 
-  useEffect(() => { scrollHero(heroIndex); }, [heroIndex]);
+  
 
   useEffect(() => {
     const el = heroRef.current;
     if (!el) return;
-    const onScroll = () => {
-      const children = Array.from(el.children) as HTMLElement[];
-      let nearest = 0, best = Infinity;
-      children.forEach((c, i) => {
-        const d = Math.abs(c.offsetLeft - el.scrollLeft);
-        if (d < best) { best = d; nearest = i; }
-      });
-      setHeroIndex(nearest);
-    };
+   const onScroll = () => {
+  if (isAutoScrolling.current) return; // animasyon sırasında heroIndex değiştirme
+  const children = Array.from(el.children) as HTMLElement[];
+  let nearest = 0, best = Infinity;
+  children.forEach((c, i) => {
+    const d = Math.abs(c.offsetLeft - el.scrollLeft);
+    if (d < best) { best = d; nearest = i; }
+  });
+  setHeroIndex(nearest);
+};
+
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
   }, []);
@@ -1060,7 +1072,7 @@ useEffect(() => {
                 gridAutoFlow:'column',
                 gridAutoColumns:'100%',
                 overflowX:'auto',
-                scrollSnapType:'x mandatory',
+                scrollSnapType:'x proximity',
                 gap:12,
                 borderRadius:0, // full-bleed
                 width:'100dvw',
