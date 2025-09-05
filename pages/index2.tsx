@@ -2032,6 +2032,31 @@ img, video { max-width: 100%; height: auto; display: block; }
 @media (max-width: 480px){
   .is-android .ilanGrid{ grid-template-columns: 1fr !important; }
 }
+/* Tüm İlanlar – telefon görünümü: 2 sütun + kare görsel */
+@media (max-width: 640px){
+  /* 2 sütun yap, inline gridTemplateColumns stilini ezmek için !important */
+  .ilanGrid{
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    justify-content: center !important;
+  }
+  /* Kart içi padding'i biraz sıkılaştır (opsiyonel) */
+  .ilanGrid > div{ padding: 12px !important; }
+
+  /* Görselleri karele ve taşmayı önle */
+  .ilanGrid img{
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;   /* hepsini kare yapar */
+    height: auto !important;          /* inline height:155'i ezer */
+    object-fit: cover !important;     /* taşmadan doldur */
+    border-radius: 10px !important;
+  }
+}
+
+/* Çok dar ekranlarda (mini telefonlar) tek sütun */
+@media (max-width: 380px){
+  .ilanGrid{ grid-template-columns: 1fr !important; }
+}
 
           `}</style>
         </div>

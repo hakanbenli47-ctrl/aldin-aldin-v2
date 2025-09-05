@@ -713,7 +713,7 @@ export default function UrunDetay({
   height: 100% !important;
   object-fit: cover;
   display: block;
-}
+} 
         .simTitle { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.25; height: 36px; overflow: hidden; }
         .simPrice { font-size: 14px; font-weight: 800; color: var(--brand); }
 
