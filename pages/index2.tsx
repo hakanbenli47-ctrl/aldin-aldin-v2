@@ -2073,7 +2073,46 @@ img, video { max-width: 100%; height: auto; display: block; }
   border-radius: 10px;
 }
 
-          `}</style>
+  /* === Tüm İlanlar: telefonlarda yatay kaydırmalı liste === */
+@media (max-width: 640px){
+  /* grid yerine yatay kaydırmalı flex */
+  .ilanGrid{
+    display: flex !important;
+    overflow-x: auto;
+    gap: 12px;
+    padding: 2px 4px 10px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;          /* Firefox */
+  }
+  .ilanGrid::-webkit-scrollbar{ display: none; } /* Chrome/Safari */
+
+  /* her kart sabit genişlikte “slide” gibi dursun */
+  .ilanGrid > div{
+    flex: 0 0 clamp(220px, 72vw, 320px);
+    max-width: clamp(220px, 72vw, 320px);
+    scroll-snap-align: start;
+    border-radius: 12px;
+  }
+
+  /* görselleri tek oranda topla (kare) ve taşmayı önle */
+  .ilanGrid img{
+    width: 100% !important;
+    height: auto !important;  /* varsa inline height’ı ezer */
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+}
+
+/* istiyorsan mini telefonlarda tek kart göster */
+@media (max-width: 380px){
+  .ilanGrid > div{
+    flex-basis: 88vw;
+    max-width: 88vw;
+  }
+}
+        `}</style>
         </div>
       </div>
     </>
