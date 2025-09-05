@@ -65,70 +65,43 @@ function prettyLabel(key: string) {
 }
 
 /* ----------------- SSR ----------------- */
-export async function getServerSideProps(context: any) {
-  try {
-    const idParam = Array.isArray(context.params?.id) ? context.params.id[0] : context.params?.id;
-    const idNum = Number(idParam);
-    if (!Number.isFinite(idNum)) return { notFound: true };
+export async function getServerSideProps(ctx: any) {
+  const idNum = Number(Array.isArray(ctx.params?.id) ? ctx.params.id[0] : ctx.params?.id);
+  if (!Number.isFinite(idNum)) return { notFound: true };
 
-    const { data: ilanRaw, error: ilanErr } = await supabase
-      .from("ilan")
-      .select("id, title, price, resim_url, kategori_id, user_email, doped, desc, ozellikler")
-      .eq("id", idNum)
-      .maybeSingle();
+  const { data: ilanRaw, error: ilanErr } = await supabase
+    .from("ilan")
+    .select("id, title, price, resim_url, kategori_id, user_email, doped, desc, ozellikler")
+    .eq("id", idNum)
+    .maybeSingle();
+  if (ilanErr || !ilanRaw) return { notFound: true };
 
-    if (ilanErr) console.error("ilanErr:", ilanErr);
-    if (ilanErr || !ilanRaw) return { notFound: true };
+  const [katRes, firmaRes, benzerRes] = await Promise.all([
+    ilanRaw.kategori_id != null
+      ? supabase.from("kategori").select("ad").eq("id", ilanRaw.kategori_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    ilanRaw.user_email
+      ? supabase.from("satici_firmalar").select("firma_adi, puan").eq("email", ilanRaw.user_email).maybeSingle()
+      : Promise.resolve({ data: null }),
+    ilanRaw.kategori_id != null
+      ? supabase.from("ilan").select("id, title, price, resim_url")
+          .eq("kategori_id", ilanRaw.kategori_id).neq("id", ilanRaw.id).limit(8)
+      : Promise.resolve({ data: [] }),
+  ] as const);
 
-    // Kategori adı
-    let kategoriAd: string | null = null;
-    if (ilanRaw.kategori_id != null) {
-      const { data: kat, error: katErr } = await supabase
-        .from("kategori")
-        .select("ad")
-        .eq("id", ilanRaw.kategori_id)
-        .maybeSingle();
-      if (katErr) console.error("kategoriErr:", katErr);
-      kategoriAd = kat?.ad ?? null;
-    }
+  const kategoriAd = katRes?.data?.ad ?? null;
+  const firmaAdi   = firmaRes?.data?.firma_adi ?? null;
+  const firmaPuan  = Number(firmaRes?.data?.puan ?? 0);
+  const benzerler  = benzerRes?.data ?? [];
 
-    const ilan: Ilan = { ...ilanRaw, kategori: kategoriAd ? { ad: kategoriAd } : null };
-
-    // Firma
-    let firmaAdi: string | null = null;
-    let firmaPuan = 0;
-    if (ilan.user_email && ilan.user_email.trim()) {
-      const { data: firma, error: firmaErr } = await supabase
-        .from("satici_firmalar")
-        .select("firma_adi, puan")
-        .eq("email", ilan.user_email)
-        .maybeSingle();
-      if (firmaErr) console.error("firmaErr:", firmaErr);
-      firmaAdi = firma?.firma_adi ?? null;
-      firmaPuan = Number(firma?.puan ?? 0);
-    }
-
-    // Benzer ürünler (aynı kategori)
-    let benzerler: Pick<Ilan, "id" | "title" | "price" | "resim_url">[] = [];
-    if (ilan.kategori_id != null) {
-      const { data: b, error: benzerErr } = await supabase
-        .from("ilan")
-        .select("id, title, price, resim_url")
-        .eq("kategori_id", ilan.kategori_id)
-        .neq("id", ilan.id)
-        .limit(8);
-      if (benzerErr) console.error("benzerlerErr:", benzerErr);
-      benzerler = b || [];
-    }
-
-    return {
-      props: { ilan, firmaAdi, firmaPuan, benzerler },
-    };
-  } catch (e) {
-    console.error("SSR /urun/[id] error:", e);
-    return { notFound: true };
-  }
+  return {
+    props: {
+      ilan: { ...ilanRaw, kategori: kategoriAd ? { ad: kategoriAd } : null },
+      firmaAdi, firmaPuan, benzerler,
+    },
+  };
 }
+
 
 /* ----------------- COMPONENT ----------------- */
 export default function UrunDetay({
