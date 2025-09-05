@@ -16,7 +16,7 @@ export default function Destek() {
   const [sohbetId, setSohbetId] = useState<number | null>(null);
   const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
   const [yeniMesaj, setYeniMesaj] = useState("");
-  const [status, setStatus] = useState<"pending" | "active">("pending");
+  const [status, setStatus] = useState<"pending" | "active" | "closed">("pending");
   const [loading, setLoading] = useState(false);
 
   const chanRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -38,9 +38,7 @@ export default function Destek() {
           const row = payload.new as Mesaj;
           setMesajlar((prev) => [...prev, row]);
 
-          // ✅ Destek tarafından mesaj düştüyse hemen aktif say
           if (row.rol === "destek") setStatus("active");
-
           scrollToBottom();
         }
       )
@@ -49,7 +47,7 @@ export default function Destek() {
         { event: "UPDATE", schema: "public", table: "destek_sohbetleri", filter: `id=eq.${chatId}` },
         (payload) => {
           const st = (payload.new as any)?.status;
-          if (st === "active" || st === "pending") setStatus(st);
+          if (st === "active" || st === "pending" || st === "closed") setStatus(st);
         }
       )
       .subscribe();
@@ -78,16 +76,18 @@ export default function Destek() {
       setUserEmail(em);
       setSohbetId(chatId);
       localStorage.setItem("destekEmail", JSON.stringify(em));
-      localStorage.setItem("destekChat", JSON.stringify(chatId)); // sadece sayı
+      localStorage.setItem("destekChat", JSON.stringify(chatId));
       subscribeRealtime(chatId);
       fetchMesajlar(chatId);
       fetchStatus(chatId);
     }
 
-    return () => { if (chanRef.current) supabase.removeChannel(chanRef.current); };
+    return () => {
+      if (chanRef.current) supabase.removeChannel(chanRef.current);
+    };
   }, []);
 
-  // ---- 5 saniyede bir otomatik yenileme (mesajlar + status) ----
+  // ---- 5 saniyede bir otomatik yenileme ----
   useEffect(() => {
     if (!sohbetId) return;
     const int = setInterval(() => {
@@ -107,7 +107,6 @@ export default function Destek() {
     const list = (data ?? []) as Mesaj[];
     setMesajlar(list);
 
-    // ✅ Geçmişte destekten mesaj varsa uyarıyı gizle
     if (list.some((m) => m.rol === "destek")) setStatus("active");
   }
 
@@ -118,7 +117,7 @@ export default function Destek() {
       .eq("id", chatId)
       .single();
     const st = (data as any)?.status;
-    if (st === "active" || st === "pending") setStatus(st);
+    if (st === "active" || st === "pending" || st === "closed") setStatus(st);
   }
 
   const baslatSohbet = async () => {
@@ -158,6 +157,10 @@ export default function Destek() {
 
   const gonder = async () => {
     if (!yeniMesaj.trim() || !userEmail || !sohbetId) return;
+    if (status === "closed") {
+      alert("Bu sohbet kapatıldı. Lütfen yeni bir sohbet başlatın.");
+      return;
+    }
 
     const { error } = await supabase.from("destek_mesajlari").insert({
       sohbet_id: Number(sohbetId),
@@ -184,6 +187,17 @@ export default function Destek() {
     setStatus("pending");
   };
 
+  // 🔴 Yeni: Sohbetten Çık
+  const sohbettenCik = async () => {
+    if (sohbetId) {
+      await supabase
+        .from("destek_sohbetleri")
+        .update({ status: "closed" })
+        .eq("id", sohbetId);
+    }
+    resetChat(); // her şeyi temizle ve giriş ekranına dön
+  };
+
   if (!userEmail || !sohbetId) {
     return (
       <div style={{ maxWidth: 420, margin: "40px auto", textAlign: "center" }}>
@@ -193,12 +207,28 @@ export default function Destek() {
           placeholder="E-posta adresiniz"
           value={emailInput}
           onChange={(e) => setEmailInput(e.target.value)}
-          style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #d1d5db", marginBottom: 12 }}
+          style={{
+            width: "100%",
+            padding: 10,
+            borderRadius: 8,
+            border: "1px solid #d1d5db",
+            marginBottom: 12,
+          }}
         />
         <button
           onClick={baslatSohbet}
           disabled={loading}
-          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer", width: "100%", opacity: loading ? .7 : 1 }}
+          style={{
+            background: "#1648b0",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "10px 16px",
+            border: "none",
+            fontWeight: 600,
+            cursor: "pointer",
+            width: "100%",
+            opacity: loading ? 0.7 : 1,
+          }}
         >
           {loading ? "Başlatılıyor…" : "Sohbeti Başlat"}
         </button>
@@ -212,10 +242,24 @@ export default function Destek() {
 
       <div
         ref={kutuRef}
-        style={{ border: "1px solid #e5e7eb", borderRadius: 10, height: 420, overflowY: "auto", padding: 12, background: "#f9fafb", marginBottom: 12 }}
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: 10,
+          height: 420,
+          overflowY: "auto",
+          padding: 12,
+          background: "#f9fafb",
+          marginBottom: 12,
+        }}
       >
         {mesajlar.map((m) => (
-          <div key={m.id} style={{ textAlign: m.rol === "kullanici" ? "right" : "left", marginBottom: 10 }}>
+          <div
+            key={m.id}
+            style={{
+              textAlign: m.rol === "kullanici" ? "right" : "left",
+              marginBottom: 10,
+            }}
+          >
             <span
               style={{
                 display: "inline-block",
@@ -231,8 +275,7 @@ export default function Destek() {
           </div>
         ))}
 
-        {/* ✅ Uyarıyı, sadece status pending İSE ve listede destek mesajı YOKSA göster */}
-        {status === "pending" && !mesajlar.some(m => m.rol === "destek") && (
+        {status === "pending" && !mesajlar.some((m) => m.rol === "destek") && (
           <div style={{ textAlign: "center", color: "#999", marginTop: 10 }}>
             🔔 Destek ekibinin sohbete katılması bekleniyor...
           </div>
@@ -244,16 +287,52 @@ export default function Destek() {
           value={yeniMesaj}
           onChange={(e) => setYeniMesaj(e.target.value)}
           placeholder="Mesajınızı yazın…"
-          style={{ flex: 1, padding: 10, borderRadius: 8, border: "1px solid #d1d5db" }}
+          style={{
+            flex: 1,
+            padding: 10,
+            borderRadius: 8,
+            border: "1px solid #d1d5db",
+          }}
         />
         <button
           onClick={gonder}
-          style={{ background: "#1648b0", color: "#fff", borderRadius: 8, padding: "10px 16px", border: "none", fontWeight: 600, cursor: "pointer" }}
+          style={{
+            background: "#1648b0",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "10px 16px",
+            border: "none",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
           Gönder
         </button>
-        <button onClick={resetChat} title="Sohbeti sıfırla" style={{ border: "1px solid #e5e7eb", background: "#fff", borderRadius: 8, padding: "10px 12px" }}>
+        <button
+          onClick={resetChat}
+          title="Sohbeti sıfırla"
+          style={{
+            border: "1px solid #e5e7eb",
+            background: "#fff",
+            borderRadius: 8,
+            padding: "10px 12px",
+          }}
+        >
           ↺
+        </button>
+        <button
+          onClick={sohbettenCik}
+          style={{
+            background: "#e11d48",
+            color: "#fff",
+            borderRadius: 8,
+            padding: "10px 14px",
+            border: "none",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Sohbetten Çık
         </button>
       </div>
     </div>
