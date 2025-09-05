@@ -1132,6 +1132,76 @@ useEffect(() => {
                 </div>
               </div>
             </div>
+{/* === HAKKIMIZDA / GÜVEN BLOKLARI === */}
+<section className="section-block full-bleed expand-desktop" style={{ marginTop:30 }}>
+  <div className="inner" style={{
+    display:'grid',
+    gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))',
+    gap:20
+  }}>
+    {[
+      {
+        title:"🛡️ Hakkımızda",
+        text:"80bir, Türkiye’nin dört bir yanındaki güvenilir satıcıları sizlerle buluşturan modern bir pazaryeridir."
+      },
+      {
+        title:"🚀 Neden Biz?",
+        text:"Hızlı kargo, güvenli ödeme ve kolay iade avantajlarımızla alışverişinizi güvenle yapabilirsiniz."
+      },
+      {
+        title:"⭐ Müşteri Yorumları",
+        text:"Müşteri memnuniyeti bizim için önceliktir. Yüzlerce olumlu geri bildirim alıyoruz."
+      }
+    ].map((item, i)=>(
+      <div key={i} className="info-card">
+        <div className="info-title">{item.title}</div>
+        <div className="info-text">{item.text}</div>
+      </div>
+    ))}
+  </div>
+</section>
+
+<style jsx>{`
+  .info-card{
+    position: relative;
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .25s ease;
+    overflow: hidden;
+    min-height: 100px;
+  }
+  .info-title{
+    font-size: 18px;
+    font-weight: 800;
+    color: #1e293b;
+    z-index: 2;
+    position: relative;
+  }
+  .info-text{
+    position: absolute;
+    inset: 0;
+    background: #f9fafb;
+    color: #374151;
+    font-size: 14px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .25s ease;
+    border-radius: 12px;
+    line-height: 1.5;
+    font-weight: 500;
+  }
+  .info-card:hover .info-text{
+    opacity: 1;
+  }
+`}</style>
 
             {/* Kategori çipleri */}
             {kategoriSayilari
