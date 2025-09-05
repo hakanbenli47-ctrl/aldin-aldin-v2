@@ -651,52 +651,6 @@ useEffect(() => {
     window.location.href = '/';
   };
 
-  <div
-  ref={heroRef}
-  className="hero-scroll"
-  onMouseEnter={() => setHeroPause(true)}
-  onMouseLeave={() => setHeroPause(false)}
-  onTouchStart={() => setHeroPause(true)}
-  onTouchEnd={() => setHeroPause(false)}
-  style={{
-    display:'grid',
-    gridAutoFlow:'column',
-    gridAutoColumns:'100%',
-    overflowX:'auto',
-    scrollSnapType:'x mandatory',
-    gap:12,
-    borderRadius:0,
-    width:'100dvw',
-  }}
->
-  {heroSlides.length === 0 ? (
-    <div className="hero-slide">
-      <div className="hero-content">
-        <div>
-          <div className="hero-title">Yükleniyor…</div>
-          <div className="hero-sub">Kampanyalar hazırlanıyor</div>
-        </div>
-      </div>
-    </div>
-  ) : (
-    heroSlides.map((s)=>(
-      <div key={s.id} className="hero-slide">
-        <img src={s.img} alt={s.title}
-             onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }} />
-        <div className="hero-content">
-          <div>
-            <div className="hero-title">{s.title}</div>
-            <div className="hero-sub">{s.sub}</div>
-            <button onClick={()=> window.location.href = s.href} className="hero-btn">
-              {s.cta} →
-            </button>
-          </div>
-        </div>
-      </div>
-    ))
-  )}
-</div>
-
 
   // Gece yarısına geri sayım (Flash Deals için)
   const now = new Date();
@@ -2013,25 +1967,9 @@ img, video { max-width: 100%; height: auto; display: block; }
 /* ANDROID iyileştirmeleri */
 
 /* Tüm İlanlar – telefon görünümü: 2 sütun + kare görsel */
-@media (max-width: 640px){
-  /* 2 sütun yap, inline gridTemplateColumns stilini ezmek için !important */
-  .ilanGrid{
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px !important;
-    justify-content: center !important;
-  }
-  /* Kart içi padding'i biraz sıkılaştır (opsiyonel) */
-  .ilanGrid > div{ padding: 12px !important; }
 
-  /* Görselleri karele ve taşmayı önle */
-  .ilanGrid img{
-    width: 100% !important;
-    aspect-ratio: 1 / 1 !important;   /* hepsini kare yapar */
-    height: auto !important;          /* inline height:155'i ezer */
-    object-fit: cover !important;     /* taşmadan doldur */
-    border-radius: 10px !important;
-  }
-}
+  /* Kart içi padding'i biraz sıkılaştır (opsiyonel) */
+
 
 /* Çok dar ekranlarda (mini telefonlar) tek sütun */
 @media (max-width: 380px){
