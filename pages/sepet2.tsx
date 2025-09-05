@@ -420,127 +420,89 @@ export default function Sepet2() {
   }, []);
 
   // 1) Kullanıcıya bağlı veriler
-  useEffect(() => {
-    if (!currentUser) return;
-
+  // cart çekme
+useEffect(() => {
+  if (currentUser) {
+    // 🔹 Giriş VAR → Supabase cart
     const fetchCart = async () => {
-      try {
-        const { data: cart, error } = await supabase
-          .from("cart")
-          .select("id, adet, product_id, user_id, ozellikler")
-          .eq("user_id", currentUser.id);
+      const { data: cart } = await supabase
+        .from("cart")
+        .select("id, adet, product_id, user_id, ozellikler")
+        .eq("user_id", currentUser.id);
 
-        if (error) throw error;
-        if (!cart || cart.length === 0) {
-          setCartItems([]);
-          return;
-        }
-
-        const productIds = Array.from(new Set(cart.map((c: any) => c.product_id).filter(Boolean)));
-        const { data: ilanlar, error: perr } = await supabase
-          .from("ilan")
-          .select(
-            "id, title, price, indirimli_fiyat, resim_url, stok, user_email, user_id, ozellikler, kategori_id"
-          )
-          .in("id", productIds);
-
-        if (perr) throw perr;
-
-        const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
-
-        const sellerEmails = Array.from(
-          new Set((ilanlar || []).map((p: any) => p.user_email).filter(Boolean))
-        );
-        let firmMap: Record<string, string> = {};
-        if (sellerEmails.length) {
-          const { data: firms } = await supabase
-            .from("satici_firmalar")
-            .select("email,firma_adi")
-            .in("email", sellerEmails);
-          (firms || []).forEach((f: any) => (firmMap[f.email] = f.firma_adi));
-        }
-
-        // Kargo ayarları
-        const { data: kargoAyarlar } = await supabase
-          .from("satici_firmalar")
-          .select("user_id, shipping_fee, free_shipping_enabled, free_shipping_threshold")
-          .in("user_id", (ilanlar || []).map((p: any) => p.user_id));
-
-        let kargoMap: Record<string, any> = {};
-        (kargoAyarlar || []).forEach((k: any) => {
-          kargoMap[k.user_id] = k;
-        });
-
-        const withProduct = (cart || []).map((c: any) => {
-          const prod = pMap.get(c.product_id);
-          return {
-            ...c,
-            product: prod ? { ...prod, firma_adi: firmMap[prod.user_email] || "(Firma yok)" } : null,
-            kargo: prod ? kargoMap[prod.user_id] : null,
-          };
-        });
-
-        setCartItems(withProduct);
-      } catch (e) {
-        console.error("fetchCart hata:", e);
+      if (!cart || cart.length === 0) {
         setCartItems([]);
+        return;
       }
+
+      const productIds = cart.map((c: any) => c.product_id);
+      const { data: ilanlar } = await supabase
+        .from("ilan")
+        .select("id,title,price,indirimli_fiyat,resim_url,stok,ozellikler,kategori_id")
+        .in("id", productIds);
+
+      const map = new Map((ilanlar || []).map((p: any) => [p.id, p]));
+      setCartItems(cart.map((c: any) => ({ ...c, product: map.get(c.product_id) })));
     };
-
-    const fetchAddressesAndCards = async () => {
-      const { data: addrData } = await supabase
-        .from("user_addresses")
-        .select("*")
-        .eq("user_id", currentUser.id)
-        .order("id", { ascending: true });
-
-      setAddresses(addrData || []);
-      if (!addrData || addrData.length === 0) setShowNewAddressForm(true);
-
-      const { data: cardData } = await supabase
-        .from("user_cards")
-        .select("*")
-        .eq("user_id", currentUser.id)
-        .order("id", { ascending: true });
-
-      setCards(cardData || []);
-      if (!cardData || cardData.length === 0) setShowNewCardForm(true);
-    };
-
     fetchCart();
-    fetchAddressesAndCards();
-  }, [currentUser]);
-
-  useEffect(() => {
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const isMobile =
-      /Android|iPhone|iPad|iPod/i.test(ua) ||
-      (typeof window !== "undefined" && window.innerWidth <= 480);
-
-    if (!isMobile) return;
-    const t = setTimeout(() => {
-      if (cartItems.length === 0) {
-        emptyStateRef.current?.focus();
-        emptyStateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else {
-        openModalBtnRef.current?.focus();
-        openModalBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  } else {
+    // 🔹 Giriş YOK → guestCart (localStorage)
+    try {
+      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+      if (!guestCart.length) {
+        setCartItems([]);
+        return;
       }
-    }, 120);
-    return () => clearTimeout(t);
-  }, []);
+      const ids = guestCart.map((g: any) => g.product_id);
+      supabase
+        .from("ilan")
+        .select("id,title,price,indirimli_fiyat,resim_url,stok,ozellikler,kategori_id")
+        .in("id", ids)
+        .then(({ data }) => {
+          const map = new Map((data || []).map((p: any) => [p.id, p]));
+          setCartItems(
+            guestCart.map((g: any) => ({
+              ...g,
+              product: map.get(g.product_id),
+            }))
+          );
+        });
+    } catch {
+      setCartItems([]);
+    }
+  }
+}, [currentUser]);
 
-  // ADET GÜNCELLEME
-  const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
-    if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
-    await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
-    setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
-  };
-
-  const removeFromCart = async (cartId: number) => {
+// remove
+const removeFromCart = async (cartId: number) => {
+  if (currentUser) {
     await supabase.from("cart").delete().eq("id", cartId);
     setCartItems((prev) => prev.filter((c) => c.id !== cartId));
-  };
+  } else {
+    let guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+    guestCart = guestCart.filter((c: any) => c.product_id !== cartId);
+    localStorage.setItem("guestCart", JSON.stringify(guestCart));
+    setCartItems(guestCart);
+  }
+};
+
+// update
+const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
+  if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
+
+  if (currentUser) {
+    await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
+    setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
+  } else {
+    let guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+    guestCart = guestCart.map((c: any) =>
+      c.product_id === cartId ? { ...c, adet: yeniAdet } : c
+    );
+    localStorage.setItem("guestCart", JSON.stringify(guestCart));
+    setCartItems(guestCart);
+  }
+};
+
 
   // İNDİRİMLİ FİYATLI TOPLAM + KARGO
   function hesaplaGenelToplam(cartItems: any[]) {
