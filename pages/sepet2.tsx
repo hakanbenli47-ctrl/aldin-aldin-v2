@@ -498,15 +498,39 @@ useEffect(() => {
 
   // ADET GÜNCELLEME
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
-    if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
+  if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
+
+  if (currentUser) {
+    // 🔹 Kullanıcı girişliyse Supabase güncelle
     await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
-    setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
-  };
+    setCartItems((prev) =>
+      prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c))
+    );
+  } else {
+    // 🔹 Girişsiz kullanıcı için localStorage güncelle
+    const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+    const updated = guestCart.map((g: any) =>
+      g.product_id === cartId ? { ...g, adet: yeniAdet } : g
+    );
+    localStorage.setItem("guestCart", JSON.stringify(updated));
+    setCartItems(updated.map((g: any) => ({ ...g, product: g.product })));
+  }
+};
+
 
   const removeFromCart = async (cartId: number) => {
+  if (currentUser) {
+    // 🔹 Kullanıcı girişliyse Supabase’den sil
     await supabase.from("cart").delete().eq("id", cartId);
     setCartItems((prev) => prev.filter((c) => c.id !== cartId));
-  };
+  } else {
+    // 🔹 Girişsiz kullanıcı için localStorage’dan sil
+    const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+    const updated = guestCart.filter((g: any) => g.product_id !== cartId);
+    localStorage.setItem("guestCart", JSON.stringify(updated));
+    setCartItems(updated.map((g: any) => ({ ...g, product: g.product })));
+  }
+};
 
   // İNDİRİMLİ FİYATLI TOPLAM + KARGO
   function hesaplaGenelToplam(cartItems: any[]) {
