@@ -1816,44 +1816,55 @@ useEffect(() => {
 
           {/* Global Styles */}
           <style jsx global>{`.info-card{
-    position: relative;
-    background: #fff;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 20px;
-    text-align: center;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .25s ease;
-    overflow: hidden;
-    min-height: 100px;
-  }
-  .info-title{
-    font-size: 18px;
-    font-weight: 800;
-    color: #1e293b;
-    z-index: 2;
-    position: relative;
-  }
-  .info-text{
-    position: absolute;
-    inset: 0;
-    background: #f9fafb;
-    color: #374151;
-    font-size: 14px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity .25s ease;
-    border-radius: 12px;
-    line-height: 1.5;
-    font-weight: 500;
-  }
-  .info-card:hover .info-text{
-    opacity: 1;
-  }
+  position: relative;
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .25s ease;
+  overflow: hidden;
+  min-height: 100px;
+}
+
+.info-title{
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e293b;
+  z-index: 2;
+  position: relative;
+  transition: opacity .25s ease; /* 👈 ekledik */
+}
+
+.info-text{
+  position: absolute;
+  inset: 0;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 14px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity .25s ease;
+  border-radius: 12px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* 👇 hover olduğunda başlık kaybolsun */
+.info-card:hover .info-title{
+  opacity: 0;
+}
+
+/* 👇 hover olduğunda açıklama gözüksün */
+.info-card:hover .info-text{
+  opacity: 1;
+}
+
 /* === FULL-BLEED yardımcıları === */
 /* FULL-BLEED — desktop'ta hizalı, mobil/tablet'te tam-kenar */
 /* Tam genişlik istenen bölümler için varyant */
