@@ -420,89 +420,93 @@ export default function Sepet2() {
   }, []);
 
   // 1) Kullanıcıya bağlı veriler
-  // cart çekme
+  // 1) Kullanıcıya bağlı veriler
 useEffect(() => {
-  if (currentUser) {
-    // 🔹 Giriş VAR → Supabase cart
-    const fetchCart = async () => {
-      const { data: cart } = await supabase
-        .from("cart")
-        .select("id, adet, product_id, user_id, ozellikler")
-        .eq("user_id", currentUser.id);
-
-      if (!cart || cart.length === 0) {
-        setCartItems([]);
-        return;
-      }
-
-      const productIds = cart.map((c: any) => c.product_id);
-      const { data: ilanlar } = await supabase
-        .from("ilan")
-        .select("id,title,price,indirimli_fiyat,resim_url,stok,ozellikler,kategori_id")
-        .in("id", productIds);
-
-      const map = new Map((ilanlar || []).map((p: any) => [p.id, p]));
-      setCartItems(cart.map((c: any) => ({ ...c, product: map.get(c.product_id) })));
-    };
-    fetchCart();
-  } else {
-    // 🔹 Giriş YOK → guestCart (localStorage)
+  const fetchCart = async () => {
     try {
-      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-      if (!guestCart.length) {
-        setCartItems([]);
-        return;
+      if (currentUser) {
+        // 🔹 Kullanıcı girişli → Supabase cart
+        const { data: cart, error } = await supabase
+          .from("cart")
+          .select("id, adet, product_id, user_id, ozellikler")
+          .eq("user_id", currentUser.id);
+
+        if (error) throw error;
+        if (!cart || cart.length === 0) {
+          setCartItems([]);
+          return;
+        }
+
+        const productIds = Array.from(new Set(cart.map((c: any) => c.product_id).filter(Boolean)));
+        const { data: ilanlar } = await supabase
+          .from("ilan")
+          .select("id,title,price,indirimli_fiyat,resim_url,stok,user_email,user_id,ozellikler,kategori_id")
+          .in("id", productIds);
+
+        const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
+        setCartItems(cart.map((c: any) => ({ ...c, product: pMap.get(c.product_id) })));
+      } else {
+        // 🔹 Kullanıcı girişsiz → localStorage guestCart
+        const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+        if (!guestCart.length) {
+          setCartItems([]);
+          return;
+        }
+
+        const ids = guestCart.map((g: any) => g.product_id);
+        const { data: ilanlar } = await supabase
+          .from("ilan")
+          .select("id,title,price,indirimli_fiyat,resim_url,stok,user_email,user_id,ozellikler,kategori_id")
+          .in("id", ids);
+
+        const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
+        setCartItems(
+          guestCart.map((g: any) => ({
+            ...g,
+            product: pMap.get(g.product_id),
+          }))
+        );
       }
-      const ids = guestCart.map((g: any) => g.product_id);
-      supabase
-        .from("ilan")
-        .select("id,title,price,indirimli_fiyat,resim_url,stok,ozellikler,kategori_id")
-        .in("id", ids)
-        .then(({ data }) => {
-          const map = new Map((data || []).map((p: any) => [p.id, p]));
-          setCartItems(
-            guestCart.map((g: any) => ({
-              ...g,
-              product: map.get(g.product_id),
-            }))
-          );
-        });
-    } catch {
+    } catch (e) {
+      console.error("fetchCart hata:", e);
       setCartItems([]);
     }
-  }
+  };
+
+  fetchCart();
 }, [currentUser]);
 
-// remove
-const removeFromCart = async (cartId: number) => {
-  if (currentUser) {
-    await supabase.from("cart").delete().eq("id", cartId);
-    setCartItems((prev) => prev.filter((c) => c.id !== cartId));
-  } else {
-    let guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-    guestCart = guestCart.filter((c: any) => c.product_id !== cartId);
-    localStorage.setItem("guestCart", JSON.stringify(guestCart));
-    setCartItems(guestCart);
-  }
-};
 
-// update
-const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
-  if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isMobile =
+      /Android|iPhone|iPad|iPod/i.test(ua) ||
+      (typeof window !== "undefined" && window.innerWidth <= 480);
 
-  if (currentUser) {
+    if (!isMobile) return;
+    const t = setTimeout(() => {
+      if (cartItems.length === 0) {
+        emptyStateRef.current?.focus();
+        emptyStateRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        openModalBtnRef.current?.focus();
+        openModalBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 120);
+    return () => clearTimeout(t);
+  }, []);
+
+  // ADET GÜNCELLEME
+  const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
+    if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
     await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
     setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
-  } else {
-    let guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-    guestCart = guestCart.map((c: any) =>
-      c.product_id === cartId ? { ...c, adet: yeniAdet } : c
-    );
-    localStorage.setItem("guestCart", JSON.stringify(guestCart));
-    setCartItems(guestCart);
-  }
-};
+  };
 
+  const removeFromCart = async (cartId: number) => {
+    await supabase.from("cart").delete().eq("id", cartId);
+    setCartItems((prev) => prev.filter((c) => c.id !== cartId));
+  };
 
   // İNDİRİMLİ FİYATLI TOPLAM + KARGO
   function hesaplaGenelToplam(cartItems: any[]) {
