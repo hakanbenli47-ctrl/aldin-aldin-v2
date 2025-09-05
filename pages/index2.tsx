@@ -19,21 +19,39 @@ import { FiChevronDown } from 'react-icons/fi'
 import { useRouter } from 'next/router'
 
 // Ortalama puan hesaplama fonksiyonu
+// Ortalama puan hesaplama (TEK sorgu, çok hızlı)
 async function ilanlaraOrtalamaPuanEkle(ilanlar: Ilan[]) {
-  const result: Ilan[] = [];
-  for (const ilan of ilanlar) {
-    const { data: yorumlar } = await supabase
-      .from("yorumlar")
-      .select("puan")
-      .eq("urun_id", ilan.id);
-    const puanArr = (yorumlar || []).map(y => y.puan);
-    const ortalama = puanArr.length
-      ? puanArr.reduce((a, b) => a + b, 0) / puanArr.length
-      : 0;
-    result.push({ ...ilan, ortalamaPuan: ortalama });
+  if (!ilanlar?.length) return ilanlar;
+
+  const ids = ilanlar.map(i => i.id);
+
+  const { data: rows, error } = await supabase
+    .from("yorumlar")
+    .select("urun_id, puan")
+    .in("urun_id", ids);
+
+  if (error) {
+    console.error("yorumlar toplu çekme hatası:", error);
+    return ilanlar.map(i => ({ ...i, ortalamaPuan: 0 }));
   }
-  return result;
+
+  // JS tarafında grupla + ortalama
+  const sum: Record<number, number> = {};
+  const cnt: Record<number, number> = {};
+  for (const r of rows || []) {
+    const id = Number((r as any).urun_id);
+    const p = Number((r as any).puan) || 0;
+    sum[id] = (sum[id] ?? 0) + p;
+    cnt[id] = (cnt[id] ?? 0) + 1;
+  }
+
+  return ilanlar.map(i => ({
+    ...i,
+    ortalamaPuan: cnt[i.id] ? sum[i.id] / cnt[i.id] : 0
+  }));
 }
+
+
 
 // Firma adı + yıldız + yorum butonu
 type FirmaInfo = {
@@ -344,54 +362,78 @@ useEffect(() => {
     }
   }, [kategori, dbKategoriler]);
 
-  useEffect(() => {
-    async function fetchDopedIlanlar() {
-      const now = new Date().toISOString();
-      const { data } = await supabase
+// İLK YÜKLEME: kategoriler + ilanlar + doped ilanlar → paralel
+useEffect(() => {
+  let alive = true;
+
+  async function loadAll() {
+    setLoading(true);
+
+    const nowIso = new Date().toISOString();
+
+    const [katRes, ilanRes, dopedRes] = await Promise.allSettled([
+      supabase.from('kategori').select('*'),
+      supabase.from('ilan').select(`
+        id, title, desc, price, kategori_id, resim_url, stok,
+        created_at, doped, doped_expiration, indirimli_fiyat,
+        views, user_email, ozellikler
+      `),
+      supabase
         .from('ilan')
         .select('*')
         .eq('doped', true)
-        .gt('doped_expiration', now)
-        .order('doped_expiration', { ascending: false });
-      setDopedIlanlar(data || []);
-    }
-    async function fetchData() {
-      const { data: katData } = await supabase.from('kategori').select('*');
-      setDbKategoriler(katData || []);
+        .gt('doped_expiration', nowIso)
+        .order('doped_expiration', { ascending: false }),
+    ]);
 
-      const { data: ilanData } = await supabase
-        .from('ilan')
-        .select(`
-          id, title, desc, price, kategori_id, resim_url, stok,
-          created_at, doped, doped_expiration, indirimli_fiyat,
-          views, user_email, ozellikler
-        `);
-      const ilanlarWithAvg = await ilanlaraOrtalamaPuanEkle(ilanData || []);
-      setIlanlar(ilanlarWithAvg);
+    if (!alive) return;
 
-      const populer = (ilanlarWithAvg || [])
+    // Kategoriler
+    if (katRes.status === "fulfilled") setDbKategoriler(katRes.value.data || []);
+    else console.error(katRes);
+
+    // İlanlar + ortalama puan
+    if (ilanRes.status === "fulfilled") {
+      const base = ilanRes.value.data || [];
+      const withAvg = await ilanlaraOrtalamaPuanEkle(base);
+      if (!alive) return;
+      setIlanlar(withAvg);
+
+      const populer = withAvg
         .filter(i => (i.ortalamaPuan ?? 0) > 0)
         .sort((a, b) => (b.ortalamaPuan ?? 0) - (a.ortalamaPuan ?? 0))
         .slice(0, 6);
       setPopulerIlanlar(populer);
-
-      setLoading(false);
+    } else {
+      console.error(ilanRes);
     }
-    fetchData();
-    fetchDopedIlanlar();
-  }, []);
-  
+
+    // Doped
+    if (dopedRes.status === "fulfilled") setDopedIlanlar(dopedRes.value.data || []);
+    else console.error(dopedRes);
+
+    // Splash maksimum görünüm süresi (algıyı iyileştirir)
+    setTimeout(() => alive && setLoading(false), 300); // 300–1200 ms idealdir
+  }
+
+  loadAll();
+  return () => { alive = false; };
+}, []);
+
+// Hero slides da paralel (ayrı; sayfayı bloklamaz)
 useEffect(() => {
-  async function fetchHeroSlides() {
+  let alive = true;
+  (async () => {
     const { data, error } = await supabase
       .from("hero_slides")
       .select("*")
       .eq("aktif", true)
       .order("id", { ascending: true });
+    if (!alive) return;
     if (error) console.error(error);
     setHeroSlides(data || []);
-  }
-  fetchHeroSlides();
+  })();
+  return () => { alive = false; };
 }, []);
 
 
@@ -608,7 +650,52 @@ useEffect(() => {
     window.location.href = '/';
   };
 
-  if (loading) return <p style={{ textAlign: "center", padding: 40 }}>⏳ Yükleniyor...</p>;
+  <div
+  ref={heroRef}
+  className="hero-scroll"
+  onMouseEnter={() => setHeroPause(true)}
+  onMouseLeave={() => setHeroPause(false)}
+  onTouchStart={() => setHeroPause(true)}
+  onTouchEnd={() => setHeroPause(false)}
+  style={{
+    display:'grid',
+    gridAutoFlow:'column',
+    gridAutoColumns:'100%',
+    overflowX:'auto',
+    scrollSnapType:'x mandatory',
+    gap:12,
+    borderRadius:0,
+    width:'100dvw',
+  }}
+>
+  {heroSlides.length === 0 ? (
+    <div className="hero-slide">
+      <div className="hero-content">
+        <div>
+          <div className="hero-title">Yükleniyor…</div>
+          <div className="hero-sub">Kampanyalar hazırlanıyor</div>
+        </div>
+      </div>
+    </div>
+  ) : (
+    heroSlides.map((s)=>(
+      <div key={s.id} className="hero-slide">
+        <img src={s.img} alt={s.title}
+             onError={(e)=>{ (e.currentTarget as HTMLImageElement).style.display='none'; }} />
+        <div className="hero-content">
+          <div>
+            <div className="hero-title">{s.title}</div>
+            <div className="hero-sub">{s.sub}</div>
+            <button onClick={()=> window.location.href = s.href} className="hero-btn">
+              {s.cta} →
+            </button>
+          </div>
+        </div>
+      </div>
+    ))
+  )}
+</div>
+
 
   // Gece yarısına geri sayım (Flash Deals için)
   const now = new Date();
