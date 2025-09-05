@@ -716,18 +716,7 @@ export default function Sepet2() {
   if (loading) {
     return <p style={{ textAlign: "center", padding: 40 }}>⏳ Kullanıcı bilgisi yükleniyor...</p>;
   }
-  if (!currentUser) {
-    return (
-      <div>
-        <HeaderBar />
-        <div style={{ textAlign: "center", marginTop: 70 }}>
-          <p style={{ margin: 40, color: "#e11d48" }}>
-            ❌ Sepete ürün eklemek için <b>giriş yapmalısınız!</b>
-          </p>
-          </div>
-      </div>
-    );
-  }
+ 
 
   return (
     <div
@@ -1321,10 +1310,19 @@ export default function Sepet2() {
                 </div>
               )}
             </div>
+{!currentUser && (
+  <p style={{ color: "#e11d48", fontSize: 14, marginTop: 12 }}>
+    ⚠️ Sipariş verebilmek için giriş yapmanız gerekmektedir.
+  </p>
+)}
 
             <button
               ref={openModalBtnRef}
               onClick={async () => {
+  if (!currentUser) {
+    alert("❌ Sipariş verebilmek için giriş yapmanız gerekiyor!");
+    return;
+  }
                 if (!selectedAddressId) return alert("Adres seçiniz");
                 if (!selectedCardId) return alert("Kart seçiniz");
 
