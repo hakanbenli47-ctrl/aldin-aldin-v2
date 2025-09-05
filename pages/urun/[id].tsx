@@ -598,15 +598,16 @@ export default function UrunDetay({
                     tabIndex={0}
                   >
                     <div className="simImgWrap">
-                      <Image
-                        src={firstImg}
-                        alt={b.title}
-                        width={220}
-                        height={220}
-                        sizes="(max-width: 640px) 40vw, 220px"
-                        className="simImg"
-                      />
-                    </div>
+  <Image
+    src={firstImg}
+    alt={b.title}
+    fill
+    sizes="(max-width: 640px) 50vw, 220px"
+    className="simImg"
+    loading="lazy"
+  />
+</div>
+
                     <div className="simTitle" title={b.title}>{b.title}</div>
                     <div className="simPrice">{priceTxt}</div>
                   </div>
@@ -698,8 +699,21 @@ export default function UrunDetay({
         .simGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 0 6px; }
         .simCard { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; cursor: pointer; transition: transform .15s ease; }
         .simCard:active { transform: scale(0.98); }
-        .simImgWrap { width: 100%; display: flex; justify-content: center; }
-        .simImg { width: 100%; height: auto; border-radius: 10px; object-fit: cover; }
+        .simImgWrap{
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;   /* kare alan */
+  overflow: hidden;
+  border-radius: 10px;
+}
+       .simImg{
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  display: block;
+}
         .simTitle { font-size: 14px; font-weight: 700; color: #111827; line-height: 1.25; height: 36px; overflow: hidden; }
         .simPrice { font-size: 14px; font-weight: 800; color: var(--brand); }
 
