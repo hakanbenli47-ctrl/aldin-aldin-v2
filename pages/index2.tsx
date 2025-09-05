@@ -474,11 +474,7 @@ useEffect(() => {
   // Varsayılan özellikler
   let defaultOzellikler: Record<string, string> = {};
   const sepeteEkle = async (urun: Ilan) => {
-    if (!isLoggedIn || !user) {
-      alert("Lütfen giriş yapınız!");
-      window.location.href = "/giris";
-      return;
-    }
+   
     const defaultOzellikler: Record<string, string> = {};
     const sepette = sepetteVarMi(urun.id);
 
