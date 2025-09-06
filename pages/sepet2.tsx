@@ -7,7 +7,7 @@ const VALID_COUPONS: Record<string, number> = {
   ilkindirim: 3, // %3
   // örn: "kis2025": 10
 };
-
+const COUPON_MIN_TL = 1000;
 // ----- MAIL GÖNDERME
 async function sendOrderEmails({
   aliciMail,
@@ -1080,16 +1080,51 @@ const odemeToplami = Math.max(0, toplamFiyat - indirimTutar);
       />
       {!coupon.applied ? (
         <button
-          onClick={() => {
-            const key = (coupon.code || "").trim().toLowerCase();
-            const percent = VALID_COUPONS[key];
-            if (!percent) {
-              setCoupon({ ...coupon, error: "Geçersiz veya süresi dolmuş kupon." });
-              return;
-            }
-            // Şu an sabit %3 hesaplıyoruz ama VALID_COUPONS[key] ile dinamik de olur
-            setCoupon({ code: coupon.code, applied: true, error: "" });
-          }}
+         onClick={async () => {
+  const key = (coupon.code || "").trim().toLowerCase();
+  const percent = VALID_COUPONS[key];
+
+  if (!percent) {
+    setCoupon({ ...coupon, error: "Geçersiz veya süresi dolmuş kupon." });
+    return;
+  }
+
+  if (!currentUser) {
+    setCoupon({ ...coupon, error: "Kupon kullanmak için giriş yapın." });
+    return;
+  }
+
+  // Eşik: ürün ara toplamı (kargo hariç)
+  if (urunAraToplam < COUPON_MIN_TL) {
+    setCoupon({
+      ...coupon,
+      error: `Kupon için minimum ürün tutarı ${COUPON_MIN_TL.toLocaleString("tr-TR")} ₺ olmalı.`,
+    });
+    return;
+  }
+
+  // Aynı kullanıcı aynı kodu daha önce kullanmış mı?
+  const { data: usedRows, error } = await supabase
+    .from("coupon_redemptions")
+    .select("id")
+    .eq("user_id", currentUser.id)
+    .eq("code", key)
+    .limit(1);
+
+  if (error) {
+    console.error("coupon check error:", error);
+    setCoupon({ ...coupon, error: "Kupon doğrulanamadı. Lütfen tekrar deneyin." });
+    return;
+  }
+  if (usedRows && usedRows.length > 0) {
+    setCoupon({ ...coupon, error: "Bu kuponu daha önce kullandınız." });
+    return;
+  }
+
+  // ✅ tüm kontroller geçti → uygula
+  setCoupon({ code: coupon.code, applied: true, error: "" });
+}}
+
           style={{
             padding: "10px 12px",
             borderRadius: 8,
@@ -1639,6 +1674,7 @@ const odemeToplami = Math.max(0, toplamFiyat - indirimTutar);
                 let paymentData: any = null;
                 try {
                   paymentData = await paymentRes.json();
+
                 } catch (e) {
                   const raw = await paymentRes.text().catch(() => "");
                   console.error("payment json parse:", e, raw);
@@ -1647,18 +1683,43 @@ const odemeToplami = Math.max(0, toplamFiyat - indirimTutar);
                 }
 
                 if (!paymentData?.success) {
-                  alert("💳 Ödeme başarısız: " + (paymentData?.message || "bilinmeyen hata"));
-                  return;
-                }
+  alert("💳 Ödeme başarısız: " + (paymentData?.message || "bilinmeyen hata"));
+  return;
+}
 
-                // ✅ Onay loglarını DB'ye yaz
-                await saveAgreementLogs();
+if (paymentData?.success) {
+  // Kupon kullanıldıysa tek-kullanım kaydı
+  if (coupon.applied) {
+    const key = (coupon.code || "").trim().toLowerCase();
+    try {
+      await supabase.from("coupon_redemptions").insert([
+        { user_id: currentUser.id, code: key }
+      ]);
+    } catch (e) {
+      console.error("coupon redemption insert error:", e);
+      // ödeme başarılı; bu hata kullanıcıyı durdurmasın
+    }
+  }
 
-                await handleSiparisVer({
-                  addressId: parseInt(selectedAddressId),
-                  cardId: parseInt(selectedCardId),
-                  isCustom: false,
-                });
+  // Sözleşme onay logları
+  await saveAgreementLogs();
+
+  // Siparişleri oluştur
+  await handleSiparisVer({
+    addressId: parseInt(selectedAddressId),
+    cardId: parseInt(selectedCardId),
+    isCustom: false,
+  });
+
+  // Kullanıcıya bilgilendirme
+  alert(
+    coupon.applied
+      ? "✅ Siparişiniz alındı. Kupon indiriminiz başarıyla uygulandı."
+      : "✅ Siparişiniz alındı."
+  );
+}
+
+    
               }}
               style={{
                 width: "100%",
