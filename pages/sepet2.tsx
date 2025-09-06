@@ -1068,7 +1068,7 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar) + kargoToplam;
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
       <input
         type="text"
-        placeholder="Kupon kodu (örn. ilkIndirim)"
+        placeholder="Kupon kodunu girin..."
         value={coupon.code}
         onChange={(e) => setCoupon({ ...coupon, code: e.target.value, error: "" })}
         style={{
