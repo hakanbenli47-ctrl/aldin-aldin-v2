@@ -603,6 +603,14 @@ export default function Sepet2() {
   }
 
   const toplamFiyat = hesaplaGenelToplam(cartItems);
+// Ürünlerin kargo öncesi toplamı (indirimli varsa onu alır)
+const urunAraToplam = cartItems.reduce(
+  (a, ci) => a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * (ci.adet || 1),
+  0
+);
+
+// Kargo toplamı = Genel Toplam - Ürünler
+const kargoToplam = Math.max(0, toplamFiyat - urunAraToplam);
 
   // SİPARİŞ VER — aynı satıcıya tek order
   async function handleSiparisVer(siparisBilgi: any) {
@@ -1060,6 +1068,8 @@ export default function Sepet2() {
                     </div>
                   );
                 })}
+<div>Ürünler Toplamı: {urunAraToplam.toLocaleString("tr-TR")} ₺</div>
+<div>Kargo Toplamı: {kargoToplam.toLocaleString("tr-TR")} ₺</div>
 
               <div style={{ marginTop: 10 }}>
                 Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
