@@ -1240,18 +1240,24 @@ const odemeToplami = Math.max(0, toplamFiyat - indirimTutar);
 <div>Ürünler Toplamı: {urunAraToplam.toLocaleString("tr-TR")} ₺</div>
 <div>Kargo Toplamı: {kargoToplam.toLocaleString("tr-TR")} ₺</div>
 
-              <div style={{ marginTop: 10 }}>
-                Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
-              </div>
-{coupon.applied && indirimYuzde > 0 && (
-  <div style={{ color: "#16a34a", fontWeight: 700 }}>
-    Kupon İndirimi (%{indirimYuzde}): -{indirimTutar.toLocaleString("tr-TR")} ₺
+{coupon.applied && indirimYuzde > 0 ? (
+  <>
+    <div style={{ marginTop: 10 }}>
+      Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
+    </div>
+    <div style={{ color: "#16a34a", fontWeight: 700 }}>
+      Kupon İndirimi (%{indirimYuzde}): -{indirimTutar.toLocaleString("tr-TR")} ₺
+    </div>
+    <div style={{ fontSize: 18, fontWeight: 800, color: "#223555" }}>
+      Ödenecek Toplam: {odemeToplami.toLocaleString("tr-TR")} ₺
+    </div>
+  </>
+) : (
+  <div style={{ fontSize: 18, fontWeight: 800, color: "#223555", marginTop: 10 }}>
+    Ödenecek Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
   </div>
 )}
 
-<div style={{ fontSize: 18, fontWeight: 800, color: "#223555" }}>
-  İndirimli Toplam: {odemeToplami.toLocaleString("tr-TR")} ₺
-</div>
 
             </div>
 
