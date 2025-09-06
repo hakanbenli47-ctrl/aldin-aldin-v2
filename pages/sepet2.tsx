@@ -72,7 +72,6 @@ function prettyLabel(key: string) {
 }
 
 /* --------- Gıda alanları için esnek eşleştirme yardımcıları --------- */
-// Türkçe karakterleri sadeleştir + boşluk, noktalama sil + küçült
 function normKey(s: string) {
   return s
     .toLowerCase()
@@ -86,20 +85,8 @@ function normKey(s: string) {
 }
 
 const FOOD_SYNS = {
-  sonTuketim: [
-    "sontuketim",
-    "sonkullanma",
-    "sonkullanimtarihi",
-    "tett",
-    "sontarih",
-  ],
-  agirlikBirim: [
-    "agirlikbirim",
-    "agirlikbirimi",
-    "birim",
-    "birimbilgisi",
-    "unit",
-  ],
+  sonTuketim: ["sontuketim", "sonkullanma", "sonkullanimtarihi", "tett", "sontarih"],
+  agirlikBirim: ["agirlikbirim", "agirlikbirimi", "birim", "birimbilgisi", "unit"],
   agirlikMiktar: ["agirlikmiktar", "agirlikmiktari", "miktar", "miktari", "adet"],
   agirlikTekAlan: ["agirlik", "netagirlik", "brutagirlik", "weight", "netweight"],
 };
@@ -118,12 +105,10 @@ function pickFirstFlex(
   extraPredicate?: (nk: string) => boolean
 ): string | null {
   const nm = buildNormMap(opts);
-  // 1) Tam eşleşen sinonimler
   for (const syn of synonyms) {
     const hit = nm[syn];
     if (hit && hit.vals?.length) return hit.vals[0];
   }
-  // 2) Esnek: predicate
   if (extraPredicate) {
     for (const [nk, rec] of Object.entries(nm)) {
       if (extraPredicate(nk) && rec.vals?.length) return rec.vals[0];
@@ -132,7 +117,6 @@ function pickFirstFlex(
   return null;
 }
 
-// "1 kg", "500 gr" gibi metni miktar/birim’e böl
 function parseWeight(valRaw: string) {
   const val = String(valRaw).trim();
   const numMatch = val.match(/[\d.,]+/);
@@ -141,7 +125,6 @@ function parseWeight(valRaw: string) {
   if (numMatch) miktar = numMatch[0].replace(",", ".");
   const tail = val.replace(numMatch ? numMatch[0] : "", "").trim().toLowerCase();
   if (tail) {
-    // en sık kullanılanlar
     if (/\b(kg|kilo)\b/.test(tail)) birim = "kg";
     else if (/\b(gr|g|gram)\b/.test(tail)) birim = "gr";
     else if (/\b(lt|l|litre)\b/.test(tail)) birim = "lt";
@@ -152,22 +135,17 @@ function parseWeight(valRaw: string) {
 
 function extractFoodFields(opts: Record<string, string[]>) {
   const nk = buildNormMap(opts);
-
-  // Son Tüketim
   const sonTuketim =
-    pickFirstFlex(opts, FOOD_SYNS.sonTuketim) ||
-    pickFirstFlex(opts, [], (k) => k.includes("sontuket"));
+    pickFirstFlex(opts, FOOD_SYNS.sonTuketim) || pickFirstFlex(opts, [], (k) => k.includes("sontuket"));
 
-  // Birim & Miktar doğrudan alanlardan
   let birim =
     pickFirstFlex(opts, FOOD_SYNS.agirlikBirim, (k) => k.includes("birim") && k.includes("agirlik")) ||
-    pickFirstFlex(opts, ["birim"]); // son çare
+    pickFirstFlex(opts, ["birim"]);
 
   let miktar =
     pickFirstFlex(opts, FOOD_SYNS.agirlikMiktar, (k) => k.includes("miktar") && k.includes("agirlik")) ||
     pickFirstFlex(opts, ["miktar"]);
 
-  // Eğer tek bir "Ağırlık" alanı varsa ve değer "1 kg" gibi ise parçala
   if (!birim || !miktar) {
     for (const syn of FOOD_SYNS.agirlikTekAlan) {
       const rec = nk[syn];
@@ -179,7 +157,6 @@ function extractFoodFields(opts: Record<string, string[]>) {
       }
     }
   }
-
   return { sonTuketim, birim, miktar };
 }
 
@@ -202,7 +179,7 @@ export default function Sepet2() {
     postal_code: "",
     country: "",
   });
-const [agreements, setAgreements] = useState({
+  const [agreements, setAgreements] = useState({
     mesafeli: false,
     teslimat: false,
     gizlilik: false,
@@ -217,25 +194,26 @@ const [agreements, setAgreements] = useState({
     cvv: "",
     title: "",
   });
-async function saveAgreementLogs() {
-  if (!currentUser) return;
 
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-  const versionMap: Record<string, string> = { mesafeli: "v3", teslimat: "v2", gizlilik: "v2" };
+  async function saveAgreementLogs() {
+    if (!currentUser) return;
 
-  const rows: any[] = [];
-  if (agreements.mesafeli)
-    rows.push({ user_id: currentUser.id, agreement_key: "mesafeli", agreed: true, version: versionMap.mesafeli, user_agent: ua });
-  if (agreements.teslimat)
-    rows.push({ user_id: currentUser.id, agreement_key: "teslimat", agreed: true, version: versionMap.teslimat, user_agent: ua });
-  if (agreements.gizlilik)
-    rows.push({ user_id: currentUser.id, agreement_key: "gizlilik", agreed: true, version: versionMap.gizlilik, user_agent: ua });
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const versionMap: Record<string, string> = { mesafeli: "v3", teslimat: "v2", gizlilik: "v2" };
 
-  if (!rows.length) return;
+    const rows: any[] = [];
+    if (agreements.mesafeli)
+      rows.push({ user_id: currentUser.id, agreement_key: "mesafeli", agreed: true, version: versionMap.mesafeli, user_agent: ua });
+    if (agreements.teslimat)
+      rows.push({ user_id: currentUser.id, agreement_key: "teslimat", agreed: true, version: versionMap.teslimat, user_agent: ua });
+    if (agreements.gizlilik)
+      rows.push({ user_id: currentUser.id, agreement_key: "gizlilik", agreed: true, version: versionMap.gizlilik, user_agent: ua });
 
-  const { error } = await supabase.from("user_agreement_logs").insert(rows);
-  if (error) console.error("agreement log insert error:", error);
-}
+    if (!rows.length) return;
+
+    const { error } = await supabase.from("user_agreement_logs").insert(rows);
+    if (error) console.error("agreement log insert error:", error);
+  }
 
   // --- Kart formatlama yardımcıları ---
   function formatCardNumber(value: string) {
@@ -444,64 +422,93 @@ async function saveAgreementLogs() {
   }, []);
 
   // 1) Kullanıcıya bağlı veriler
-  // 1) Kullanıcıya bağlı veriler
-useEffect(() => {
-  const fetchCart = async () => {
-    try {
-      if (currentUser) {
-        // 🔹 Kullanıcı girişli → Supabase cart
-        const { data: cart, error } = await supabase
-          .from("cart")
-          .select("id, adet, product_id, user_id, ozellikler")
-          .eq("user_id", currentUser.id);
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        if (currentUser) {
+          // 🔹 Kullanıcı girişli → Supabase cart
+          const { data: cart, error } = await supabase
+            .from("cart")
+            .select("id, adet, product_id, user_id, ozellikler")
+            .eq("user_id", currentUser.id);
 
-        if (error) throw error;
-        if (!cart || cart.length === 0) {
-          setCartItems([]);
-          return;
+          if (error) throw error;
+          if (!cart || cart.length === 0) {
+            setCartItems([]);
+            return;
+          }
+
+          const productIds = Array.from(new Set(cart.map((c: any) => c.product_id).filter(Boolean)));
+          const { data: ilanlar } = await supabase
+            .from("ilan")
+            .select("id,title,price,indirimli_fiyat,resim_url,stok,user_email,user_id,ozellikler,kategori_id")
+            .in("id", productIds);
+
+          // 🔸 İlgili satıcı firmalarını çek ve ürünlere kargo ayarını bağla
+          const sellerIds = Array.from(new Set((ilanlar || []).map((p: any) => p.user_id).filter(Boolean)));
+          let firmalarMap = new Map<string, any>();
+          if (sellerIds.length) {
+            const { data: firmalar } = await supabase
+              .from("satici_firmalar")
+              .select("user_id, shipping_fee, free_shipping_enabled, free_shipping_threshold")
+              .in("user_id", sellerIds);
+            firmalarMap = new Map((firmalar || []).map((f: any) => [String(f.user_id), f]));
+          }
+
+          const enrichedProducts = (ilanlar || []).map((p: any) => ({
+            ...p,
+            kargo: firmalarMap.get(String(p.user_id)) || null,
+          }));
+          const pMap = new Map(enrichedProducts.map((p: any) => [p.id, p]));
+
+          setCartItems(cart.map((c: any) => ({ ...c, product: pMap.get(c.product_id) })));
+        } else {
+          // 🔹 Girişsiz kullanıcı → localStorage guestCart
+          const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+          if (!guestCart.length) {
+            setCartItems([]);
+            return;
+          }
+
+          const ids = guestCart.map((g: any) => g.product_id);
+          const { data: ilanlar } = await supabase
+            .from("ilan")
+            .select("id,title,price,indirimli_fiyat,resim_url,stok,user_email,user_id,ozellikler,kategori_id")
+            .in("id", ids);
+
+          // Satıcı firmaları
+          const sellerIds = Array.from(new Set((ilanlar || []).map((p: any) => p.user_id).filter(Boolean)));
+          let firmalarMap = new Map<string, any>();
+          if (sellerIds.length) {
+            const { data: firmalar } = await supabase
+              .from("satici_firmalar")
+              .select("user_id, shipping_fee, free_shipping_enabled, free_shipping_threshold")
+              .in("user_id", sellerIds);
+            firmalarMap = new Map((firmalar || []).map((f: any) => [String(f.user_id), f]));
+          }
+
+          const enrichedProducts = (ilanlar || []).map((p: any) => ({
+            ...p,
+            kargo: firmalarMap.get(String(p.user_id)) || null,
+          }));
+          const pMap = new Map(enrichedProducts.map((p: any) => [p.id, p]));
+
+          setCartItems(
+            guestCart.map((g: any) => ({
+              ...g,
+              id: g.product_id, // butonlar item.id kullanmaya devam edebilsin
+              product: pMap.get(g.product_id),
+            }))
+          );
         }
-
-        const productIds = Array.from(new Set(cart.map((c: any) => c.product_id).filter(Boolean)));
-        const { data: ilanlar } = await supabase
-          .from("ilan")
-          .select("id,title,price,indirimli_fiyat,resim_url,stok,user_email,user_id,ozellikler,kategori_id")
-          .in("id", productIds);
-
-        const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
-        setCartItems(cart.map((c: any) => ({ ...c, product: pMap.get(c.product_id) })));
-      } else {
-        // 🔹 Kullanıcı girişsiz → localStorage guestCart
-        const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-        if (!guestCart.length) {
-          setCartItems([]);
-          return;
-        }
-
-        const ids = guestCart.map((g: any) => g.product_id);
-        const { data: ilanlar } = await supabase
-          .from("ilan")
-          .select("id,title,price,indirimli_fiyat,resim_url,stok,user_email,user_id,ozellikler,kategori_id")
-          .in("id", ids);
-
-        const pMap = new Map((ilanlar || []).map((p: any) => [p.id, p]));
-        setCartItems(
-  guestCart.map((g: any) => ({
-    ...g,
-    id: g.product_id,                          // 👈 butonlar item.id kullanmaya devam edebilsin
-    product: pMap.get(g.product_id),
-  }))
-);
-
+      } catch (e) {
+        console.error("fetchCart hata:", e);
+        setCartItems([]);
       }
-    } catch (e) {
-      console.error("fetchCart hata:", e);
-      setCartItems([]);
-    }
-  };
+    };
 
-  fetchCart();
-}, [currentUser]);
-
+    fetchCart();
+  }, [currentUser]);
 
   useEffect(() => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
@@ -524,58 +531,46 @@ useEffect(() => {
 
   // ADET GÜNCELLEME
   const updateAdet = async (cartId: number, yeniAdet: number, stok: number) => {
-  if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
+    if (yeniAdet < 1 || yeniAdet > stok || yeniAdet > 10) return;
 
-  if (currentUser) {
-    // 🔹 Kullanıcı girişliyse Supabase güncelle
-    await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
-    setCartItems((prev) =>
-      prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c))
-    );
-  } else {
-    // 🔹 Girişsiz kullanıcı için localStorage güncelle
-    const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-    const updated = guestCart.map((g: any) =>
-  g.product_id === cartId ? { ...g, adet: yeniAdet } : g
-);
-localStorage.setItem("guestCart", JSON.stringify(updated));
+    if (currentUser) {
+      await supabase.from("cart").update({ adet: yeniAdet }).eq("id", cartId);
+      setCartItems((prev) => prev.map((c) => (c.id === cartId ? { ...c, adet: yeniAdet } : c)));
+    } else {
+      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+      const updated = guestCart.map((g: any) => (g.product_id === cartId ? { ...g, adet: yeniAdet } : g));
+      localStorage.setItem("guestCart", JSON.stringify(updated));
 
-setCartItems(prev =>
-  updated.map((g: any) => ({
-    ...g,
-    id: g.product_id,  // 👈 tutarlı kalsın
-    // önceki state’ten product’ı koru (yeniden fetch etmeye gerek yok)
-    product: prev.find((p: any) => p.product_id === g.product_id)?.product
-  }))
-);
-
-  }
-};
-
+      setCartItems((prev) =>
+        updated.map((g: any) => ({
+          ...g,
+          id: g.product_id,
+          product: prev.find((p: any) => p.product_id === g.product_id)?.product,
+        }))
+      );
+    }
+  };
 
   const removeFromCart = async (cartId: number) => {
-  if (currentUser) {
-    // 🔹 Kullanıcı girişliyse Supabase’den sil
-    await supabase.from("cart").delete().eq("id", cartId);
-    setCartItems((prev) => prev.filter((c) => c.id !== cartId));
-  } else {
-    // 🔹 Girişsiz kullanıcı için localStorage’dan sil
-    const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-    const updated = guestCart.filter((g: any) => g.product_id !== cartId);
-localStorage.setItem("guestCart", JSON.stringify(updated));
+    if (currentUser) {
+      await supabase.from("cart").delete().eq("id", cartId);
+      setCartItems((prev) => prev.filter((c) => c.id !== cartId));
+    } else {
+      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+      const updated = guestCart.filter((g: any) => g.product_id !== cartId);
+      localStorage.setItem("guestCart", JSON.stringify(updated));
 
-setCartItems(prev =>
-  updated.map((g: any) => ({
-    ...g,
-    id: g.product_id,  // 👈
-    product: prev.find((p: any) => p.product_id === g.product_id)?.product
-  }))
-);
+      setCartItems((prev) =>
+        updated.map((g: any) => ({
+          ...g,
+          id: g.product_id,
+          product: prev.find((p: any) => p.product_id === g.product_id)?.product,
+        }))
+      );
+    }
+  };
 
-  }
-};
-
-  // İNDİRİMLİ FİYATLI TOPLAM + KARGO
+  // İNDİRİMLİ FİYATLI TOPLAM + KARGO (firma bazında)
   function hesaplaGenelToplam(cartItems: any[]) {
     const sellerGroups: Record<string, any[]> = {};
     cartItems.forEach((item) => {
@@ -593,7 +588,7 @@ setCartItems(prev =>
         return acc + Number(fiyat) * (it.adet || 1);
       }, 0);
 
-      const kargoAyar = items[0]?.kargo;
+      const kargoAyar = items[0]?.product?.kargo;
       let kargoUcret = 0;
       if (kargoAyar) {
         if (kargoAyar.free_shipping_enabled && araToplam >= (kargoAyar.free_shipping_threshold || 0)) {
@@ -749,7 +744,6 @@ setCartItems(prev =>
   if (loading) {
     return <p style={{ textAlign: "center", padding: 40 }}>⏳ Kullanıcı bilgisi yükleniyor...</p>;
   }
- 
 
   return (
     <div
@@ -1041,20 +1035,28 @@ setCartItems(prev =>
                       a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * ci.adet,
                     0
                   );
-                  const kargo = sellerItems[0]?.kargo;
+                  const kargo = sellerItems[0]?.product?.kargo;
                   if (!kargo) return null;
+
                   const ucret =
-                    kargo.free_shipping_enabled &&
-                    araToplam >= kargo.free_shipping_threshold
+                    kargo.free_shipping_enabled && araToplam >= kargo.free_shipping_threshold
                       ? 0
                       : kargo.shipping_fee || 0;
 
                   return (
                     <div key={sid}>
-                      Kargo: {ucret} ₺{" "}
-                      {ucret === 0 && kargo?.free_shipping_enabled && (
-                        <span style={{ color: "green" }}>(Ücretsiz Kargo)</span>
-                      )}
+                      <div>
+                        Kargo Bedeli: {kargo?.shipping_fee ?? 0} ₺{" "}
+                        {kargo?.free_shipping_enabled && (
+                          <span style={{ color: "green" }}>
+                            — {kargo?.free_shipping_threshold} ₺ üzeri ücretsiz
+                          </span>
+                        )}
+                      </div>
+                      {/* İstersen: Ücret yansıyacak olan (ucret) alt satırda */}
+                      <div style={{ fontSize: 14, color: "#475569" }}>
+                        Sepete yansıyacak kargo: {ucret} ₺
+                      </div>
                     </div>
                   );
                 })}
@@ -1343,180 +1345,181 @@ setCartItems(prev =>
                 </div>
               )}
             </div>
+
             <div style={{ marginTop: 20, borderTop: "1px solid #ddd", paddingTop: 12 }}>
-  <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>
-    ✅ Sözleşmeler & Onaylar
-  </h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>
+                ✅ Sözleşmeler & Onaylar
+              </h3>
 
-  <label style={{ display: "block", marginBottom: 8, cursor: "pointer" }}>
-    <input
-      type="checkbox"
-      checked={agreements.mesafeli}
-      onChange={(e) => setAgreements({ ...agreements, mesafeli: e.target.checked })}
-      style={{ marginRight: 8 }}
-    />
-    <a href="/docs/Mesafeli_Satis_Sozlesmesi_TR_v3.pdf" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>
-      Mesafeli Satış Sözleşmesi
-    </a>’ni okudum, onaylıyorum.
-  </label>
+              <label style={{ display: "block", marginBottom: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={agreements.mesafeli}
+                  onChange={(e) => setAgreements({ ...agreements, mesafeli: e.target.checked })}
+                  style={{ marginRight: 8 }}
+                />
+                <a href="/docs/Mesafeli_Satis_Sozlesmesi_TR_v3.pdf" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>
+                  Mesafeli Satış Sözleşmesi
+                </a>
+                ’ni okudum, onaylıyorum.
+              </label>
 
-  <label style={{ display: "block", marginBottom: 8, cursor: "pointer" }}>
-    <input
-      type="checkbox"
-      checked={agreements.teslimat}
-      onChange={(e) => setAgreements({ ...agreements, teslimat: e.target.checked })}
-      style={{ marginRight: 8 }}
-    />
-    <a href="/docs/Teslimat_ve_Iade_Sartlari_TR_v2.pdf" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>
-      Teslimat ve İade Şartları
-    </a>’nı okudum, onaylıyorum.
-  </label>
+              <label style={{ display: "block", marginBottom: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={agreements.teslimat}
+                  onChange={(e) => setAgreements({ ...agreements, teslimat: e.target.checked })}
+                  style={{ marginRight: 8 }}
+                />
+                <a href="/docs/Teslimat_ve_Iade_Sartlari_TR_v2.pdf" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>
+                  Teslimat ve İade Şartları
+                </a>
+                ’nı okudum, onaylıyorum.
+              </label>
 
-  <label style={{ display: "block", marginBottom: 8, cursor: "pointer" }}>
-    <input
-      type="checkbox"
-      checked={agreements.gizlilik}
-      onChange={(e) => setAgreements({ ...agreements, gizlilik: e.target.checked })}
-      style={{ marginRight: 8 }}
-    />
-    <a href="/docs/Gizlilik_Politikasi_TR_v2.pdf" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>
-      Gizlilik Politikası
-    </a>’nı okudum, onaylıyorum.
-  </label>
-</div>
-<div style={{ marginTop: 20, textAlign: "center" }}>
-  <p style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-    Ödeme altyapısı güvenli olarak İyzico tarafından sağlanmaktadır
-  </p>
-  <img
-  src="/iyzico/iyzico-logo-pack/footer_iyzico_ile_ode/Colored/logo_band_colored@2x.png"
-  alt="İyzico Güvenli Ödeme"
-  width={160}
-  style={{ display: "block", margin: "0 auto", height: "auto" }}
-/>
+              <label style={{ display: "block", marginBottom: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={agreements.gizlilik}
+                  onChange={(e) => setAgreements({ ...agreements, gizlilik: e.target.checked })}
+                  style={{ marginRight: 8 }}
+                />
+                <a href="/docs/Gizlilik_Politikasi_TR_v2.pdf" target="_blank" rel="noopener noreferrer" style={{ color: "#2563eb" }}>
+                  Gizlilik Politikası
+                </a>
+                ’nı okudum, onaylıyorum.
+              </label>
+            </div>
 
+            <div style={{ marginTop: 20, textAlign: "center" }}>
+              <p style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
+                Ödeme altyapısı güvenli olarak İyzico tarafından sağlanmaktadır
+              </p>
+              <img
+                src="/iyzico/iyzico-logo-pack/footer_iyzico_ile_ode/Colored/logo_band_colored@2x.png"
+                alt="İyzico Güvenli Ödeme"
+                width={160}
+                style={{ display: "block", margin: "0 auto", height: "auto" }}
+              />
+            </div>
 
-</div>
-
-{!currentUser && (
-  <p style={{ color: "#e11d48", fontSize: 14, marginTop: 12 }}>
-    ⚠️ Sipariş verebilmek için giriş yapmanız gerekmektedir.
-  </p>
-)}
+            {!currentUser && (
+              <p style={{ color: "#e11d48", fontSize: 14, marginTop: 12 }}>
+                ⚠️ Sipariş verebilmek için giriş yapmanız gerekmektedir.
+              </p>
+            )}
 
             <button
-  ref={openModalBtnRef}
-  disabled={!allAgreed}
-  onClick={async () => {
-    if (!allAgreed) { alert("Lütfen sözleşmeleri onaylayın."); return; } // küçük guard
-    if (!currentUser) {
-      alert("❌ Sipariş verebilmek için giriş yapmanız gerekiyor!");
-      return;
-    }
-    if (!selectedAddressId) return alert("Adres seçiniz");
-    if (!selectedCardId) return alert("Kart seçiniz");
+              ref={openModalBtnRef}
+              disabled={!allAgreed}
+              onClick={async () => {
+                if (!allAgreed) { alert("Lütfen sözleşmeleri onaylayın."); return; }
+                if (!currentUser) {
+                  alert("❌ Sipariş verebilmek için giriş yapmanız gerekiyor!");
+                  return;
+                }
+                if (!selectedAddressId) return alert("Adres seçiniz");
+                if (!selectedCardId) return alert("Kart seçiniz");
 
-    const addr = addresses.find((a) => Number(a.id) === Number(selectedAddressId));
-    const card = cards.find((c) => Number(c.id) === Number(selectedCardId));
-    if (!addr) return alert("Adres bulunamadı");
-    if (!card) return alert("Kart bulunamadı");
+                const addr = addresses.find((a) => Number(a.id) === Number(selectedAddressId));
+                const card = cards.find((c) => Number(c.id) === Number(selectedCardId));
+                if (!addr) return alert("Adres bulunamadı");
+                if (!card) return alert("Kart bulunamadı");
 
-    const basketItems = cartItems.map((it: any) => {
-      const indirimVar =
-        it.product?.indirimli_fiyat && it.product?.indirimli_fiyat !== it.product?.price;
-      const birim = indirimVar ? Number(it.product.indirimli_fiyat) : Number(it.product?.price);
-      const toplam = birim * (it.adet || 1);
-      return {
-        id: it.product?.id ?? it.product_id,
-        name: it.product?.title,
-        category1: "Genel",
-        price: toplam,
-      };
-    });
+                const basketItems = cartItems.map((it: any) => {
+                  const indirimVar =
+                    it.product?.indirimli_fiyat && it.product?.indirimli_fiyat !== it.product?.price;
+                  const birim = indirimVar ? Number(it.product.indirimli_fiyat) : Number(it.product?.price);
+                  const toplam = birim * (it.adet || 1);
+                  return {
+                    id: it.product?.id ?? it.product_id,
+                    name: it.product?.title,
+                    category1: "Genel",
+                    price: toplam,
+                  };
+                });
 
-    let paymentRes: Response;
-    try {
-      paymentRes = await fetch("/api/payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "payRaw",
-          amount: Number(toplamFiyat.toFixed(2)),
-          card: {
-            name_on_card: card.name_on_card,
-            card_number: card.card_number,
-            expiry: card.expiry,
-            cvv: card.cvv,
-          },
-          buyer: {
-            id: currentUser.id,
-            name: addr.first_name || "Ad",
-            surname: addr.last_name || "Soyad",
-            email: currentUser.email,
-            gsmNumber: addr.phone || "",
-          },
-          address: {
-            address: addr.address,
-            city: addr.city,
-            country: addr.country,
-            postal_code: addr.postal_code || "",
-          },
-          basketItems,
-        }),
-      });
-    } catch (e) {
-      console.error("payment fetch error:", e);
-      alert("Ödeme servisine ulaşılamadı.");
-      return;
-    }
+                let paymentRes: Response;
+                try {
+                  paymentRes = await fetch("/api/payment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      action: "payRaw",
+                      amount: Number(toplamFiyat.toFixed(2)),
+                      card: {
+                        name_on_card: card.name_on_card,
+                        card_number: card.card_number,
+                        expiry: card.expiry,
+                        cvv: card.cvv,
+                      },
+                      buyer: {
+                        id: currentUser.id,
+                        name: addr.first_name || "Ad",
+                        surname: addr.last_name || "Soyad",
+                        email: currentUser.email,
+                        gsmNumber: addr.phone || "",
+                      },
+                      address: {
+                        address: addr.address,
+                        city: addr.city,
+                        country: addr.country,
+                        postal_code: addr.postal_code || "",
+                      },
+                      basketItems,
+                    }),
+                  });
+                } catch (e) {
+                  console.error("payment fetch error:", e);
+                  alert("Ödeme servisine ulaşılamadı.");
+                  return;
+                }
 
-    if (!paymentRes.ok) {
-      const raw = await paymentRes.text().catch(() => "");
-      console.error("payment not ok:", paymentRes.status, raw);
-      alert("Ödeme API hatası (HTTP " + paymentRes.status + ")");
-      return;
-    }
+                if (!paymentRes.ok) {
+                  const raw = await paymentRes.text().catch(() => "");
+                  console.error("payment not ok:", paymentRes.status, raw);
+                  alert("Ödeme API hatası (HTTP " + paymentRes.status + ")");
+                  return;
+                }
 
-    let paymentData: any = null;
-    try {
-      paymentData = await paymentRes.json();
-    } catch (e) {
-      const raw = await paymentRes.text().catch(() => "");
-      console.error("payment json parse:", e, raw);
-      alert("Ödeme servisinden beklenmeyen yanıt.");
-      return;
-    }
+                let paymentData: any = null;
+                try {
+                  paymentData = await paymentRes.json();
+                } catch (e) {
+                  const raw = await paymentRes.text().catch(() => "");
+                  console.error("payment json parse:", e, raw);
+                  alert("Ödeme servisinden beklenmeyen yanıt.");
+                  return;
+                }
 
-   if (!paymentData?.success) {
-  alert("💳 Ödeme başarısız: " + (paymentData?.message || "bilinmeyen hata"));
-  return;
-}
+                if (!paymentData?.success) {
+                  alert("💳 Ödeme başarısız: " + (paymentData?.message || "bilinmeyen hata"));
+                  return;
+                }
 
-// ✅ EKLE: Onay loglarını DB'ye yaz
-await saveAgreementLogs();
+                // ✅ Onay loglarını DB'ye yaz
+                await saveAgreementLogs();
 
-await handleSiparisVer({
-  addressId: parseInt(selectedAddressId),
-  cardId: parseInt(selectedCardId),
-  isCustom: false,
-});
-
-  }}
-  style={{
-    width: "100%",
-    padding: "12px 16px",
-    backgroundColor: allAgreed ? "#16a34a" : "#9ca3af",
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "bold",
-    borderRadius: "8px",
-    border: "none",
-    cursor: allAgreed ? "pointer" : "not-allowed",
-  }}
->
-  ✅ Sipariş Ver
-</button>
-
+                await handleSiparisVer({
+                  addressId: parseInt(selectedAddressId),
+                  cardId: parseInt(selectedCardId),
+                  isCustom: false,
+                });
+              }}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                backgroundColor: allAgreed ? "#16a34a" : "#9ca3af",
+                color: "#fff",
+                fontSize: "16px",
+                fontWeight: "bold",
+                borderRadius: "8px",
+                border: "none",
+                cursor: allAgreed ? "pointer" : "not-allowed",
+              }}
+            >
+              ✅ Sipariş Ver
+            </button>
           </>
         )}
       </div>
