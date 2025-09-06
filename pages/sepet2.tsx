@@ -1389,10 +1389,11 @@ setCartItems(prev =>
     Ödeme altyapısı güvenli olarak İyzico tarafından sağlanmaktadır
   </p>
   <img
-    src="/iyzico/footer_iyzico.png"
-    alt="İyzico Güvenli Ödeme"
-    style={{ maxWidth: 140, margin: "0 auto" }}
-  />
+  src="/iyzico/iyzico-logo-pack/footer_iyzico_ile_ode/Colored/logo_band_colored.png"
+  alt="İyzico Güvenli Ödeme"
+  style={{ maxWidth: 160, margin: "0 auto" }}
+/>
+
 </div>
 
 {!currentUser && (
