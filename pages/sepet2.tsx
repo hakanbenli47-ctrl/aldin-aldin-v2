@@ -2,6 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
+// Geçerli kuponlar (küçük harf eşleştirme)
+const VALID_COUPONS: Record<string, number> = {
+  ilkindirim: 3, // %3
+  // örn: "kis2025": 10
+};
 
 // ----- MAIL GÖNDERME
 async function sendOrderEmails({
@@ -194,6 +199,13 @@ export default function Sepet2() {
     cvv: "",
     title: "",
   });
+// %3 kupon state'i
+const [coupon, setCoupon] = useState<{ code: string; applied: boolean; error?: string }>({
+  code: "",
+  applied: false,
+  error: "",
+});
+const [showCouponBox, setShowCouponBox] = useState(false);
 
   async function saveAgreementLogs() {
     if (!currentUser) return;
@@ -611,6 +623,15 @@ const urunAraToplam = cartItems.reduce(
 
 // Kargo toplamı = Genel Toplam - Ürünler
 const kargoToplam = Math.max(0, toplamFiyat - urunAraToplam);
+// Kupon indirimi (sadece ürün toplamına uygulanır)
+const indirimYuzde = coupon.applied
+  ? (VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] ?? 0)
+  : 0;
+
+const indirimTutar = (urunAraToplam * indirimYuzde) / 100;
+
+// Ödenecek tutar = (ürünler - indirim) + kargo
+const odemeToplami = Math.max(0, urunAraToplam - indirimTutar) + kargoToplam;
 
   // SİPARİŞ VER — aynı satıcıya tek order
   async function handleSiparisVer(siparisBilgi: any) {
@@ -1025,6 +1046,120 @@ const kargoToplam = Math.max(0, toplamFiyat - urunAraToplam);
                 </div>
               );
             })}
+{/* Kupon Alanı */}
+{/* Kupon Alanı */}
+<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+  {!showCouponBox ? (
+    <button
+      onClick={() => setShowCouponBox(true)}
+      style={{
+        padding: "8px 12px",
+        borderRadius: 8,
+        border: "1px dashed #94a3b8",
+        background: "#f8fafc",
+        color: "#334155",
+        cursor: "pointer",
+        fontWeight: 600,
+      }}
+    >
+      Kupon kodunuz var mı?
+    </button>
+  ) : (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <input
+        type="text"
+        placeholder="Kupon kodu (örn. ilkIndirim)"
+        value={coupon.code}
+        onChange={(e) => setCoupon({ ...coupon, code: e.target.value, error: "" })}
+        style={{
+          width: 200,
+          padding: 10,
+          border: "1px solid #e5e7eb",
+          borderRadius: 8,
+          fontWeight: 600,
+        }}
+      />
+      {!coupon.applied ? (
+        <button
+          onClick={() => {
+            const key = (coupon.code || "").trim().toLowerCase();
+            const percent = VALID_COUPONS[key];
+            if (!percent) {
+              setCoupon({ ...coupon, error: "Geçersiz veya süresi dolmuş kupon." });
+              return;
+            }
+            // Şu an sabit %3 hesaplıyoruz ama VALID_COUPONS[key] ile dinamik de olur
+            setCoupon({ code: coupon.code, applied: true, error: "" });
+          }}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: "1px solid #22c55e",
+            background: "#eafff4",
+            color: "#065f46",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Onayla
+        </button>
+      ) : (
+        <button
+          onClick={() => setCoupon({ code: "", applied: false, error: "" })}
+          style={{
+            padding: "10px 12px",
+            borderRadius: 8,
+            border: "1px solid #ef4444",
+            background: "#fff1f2",
+            color: "#991b1b",
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Kaldır
+        </button>
+      )}
+      <button
+        onClick={() => setShowCouponBox(false)}
+        style={{
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: "1px solid #e2e8f0",
+          background: "#fff",
+          color: "#475569",
+          cursor: "pointer",
+          fontWeight: 600,
+        }}
+        title="Kupon kutusunu gizle"
+      >
+        Gizle
+      </button>
+    </div>
+  )}
+</div>
+
+{coupon.error && (
+  <div style={{ color: "#dc2626", fontSize: 13, marginTop: -6, marginBottom: 8 }}>
+    {coupon.error}
+  </div>
+)}
+{coupon.applied && (
+  <div
+    style={{
+      fontSize: 14,
+      color: "#065f46",
+      background: "#eafff4",
+      border: "1px solid #22c55e",
+      padding: "6px 10px",
+      borderRadius: 8,
+      marginTop: -6,
+      marginBottom: 8,
+    }}
+  >
+    Kupon uygulandı: {coupon.code} (%{VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] || 3})
+  </div>
+)}
+
 
             <div
               style={{
@@ -1456,7 +1591,7 @@ const kargoToplam = Math.max(0, toplamFiyat - urunAraToplam);
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       action: "payRaw",
-                      amount: Number(toplamFiyat.toFixed(2)),
+                      amount: Number(odemeToplami.toFixed(2)),
                       card: {
                         name_on_card: card.name_on_card,
                         card_number: card.card_number,
