@@ -628,10 +628,9 @@ const indirimYuzde = coupon.applied
   ? (VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] ?? 0)
   : 0;
 
-const indirimTutar = (urunAraToplam * indirimYuzde) / 100;
+const indirimTutar = (toplamFiyat * indirimYuzde) / 100;
+const odemeToplami = Math.max(0, toplamFiyat - indirimTutar);
 
-// Ödenecek tutar = (ürünler - indirim) + kargo
-const odemeToplami = Math.max(0, urunAraToplam - indirimTutar) + kargoToplam;
 
   // SİPARİŞ VER — aynı satıcıya tek order
   async function handleSiparisVer(siparisBilgi: any) {
@@ -1209,6 +1208,16 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar) + kargoToplam;
               <div style={{ marginTop: 10 }}>
                 Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
               </div>
+{coupon.applied && indirimYuzde > 0 && (
+  <div style={{ color: "#16a34a", fontWeight: 700 }}>
+    Kupon İndirimi (%{indirimYuzde}): -{indirimTutar.toLocaleString("tr-TR")} ₺
+  </div>
+)}
+
+<div style={{ fontSize: 18, fontWeight: 800, color: "#223555" }}>
+  İndirimli Toplam: {odemeToplami.toLocaleString("tr-TR")} ₺
+</div>
+
             </div>
 
             {/* Adres Seçim Alanı */}
