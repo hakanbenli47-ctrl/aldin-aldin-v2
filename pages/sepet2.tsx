@@ -628,18 +628,20 @@ const indirimYuzde = coupon.applied
   ? (VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] ?? 0)
   : 0;
 
-const indirimTutar = (toplamFiyat * indirimYuzde) / 100;
-const odemeToplami = Math.max(0, toplamFiyat - indirimTutar);
+const indirimTutar = (urunAraToplam * indirimYuzde) / 100;
+const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
 
 
   // SİPARİŞ VER — aynı satıcıya tek order
-  async function handleSiparisVer(siparisBilgi: any) {
-    if (cartItems.length === 0) {
-      alert("Sepetiniz boş!");
-      return;
-    }
+ async function handleSiparisVer(siparisBilgi: any) {
+  if (!currentUser) { alert("Giriş yapmanız gerekiyor."); return; }
+  if (cartItems.length === 0) {
+    alert("Sepetiniz boş!");
+    return;
+  }
+  try {
+    // ...
 
-    try {
       type Grup = {
         sellerId: string;
         sellerEmail: string;
@@ -1605,14 +1607,14 @@ const odemeToplami = Math.max(0, toplamFiyat - indirimTutar);
             )}
 
             <button
-              ref={openModalBtnRef}
-              disabled={!allAgreed}
-              onClick={async () => {
-                if (!allAgreed) { alert("Lütfen sözleşmeleri onaylayın."); return; }
-                if (!currentUser) {
-                  alert("❌ Sipariş verebilmek için giriş yapmanız gerekiyor!");
-                  return;
-                }
+  ref={openModalBtnRef}
+  disabled={!allAgreed || !currentUser}
+  onClick={async () => {
+    if (!allAgreed) { alert("Lütfen sözleşmeleri onaylayın."); return; }
+    if (!currentUser) {
+      alert("❌ Sipariş verebilmek için giriş yapmanız gerekiyor!");
+      return;
+    }
                 if (!selectedAddressId) return alert("Adres seçiniz");
                 if (!selectedCardId) return alert("Kart seçiniz");
 
@@ -1727,20 +1729,20 @@ if (paymentData?.success) {
 
     
               }}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                backgroundColor: allAgreed ? "#16a34a" : "#9ca3af",
-                color: "#fff",
-                fontSize: "16px",
-                fontWeight: "bold",
-                borderRadius: "8px",
-                border: "none",
-                cursor: allAgreed ? "pointer" : "not-allowed",
-              }}
-            >
-              ✅ Sipariş Ver
-            </button>
+            style={{
+    width: "100%",
+    padding: "12px 16px",
+    backgroundColor: allAgreed && currentUser ? "#16a34a" : "#9ca3af",
+    color: "#fff",
+    fontSize: "16px",
+    fontWeight: "bold",
+    borderRadius: "8px",
+    border: "none",
+    cursor: allAgreed && currentUser ? "pointer" : "not-allowed",
+  }}
+>
+  {currentUser ? "✅ Sipariş Ver" : "🔒 Giriş Yapın"}
+</button>
           </>
         )}
       </div>
