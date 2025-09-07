@@ -1090,24 +1090,24 @@ useEffect(() => {
           {/* ---- HERO + Avantaj Barı + Kategori Çipleri + Trend Aramalar ---- */}
           <section style={{ width:'100%', margin:'10px 0 0' }}>
             {/* Hero Slider (FULL WIDTH) */}
-            <div
-              ref={heroRef}
-              className="hero-scroll"
-              onMouseEnter={() => setHeroPause(true)}
-              onMouseLeave={() => setHeroPause(false)}
-              onTouchStart={() => setHeroPause(true)}
-              onTouchEnd={() => setHeroPause(false)}
-              style={{
-                display:'grid',
-                gridAutoFlow:'column',
-                gridAutoColumns:'100%',
-                overflowX:'auto',
-                scrollSnapType:'x proximity',
-                gap:12,
-                borderRadius:0, // full-bleed
-                width:'100dvw',
+           <div
+  ref={heroRef}
+  className="hero-scroll w-viewport"   // ✅ genişliği sınıftan al
+  onMouseEnter={() => setHeroPause(true)}
+  onMouseLeave={() => setHeroPause(false)}
+  onTouchStart={() => setHeroPause(true)}
+  onTouchEnd={() => setHeroPause(false)}
+  style={{
+    display:'grid',
+    gridAutoFlow:'column',
+    gridAutoColumns:'100%',
+    overflowX:'auto',
+    scrollSnapType:'x proximity',
+    gap:12,
+    borderRadius:0
+  }}
+>
 
-              }}>
                 
               {heroSlides.map((s)=>(
                 <div key={s.id} className="hero-slide">
@@ -2173,6 +2173,25 @@ img, video { max-width: 100%; height: auto; display: block; }
     max-width: 88vw;
   }
 }
+        /* Viewport genişliği: iPhone eski Safari için güvenli fallback */
+.w-viewport{ width: 100vw; }
+@supports (width: 100dvw){
+  .w-viewport{ width: 100dvw; }
+}
+
+/* Çentikli cihazlarda kenar boşlukları */
+.w-viewport{
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* iOS yatay kaydırma stabilitesi (bounce/ekstra scroll’u engelle) */
+.hero-scroll{
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+
         `}</style>
         </div>
       </div>

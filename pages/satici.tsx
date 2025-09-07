@@ -5,6 +5,7 @@ import Image from "next/image";
 import DopingModal from "../components/DopingModal";
 import type React from "react";
 import Link from "next/link";
+import YorumBadge from "../components/YorumBadge";
 import SaticiYorum from "../components/SaticiYorum";
 import Analizler from "../components/analizler";
 import KargoAyarlar from "../components/KargoAyarlar";
@@ -648,20 +649,24 @@ const { data: yeniOrders } = await supabase
     {/* ✅ İlan Yorumları Butonu */}
     <div style={{ marginBottom: 15, display: "flex", justifyContent: "flex-end" }}>
       <button
-        onClick={() => setYorumlarAcik((p) => !p)}
-        style={{
-          background: "#f59e0b",
-          color: "#fff",
-          border: "none",
-          borderRadius: 7,
-          padding: "7px 14px",
-          fontWeight: 700,
-          fontSize: 13,
-          cursor: "pointer",
-        }}
-      >
-        {yorumlarAcik ? "Yorumları Gizle" : "İlan Yorumları"}
-      </button>
+  onClick={() => setYorumlarAcik((p) => !p)}
+  style={{
+    background: "#f59e0b",
+    color: "#fff",
+    border: "none",
+    borderRadius: 7,
+    padding: "7px 14px",
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: "pointer",
+    position: "relative",
+  }}
+>
+  {yorumlarAcik ? "Yorumları Gizle" : "İlan Yorumları"}
+
+  {/* 👇 burada rozet çıkacak */}
+  <YorumBadge user={user} />
+</button>
     </div>
 
     {/* ✅ Yorum Componenti */}
