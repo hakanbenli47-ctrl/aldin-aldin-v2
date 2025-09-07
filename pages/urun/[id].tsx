@@ -515,7 +515,22 @@ export default function UrunDetay({
 
           {/* Butonlar */}
           <button className="btnAdd" onClick={() => sepeteEkle(ilan)}>🛒 Sepete Ekle</button>
-          <button className="btnGo" onClick={() => router.push(sepetPath)}>Sepete Git</button>
+         <button
+  className="btnGo"
+  onClick={() => router.push(sepetPath)}
+  style={{
+    backgroundColor: "#f97316", // turuncu
+    color: "#fff",
+    border: "none",
+    padding: "10px 16px",
+    borderRadius: "6px",
+    fontWeight: 700,
+    cursor: "pointer"
+  }}
+>
+  Sepete Git
+</button>
+
         </section>
 
         {/* YORUMLAR & PUANLAMA */}
