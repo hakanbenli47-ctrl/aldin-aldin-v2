@@ -588,6 +588,12 @@ export default function UrunDetay({
                   </div>
                   {y.yorum && <p className="reviewText">{y.yorum}</p>}
                   <div className="reviewMeta">{formatDate(y.created_at)}</div>
+                  {y.cevap && (
+  <div className="reviewReply">
+    <strong>Satıcı:</strong> {y.cevap}
+  </div>
+)}
+
                 </div>
               ))
             )}
@@ -760,7 +766,16 @@ export default function UrunDetay({
         @media (min-width: 641px) and (max-width: 1024px) {
           .simGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
-      `}</style>
+      .reviewReply {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid #16a34a;
+  background: #f0fdf4;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #166534;
+}
+`}</style>
     </>
   );
 }

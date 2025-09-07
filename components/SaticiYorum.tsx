@@ -8,6 +8,7 @@ type YorumRow = {
   yorum: string;
   puan: number | null;
   created_at: string;
+  cevap?: string | null
 };
 
 type IlanBasic = {
@@ -79,10 +80,10 @@ export default function SaticiYorum({ user }: { user: any }) {
 
       // 2) Bu ilanlar için yorumları al
       const { data: rows, error: e2 } = await supabase
-        .from("yorumlar")
-        .select("id, urun_id, user_id, yorum, puan, created_at")
-        .in("urun_id", ids)
-        .order("created_at", { ascending: false });
+  .from("yorumlar")
+  .select("id, urun_id, user_id, yorum, puan, created_at, cevap") // 🔹 cevap ekledik
+  .in("urun_id", ids)
+  .order("created_at", { ascending: false });
 
       if (e2) {
         if (alive) {
@@ -279,7 +280,58 @@ useEffect(() => {
                         </div>
                         <div style={{ fontSize: 14, color: "#111827" }}>
                           {y.yorum}
+                          {/* Satıcının cevabı varsa göster */}
                         </div>
+                        {y.cevap && (
+  <div
+    style={{
+      fontSize: 13,
+      color: "#166534",
+      background: "#f0fdf4",
+      padding: "6px 8px",
+      borderRadius: 6,
+      marginTop: 6,
+    }}
+  >
+    Satıcı cevabı: {y.cevap}
+  </div>
+)}
+
+{/* Eğer cevap yoksa input alanı göster */}
+{!y.cevap && (
+  <form
+    onSubmit={async (e) => {
+      e.preventDefault();
+      const input = e.currentTarget.elements.namedItem("cevap") as HTMLInputElement;
+      const value = input.value.trim();
+      if (!value) return;
+
+      await supabase.from("yorumlar").update({ cevap: value }).eq("id", y.id);
+
+      // frontend state güncelle
+      setYorumlar((prev) =>
+        prev.map((r) => (r.id === y.id ? { ...r, cevap: value } : r))
+      );
+
+      input.value = "";
+    }}
+  >
+    <input
+      type="text"
+      name="cevap"
+      placeholder="Cevabınızı yazın..."
+      style={{
+        width: "100%",
+        padding: 6,
+        border: "1px solid #ddd",
+        borderRadius: 6,
+        fontSize: 13,
+        marginTop: 6,
+      }}
+    />
+  </form>
+)}
+
                       </div>
                     ))}
                   </div>
