@@ -1546,8 +1546,9 @@ useEffect(() => {
               </section>
 
               {/* STANDART İLANLAR (FULL-BLEED) */}
-             <section className="section-block" >
-                <div className="inner">
+             <section className="section-block full-bleed expand-desktop">
+  <div className="inner">
+
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--ink-900, #223555)', marginBottom: 10 }}>
                       {aktifKategori.ad === 'Tümü' ? 'Tüm İlanlar' : `${aktifKategori.ad} İlanları`}
@@ -1845,7 +1846,13 @@ useEffect(() => {
           </div>
 
           {/* Global Styles */}
-          <style jsx global>{`.info-card{
+          <style jsx global>{`
+          
+          :root {
+  --page-bg: #ccffbeff;   /* sayfanın arka planı */
+  --card-bg: #b7f5b1ff;   /* kutuların içi */
+}
+          .info-card{
   position: relative;
   background: #fff;
   border: 1.5px solid #e5e7eb;
