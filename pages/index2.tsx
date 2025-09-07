@@ -1248,7 +1248,7 @@ useEffect(() => {
               {indirimliUrunler.length > 0 && (
                 <section className="section-block full-bleed expand-desktop"
                   style={{
-                    background:'#fff',
+                    background:'#66f3bfff',
                     padding:'22px 0',
                     borderRadius:0,
                     margin:'24px 0',
@@ -1290,14 +1290,14 @@ useEffect(() => {
                 margin: '0 0 42px',
                 boxShadow: '0 4px 22px #f59e0b18',
                 border: '1.5px solid var(--border-200, #e2e8f0)'
-              }}>
+               }}>
                 <div className="inner">
                   <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--amber-700, #b45309)', marginBottom: 20, letterSpacing: ".2px" }}>
                     🚀 Öne Çıkanlar
                   </h2>
                   {dopedIlanlar.length === 0 ? (
                     <div style={{
-                      background: 'var(--note-bg, #fef9c3)',
+                      background: 'var(--note-bg, #a3fdecff)',
                       padding: 40,
                       textAlign: 'center',
                       borderRadius: 13,
@@ -1393,7 +1393,14 @@ useEffect(() => {
               </section>
 
               {populerIlanlar.length > 0 && (
-                <section className="section-block full-bleed expand-desktop"  style={{ margin: '0 0 32px', padding:'0' }}>
+                <section
+  className="section-block full-bleed expand-desktop"
+  style={{
+    margin: '0 0 32px',
+    padding: '0',
+    background: '#c2ffc2ff' // 💚 açık yeşil
+  }}
+>
                   <div className="inner">
                     <h2 style={{ fontSize: 24, fontWeight: 900, color: '#1d8cf8', marginBottom: 12, letterSpacing: ".2px" }}>
                       ⭐ EN POPÜLER ÜRÜNLER
