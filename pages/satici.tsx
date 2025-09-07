@@ -5,6 +5,7 @@ import Image from "next/image";
 import DopingModal from "../components/DopingModal";
 import type React from "react";
 import Link from "next/link";
+import SaticiYorum from "../components/SaticiYorum";
 import Analizler from "../components/analizler";
 import KargoAyarlar from "../components/KargoAyarlar";
 function OzellikEtiketleri({ item }: { item: any }) {
@@ -207,6 +208,7 @@ export default function SaticiPanel() {
   const [activeTab, setActiveTab] = useState("ilanlar");
   const [user, setUser] = useState<any>(null);
   const [ilanlar, setIlanlar] = useState<any[]>([]);
+  const [yorumlarAcik, setYorumlarAcik] = useState(false);
   const [siparisler, setSiparisler] = useState<any[]>([]);
   const [siparisTab, setSiparisTab] = useState<"aktif" | "gecmis">("aktif");
   const [loading, setLoading] = useState(true);
@@ -639,327 +641,356 @@ const { data: yeniOrders } = await supabase
       </div>
 
       <div style={{ marginTop: 22, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
+       
         {/* İLANLARIM */}
         {activeTab === "ilanlar" && (
+  <div>
+    {/* ✅ İlan Yorumları Butonu */}
+    <div style={{ marginBottom: 15, display: "flex", justifyContent: "flex-end" }}>
+      <button
+        onClick={() => setYorumlarAcik((p) => !p)}
+        style={{
+          background: "#f59e0b",
+          color: "#fff",
+          border: "none",
+          borderRadius: 7,
+          padding: "7px 14px",
+          fontWeight: 700,
+          fontSize: 13,
+          cursor: "pointer",
+        }}
+      >
+        {yorumlarAcik ? "Yorumları Gizle" : "İlan Yorumları"}
+      </button>
+    </div>
+
+    {/* ✅ Yorum Componenti */}
+    {yorumlarAcik && <SaticiYorum user={user} />}
+
+    {/* ✅ İlan Kartları Grid */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+        gap: 18,
+      }}
+    >
+      {ilanlar.map((ilan) => (
+        <div
+          key={ilan.id}
+          style={{
+            background: "#fff",
+            borderRadius: 9,
+            boxShadow: "0 2px 10px #e5e7eb16",
+            border: ilan.doped ? "2px solid #1bbd8a" : "1px solid #e6e8ec",
+            padding: 13,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            minHeight: 260,
+            transition: "box-shadow 0.2s",
+          }}
+        >
+          {ilan.resim_url?.[0] && (
+            <img
+              src={ilan.resim_url[0]}
+              alt="İlan görseli"
+              style={{
+                width: "100%",
+                height: 100,
+                objectFit: "cover",
+                borderRadius: 7,
+                marginBottom: 8,
+              }}
+            />
+          )}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-              gap: 18,
+              fontWeight: 700,
+              fontSize: 15,
+              color: "#223555",
+              marginBottom: 2,
             }}
           >
-            {ilanlar.map((ilan) => (
-              <div
-                key={ilan.id}
+            {ilan.title}
+          </div>
+          <div style={{ color: "#13c09a", fontWeight: 700, fontSize: 13 }}>
+            {ilan.price} ₺
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "#666",
+              marginTop: 5,
+              textAlign: "center",
+              minHeight: 17,
+            }}
+          >
+            {ilan.desc}
+          </div>
+          <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>
+            👀 {ilan.views || 0} görüntülenme
+          </div>
+          <small style={{ color: "#aaa", marginTop: 3, fontSize: 11 }}>
+            {ilan.created_at
+              ? new Date(ilan.created_at).toLocaleDateString()
+              : ""}
+          </small>
+
+          {editingId === ilan.id ? (
+            <div style={{ marginTop: 6, width: "100%" }}>
+              <input
+                type="text"
+                placeholder="Başlık"
+                value={editVals.title}
+                onChange={(e) =>
+                  setEditVals((p) => ({ ...p, title: e.target.value }))
+                }
                 style={{
-                  background: "#fff",
-                  borderRadius: 9,
-                  boxShadow: "0 2px 10px #e5e7eb16",
-                  border: ilan.doped ? "2px solid #1bbd8a" : "1px solid #e6e8ec",
-                  padding: 13,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minHeight: 260,
-                  transition: "box-shadow 0.2s",
+                  width: "100%",
+                  marginBottom: 5,
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1.5px solid #bfc9d4",
+                  fontSize: 15,
+                  color: "#1e293b",
+                  background: "#f8fafc",
+                  fontWeight: 600,
+                  outline: "none",
                 }}
-              >
-                {ilan.resim_url?.[0] && (
-                  <img
-                    src={ilan.resim_url[0]}
-                    alt="İlan görseli"
-                    style={{
-                      width: "100%",
-                      height: 100,
-                      objectFit: "cover",
-                      borderRadius: 7,
-                      marginBottom: 8,
-                    }}
-                  />
-                )}
-                <div
+              />
+              <input
+                type="text"
+                placeholder="Fiyat"
+                value={editVals.price}
+                onChange={(e) =>
+                  setEditVals((p) => ({ ...p, price: e.target.value }))
+                }
+                style={{
+                  width: "100%",
+                  marginBottom: 5,
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1.5px solid #bfc9d4",
+                  fontSize: 15,
+                  color: "#1e293b",
+                  background: "#f8fafc",
+                  fontWeight: 600,
+                  outline: "none",
+                }}
+              />
+              <textarea
+                placeholder="Açıklama"
+                value={editVals.desc}
+                onChange={(e) =>
+                  setEditVals((p) => ({ ...p, desc: e.target.value }))
+                }
+                style={{
+                  width: "100%",
+                  marginBottom: 5,
+                  padding: 8,
+                  borderRadius: 6,
+                  border: "1.5px solid #bfc9d4",
+                  minHeight: 36,
+                  fontSize: 15,
+                  color: "#1e293b",
+                  background: "#f8fafc",
+                  fontWeight: 600,
+                  outline: "none",
+                  resize: "vertical",
+                }}
+              />
+              <div style={{ marginBottom: 6 }}>
+                <label
                   style={{
                     fontWeight: 700,
-                    fontSize: 15,
-                    color: "#223555",
-                    marginBottom: 2,
+                    fontSize: 13,
+                    marginRight: 10,
+                    color: "#2563eb",
                   }}
                 >
-                  {ilan.title}
-                </div>
-                <div style={{ color: "#13c09a", fontWeight: 700, fontSize: 13 }}>
-                  {ilan.price} ₺
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "#666",
-                    marginTop: 5,
-                    textAlign: "center",
-                    minHeight: 17,
-                  }}
-                >
-                  {ilan.desc}
-                </div>
-                <div style={{ fontSize: 11, color: "#999", marginTop: 3 }}>
-                  👀 {ilan.views || 0} görüntülenme
-                </div>
-                <small style={{ color: "#aaa", marginTop: 3, fontSize: 11 }}>
-                  {ilan.created_at
-                    ? new Date(ilan.created_at).toLocaleDateString()
-                    : ""}
-                </small>
-                {editingId === ilan.id ? (
-                  <div style={{ marginTop: 6, width: "100%" }}>
-                    <input
-                      type="text"
-                      placeholder="Başlık"
-                      value={editVals.title}
-                      onChange={(e) =>
-                        setEditVals((p) => ({ ...p, title: e.target.value }))
-                      }
-                      style={{
-                        width: "100%",
-                        marginBottom: 5,
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "1.5px solid #bfc9d4",
-                        fontSize: 15,
-                        color: "#1e293b",
-                        background: "#f8fafc",
-                        fontWeight: 600,
-                        outline: "none",
-                      }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Fiyat"
-                      value={editVals.price}
-                      onChange={(e) =>
-                        setEditVals((p) => ({ ...p, price: e.target.value }))
-                      }
-                      style={{
-                        width: "100%",
-                        marginBottom: 5,
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "1.5px solid #bfc9d4",
-                        fontSize: 15,
-                        color: "#1e293b",
-                        background: "#f8fafc",
-                        fontWeight: 600,
-                        outline: "none",
-                      }}
-                    />
-                    <textarea
-                      placeholder="Açıklama"
-                      value={editVals.desc}
-                      onChange={(e) =>
-                        setEditVals((p) => ({ ...p, desc: e.target.value }))
-                      }
-                      style={{
-                        width: "100%",
-                        marginBottom: 5,
-                        padding: 8,
-                        borderRadius: 6,
-                        border: "1.5px solid #bfc9d4",
-                        minHeight: 36,
-                        fontSize: 15,
-                        color: "#1e293b",
-                        background: "#f8fafc",
-                        fontWeight: 600,
-                        outline: "none",
-                        resize: "vertical",
-                      }}
-                    />
-                    <div style={{ marginBottom: 6 }}>
-                      <label
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 13,
-                          marginRight: 10,
-                          color: "#2563eb",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={editVals.kampanyali || false}
-                          onChange={(e) =>
-                            setEditVals((p) => ({
-                              ...p,
-                              kampanyali: e.target.checked,
-                            }))
-                          }
-                          style={{ marginRight: 6 }}
-                        />
-                        Yaz İndirimi Aktif
-                      </label>
-                      {editVals.kampanyali && (
-                        <input
-                          type="text"
-                          placeholder="İndirimli Fiyat"
-                          value={editVals.indirimli_fiyat || ""}
-                          onChange={(e) =>
-                            setEditVals((p) => ({
-                              ...p,
-                              indirimli_fiyat: e.target.value,
-                            }))
-                          }
-                          style={{
-                            marginLeft: 10,
-                            width: 90,
-                            padding: 7,
-                            borderRadius: 6,
-                            border: "1.5px solid #13c09a",
-                            fontSize: 15,
-                            color: "#166534",
-                            background: "#f0fdf4",
-                            fontWeight: 700,
-                            outline: "none",
-                            boxShadow: "0 1px 4px #13c09a10",
-                          }}
-                        />
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button
-                        onClick={() => handleEditKaydet(ilan.id)}
-                        style={{
-                          flex: 1,
-                          background: "#13c09a",
-                          color: "#fff",
-                          padding: 7,
-                          borderRadius: 6,
-                          border: "none",
-                          fontWeight: 700,
-                          fontSize: 13,
-                        }}
-                      >
-                        Kaydet
-                      </button>
-                      <button
-                        onClick={handleEditCancel}
-                        style={{
-                          flex: 1,
-                          background: "#cf0606ff",
-                          color: "#fff",
-                          padding: 7,
-                          borderRadius: 6,
-                          border: "none",
-                          fontWeight: 700,
-                          fontSize: 13,
-                        }}
-                      >
-                        İptal
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
+                  <input
+                    type="checkbox"
+                    checked={editVals.kampanyali || false}
+                    onChange={(e) =>
+                      setEditVals((p) => ({
+                        ...p,
+                        kampanyali: e.target.checked,
+                      }))
+                    }
+                    style={{ marginRight: 6 }}
+                  />
+                  Yaz İndirimi Aktif
+                </label>
+                {editVals.kampanyali && (
+                  <input
+                    type="text"
+                    placeholder="İndirimli Fiyat"
+                    value={editVals.indirimli_fiyat || ""}
+                    onChange={(e) =>
+                      setEditVals((p) => ({
+                        ...p,
+                        indirimli_fiyat: e.target.value,
+                      }))
+                    }
                     style={{
-                      marginTop: 7,
-                      display: "flex",
-                      gap: 8,
-                      alignItems: "center",
-                    }}
-                  >
-                    <button
-                      style={{
-                        background: "#2563eb",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 7,
-                        padding: "7px 13px",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleEditBaslat(ilan)}
-                    >
-                      Düzenle
-                    </button>
-                    <button
-                      style={{
-                        background: "#ef4444",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: 7,
-                        padding: "7px 13px",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                      onClick={() => handleSil(ilan.id)}
-                    >
-                      Sil
-                    </button>
-                    <button
-                      style={{
-                        background: "#facc15",
-                        color: "#000",
-                        border: "none",
-                        borderRadius: 7,
-                        padding: "7px 13px",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                      onClick={() => {
-                        setSelectedIlan(ilan);
-                        setModalOpen(true);
-                      }}
-                    >
-                      🚀 Öne Çıkar
-                    </button>
-                    {ilan.kampanyali && (
-                      <span
-                        style={{
-                          marginLeft: 4,
-                          color: "#22c55e",
-                          fontWeight: 700,
-                          fontSize: 12,
-                        }}
-                      >
-                        Yaz İndirimi
-                      </span>
-                    )}
-                  </div>
-                )}
-                {modalOpen && selectedIlan && selectedIlan.id === ilan.id && (
-                  <DopingModal
-                    ilan={selectedIlan}
-                    onClose={() => setModalOpen(false)}
-                    onSuccess={() => {
-                      setIlanlar((prev: any[]) =>
-                        prev.map((i) =>
-                          i.id === selectedIlan.id ? { ...i, doped: true } : i
-                        )
-                      );
-                      setSelectedIlan(null);
+                      marginLeft: 10,
+                      width: 90,
+                      padding: 7,
+                      borderRadius: 6,
+                      border: "1.5px solid #13c09a",
+                      fontSize: 15,
+                      color: "#166534",
+                      background: "#f0fdf4",
+                      fontWeight: 700,
+                      outline: "none",
+                      boxShadow: "0 1px 4px #13c09a10",
                     }}
                   />
                 )}
               </div>
-            ))}
-
-            {ilanlar.length === 0 && (
-              <div
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => handleEditKaydet(ilan.id)}
+                  style={{
+                    flex: 1,
+                    background: "#13c09a",
+                    color: "#fff",
+                    padding: 7,
+                    borderRadius: 6,
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: 13,
+                  }}
+                >
+                  Kaydet
+                </button>
+                <button
+                  onClick={handleEditCancel}
+                  style={{
+                    flex: 1,
+                    background: "#cf0606ff",
+                    color: "#fff",
+                    padding: 7,
+                    borderRadius: 6,
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: 13,
+                  }}
+                >
+                  İptal
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: 7,
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <button
                 style={{
-                  gridColumn: "1/-1",
-                  background: "#f1f5f9",
-                  borderRadius: 9,
-                  padding: "35px 0",
-                  textAlign: "center",
-                  color: "#223555",
+                  background: "#2563eb",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 7,
+                  padding: "7px 13px",
                   fontWeight: 700,
-                  fontSize: 14,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+                onClick={() => handleEditBaslat(ilan)}
+              >
+                Düzenle
+              </button>
+              <button
+                style={{
+                  background: "#ef4444",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 7,
+                  padding: "7px 13px",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+                onClick={() => handleSil(ilan.id)}
+              >
+                Sil
+              </button>
+              <button
+                style={{
+                  background: "#facc15",
+                  color: "#000",
+                  border: "none",
+                  borderRadius: 7,
+                  padding: "7px 13px",
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  setSelectedIlan(ilan);
+                  setModalOpen(true);
                 }}
               >
-                Yayında ilanınız yok.
-              </div>
-            )}
-          </div>
-        )}
+                🚀 Öne Çıkar
+              </button>
+              {ilan.kampanyali && (
+                <span
+                  style={{
+                    marginLeft: 4,
+                    color: "#22c55e",
+                    fontWeight: 700,
+                    fontSize: 12,
+                  }}
+                >
+                  Yaz İndirimi
+                </span>
+              )}
+            </div>
+          )}
+
+          {modalOpen && selectedIlan && selectedIlan.id === ilan.id && (
+            <DopingModal
+              ilan={selectedIlan}
+              onClose={() => setModalOpen(false)}
+              onSuccess={() => {
+                setIlanlar((prev: any[]) =>
+                  prev.map((i) =>
+                    i.id === selectedIlan.id ? { ...i, doped: true } : i
+                  )
+                );
+                setSelectedIlan(null);
+              }}
+            />
+          )}
+        </div>
+      ))}
+
+      {ilanlar.length === 0 && (
+        <div
+          style={{
+            gridColumn: "1/-1",
+            background: "#f1f5f9",
+            borderRadius: 9,
+            padding: "35px 0",
+            textAlign: "center",
+            color: "#223555",
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          Yayında ilanınız yok.
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
 
         {/* SİPARİŞLER */}
         {activeTab === "siparisler" && (
