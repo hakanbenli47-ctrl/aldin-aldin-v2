@@ -120,6 +120,16 @@ export default function Profil2() {
   const [editCardId, setEditCardId] = useState<number | null>(null);
   const [cardForm, setCardForm] = useState({ title: "", card_number: "", expiry: "", cvv: "", name_on_card: "" });
 const [profileDeleting, setProfileDeleting] = useState(false);
+// Yorumlar state’i
+const [yorumlar, setYorumlar] = useState<{ 
+  id: number; 
+  urun_id: number; 
+  user_id: string; 
+  yorum: string | null; 
+  puan: number | null; 
+  created_at: string; 
+  cevap?: string | null;  // ✅ satıcı cevabı için kolon
+}[]>([]);
 
  async function reloadFavoriler() {
   if (!user) return;
@@ -264,6 +274,18 @@ const handleProfileDelete = async () => {
     ...servicesItems.map(m => ({ id: m.id, label: m.label })),   // badge yok sayılıyor
     ...accountHelpItems.map(m => ({ id: m.id, label: m.label })),
   ];
+  useEffect(() => {
+  if (!user) return;
+  async function fetchYorumlar() {
+    const { data, error } = await supabase
+      .from("yorumlar")
+      .select("*")
+      .eq("user_id", user.id);   // sadece bu alıcının yorumları
+    if (!error && data) setYorumlar(data);
+  }
+  fetchYorumlar();
+}, [user]);
+
   // --- VERİ ÇEKME ---
   useEffect(() => {
     async function fetchAll() {
@@ -1083,6 +1105,52 @@ if (selectedMenu === "siparislerim") {
       <ul style={{ listStyle:"none", padding:0, margin:0 }}>
         {activeOrders.map((o: Order) => renderOrderCard(o, false))}
       </ul>
+    </div>
+  );
+}
+// Satıcı Mesajlarım
+if (selectedMenu === "saticiMesajlarim") {
+  return (
+    <div>
+      <h2 style={{ color: "#223555", marginBottom: 18, fontWeight: 700 }}>
+        Satıcı Mesajlarım
+      </h2>
+      {yorumlar.filter(y => y.cevap).length === 0 ? (
+        <p style={{ color: "#64748b" }}>Henüz satıcıdan mesaj gelmedi.</p>
+      ) : (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+          {yorumlar
+            .filter(y => y.cevap)
+            .map(y => (
+              <li
+                key={y.id}
+                style={{
+                  background: "#f5f7fa",
+                  borderRadius: 9,
+                  marginBottom: 12,
+                  padding: "14px 18px",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <div style={{ fontSize: 14, marginBottom: 6, color: "#334155" }}>
+                  <b>Senin Yorumun:</b> {y.yorum}
+                </div>
+                <div
+                  style={{
+                    background: "#ecfdf5",
+                    color: "#065f46",
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  Satıcı: {y.cevap}
+                </div>
+              </li>
+            ))}
+        </ul>
+      )}
     </div>
   );
 }

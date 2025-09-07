@@ -720,7 +720,7 @@ useEffect(() => {
           {/* HEADER (full-width) */}
           <header className="pwa-header"
             style={{
-              background: '#fff',
+              background: '#7fff96ff',
               boxShadow: '0 2px 14px #1648b00a',
               position: 'sticky',
               top: 0,
@@ -1284,7 +1284,7 @@ useEffect(() => {
               {/* ÖNE ÇIKANLAR */}
               <section className="section-block full-bleed expand-desktop"
                style={{
-                background: '#fff',
+                background: '#70ffa7ff',
                 padding: '30px 0',
                 borderRadius: 0,
                 margin: '0 0 42px',
@@ -1546,9 +1546,8 @@ useEffect(() => {
               </section>
 
               {/* STANDART İLANLAR (FULL-BLEED) */}
-             <section className="section-block full-bleed expand-desktop">
+             <section className="section-block" >
   <div className="inner">
-
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
                     <h2 style={{ fontSize: 23, fontWeight: 800, color: 'var(--ink-900, #223555)', marginBottom: 10 }}>
                       {aktifKategori.ad === 'Tümü' ? 'Tüm İlanlar' : `${aktifKategori.ad} İlanları`}
@@ -1641,7 +1640,7 @@ useEffect(() => {
                             <div
                               key={product.id}
                               style={{
-                                background: '#fff',
+                                background: '#ccffc2ff',
                                 borderRadius: 15,
                                 padding: 15,
                                 boxShadow: '0 3px 16px #16a34a24',
@@ -2199,7 +2198,17 @@ img, video { max-width: 100%; height: auto; display: block; }
   touch-action: pan-x;
 }
 
-        `}</style>
+        /* Geçici override – kalan beyaz kutuları yumuşatır */
+.pwa-header,
+.section-block .inner > div,
+.product-card:not(.featured):not(.discount),
+.info-card,
+.reviews,
+.ilanGrid > div{
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+}
+`}</style>
         </div>
       </div>
     </>
