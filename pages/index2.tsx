@@ -635,17 +635,8 @@ return (
             padding: 0,
             width: '100%'
           }}>
-          <div className="header-inner"
-            style={{
-              width: '100%',
-              margin: 0,
-              padding: '0 12px',
-              display: 'grid',
-              gridTemplateColumns: 'auto 1fr auto',
-              alignItems: 'center',
-              minHeight: 70,
-              gap: 10,
-            }}>
+         <div className="header-inner">
+            
             {/* LEFT: Logo */}
             <div className="header-left" style={{ display:'flex', alignItems:'center', gap:10 }}>
               <Image src="/logo.png" alt="Aldın Aldın Logo" width={110} height={52} />
@@ -1469,8 +1460,6 @@ return (
 
 <div id="urunler" className="scroll-anchor" />
 
-<div id="urunler" className="scroll-anchor" />
-
              {/* STANDART İLANLAR */}
             <section className="section-block" >
               <div className="inner">
@@ -2056,6 +2045,57 @@ return (
 /* Anchor’a sticky bar yüksekliğini de hesaplat (header + catbar) */
 .scroll-anchor{
   scroll-margin-top: calc(var(--header-h, 80px) + 48px + 8px); /* 48px ~ catbar yüksekliği */
+}
+/* === Header responsive (mobile fit) === */
+.pwa-header .header-inner{
+  width:100%;
+  margin:0;
+  padding:0 12px;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  min-height:70px;
+  gap:10px;
+}
+
+/* Telefonda 2 sıraya düşür: 
+   sıra1: logo + actions 
+   sıra2: categories + search (tam genişlik) */
+@media (max-width: 640px){
+  .pwa-header .header-inner{
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "left actions"
+      "middle middle";
+    gap: 8px 10px;
+    padding: 6px 8px;
+  }
+  .pwa-header .header-left{ grid-area:left; }
+  .pwa-header .header-middle{ grid-area:middle; }
+  .pwa-header .header-actions{ grid-area:actions; justify-self:end; }
+
+  /* header-middle içi: Kategori + Arama alt alta sığsın */
+  .pwa-header .header-middle{ flex-wrap: wrap; gap: 8px !important; }
+  .pwa-header .header-middle > div:first-child{ flex:0 0 auto; }     /* Kategoriler butonu */
+  .pwa-header .header-middle > div:nth-child(2){ flex:1 1 100%; }    /* Arama inputu */
+
+  /* Logoyu ve butonları sıkıştır */
+  .pwa-header .header-left img{ max-height: 36px; height:36px; width:auto; }
+  .pwa-header .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
+  .pwa-header .login-btn{ padding:6px 10px !important; font-size:13px !important; }
+  .pwa-header .signup-btn{ display:none; } /* çok dar ekranda Kaydol’u gizle */
+
+  /* Kategoriler butonu ve arama yükseklikleri */
+  .pwa-header .header-middle button{ padding:6px 10px !important; font-size:13px !important; border-radius:8px !important; }
+  .pwa-header .header-middle input{ height:40px !important; font-size:14px !important; }
+}
+
+/* Daha dar cihazlar */
+@media (max-width: 380px){
+  .pwa-header .header-left img{ max-height: 32px; height:32px; }
+  .pwa-header .login-btn{ padding:6px 8px !important; font-size:12px !important; }
+  .pwa-header .header-middle input{ height:38px !important; font-size:13px !important; }
 }
  `}</style>
       </div>
