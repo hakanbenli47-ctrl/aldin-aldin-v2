@@ -2086,7 +2086,7 @@ return (
   .pwa-header .header-left img{ max-height: 36px; height:36px; width:auto; }
   .pwa-header .header-actions button{ padding:6px 10px !important; font-size:13px !important; }
   .pwa-header .login-btn{ padding:6px 10px !important; font-size:13px !important; }
-  .pwa-header .signup-btn{ display:none; } /* çok dar ekranda Kaydol’u gizle */
+  
 
   /* Kategoriler butonu ve arama yükseklikleri */
   .pwa-header .header-middle button{ padding:6px 10px !important; font-size:13px !important; border-radius:8px !important; }
@@ -2098,6 +2098,12 @@ return (
   .pwa-header .header-left img{ max-height: 32px; height:32px; }
   .pwa-header .login-btn{ padding:6px 8px !important; font-size:12px !important; }
   .pwa-header .header-middle input{ height:38px !important; font-size:13px !important; }
+}
+@media (max-width: 640px){
+  .pwa-header .header-actions{
+    flex-wrap: wrap;   /* gerekirse alt satıra geçsin */
+    gap: 8px;
+  }
 }
  `}</style>
       </div>
