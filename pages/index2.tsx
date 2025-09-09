@@ -314,10 +314,31 @@ useEffect(() => {
 
 useEffect(() => {
   if (kategori) {
-    const kat = dbKategoriler.find(k => String(k.id) === kategori)
-    if (kat) setAktifKategori({ ad: kat.ad, id: kat.id })
+    const kat = dbKategoriler.find(k => String(k.id) === kategori);
+    if (kat) {
+      setAktifKategori({ ad: kat.ad, id: kat.id });
+      setTimeout(scrollToProducts, 50); // DOM yerleşsin, sonra kaydır
+    }
   }
 }, [kategori, dbKategoriler]);
+
+// === Ürün listesine kaydırma + header yüksekliği ===
+const scrollToProducts = () => {
+  const el = document.getElementById('urunler');
+  if (el?.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+useEffect(() => {
+  // Header yüksekliğini CSS değişkenine yaz (scroll-margin-top için)
+  const header = document.querySelector('.pwa-header') as HTMLElement | null;
+  const setH = () => {
+    const h = header?.offsetHeight || 80;
+    document.documentElement.style.setProperty('--header-h', `${h}px`);
+  };
+  setH();
+  window.addEventListener('resize', setH);
+  return () => window.removeEventListener('resize', setH);
+}, []);
 
 // İLK YÜKLEME
 useEffect(() => {
@@ -697,7 +718,12 @@ return (
                           borderRadius: 7,
                           transition: 'background .14s'
                         }}
-                        onClick={() => { setAktifKategori({ ad: 'Tümü', id: undefined }); setDropdownOpen(false); }}
+                        onClick={() => {
+  setAktifKategori({ ad: 'Tümü', id: undefined });
+  setDropdownOpen(false);
+  requestAnimationFrame(scrollToProducts);
+}}
+
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
                         onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.ad === 'Tümü' ? 'var(--dropdown-active)' : 'transparent')}
                       >
@@ -724,7 +750,12 @@ return (
                             borderRadius: 7,
                             transition: 'background .14s'
                           }}
-                          onClick={() => { setAktifKategori({ ad: kat.ad, id: kat.id }); setDropdownOpen(false); }}
+                         onClick={() => {
+  setAktifKategori({ ad: kat.ad, id: kat.id });
+  setDropdownOpen(false);
+  requestAnimationFrame(scrollToProducts);
+}}
+
                           onMouseEnter={e => (e.currentTarget.style.background = 'var(--dropdown-hover)')}
                           onMouseLeave={e => (e.currentTarget.style.background = aktifKategori.id === kat.id ? 'var(--dropdown-active)' : 'transparent')}
                         >
@@ -1073,7 +1104,11 @@ return (
             .map(k => (
               <button
                 key={k.id}
-                onClick={() => setAktifKategori({ ad:k.ad, id:k.id })}
+                onClick={() => {
+  setAktifKategori({ ad:k.ad, id:k.id });
+  requestAnimationFrame(scrollToProducts);
+}}
+
                 style={{
                   border:'1px solid #dbeafe', background:'#fff', borderRadius:999,
                   padding:'6px 12px', cursor:'pointer',
@@ -1419,8 +1454,9 @@ return (
                 </div>
               </div>
             </section>
+<div id="urunler" className="scroll-anchor" />
 
-            {/* STANDART İLANLAR */}
+             {/* STANDART İLANLAR */}
             <section className="section-block" >
               <div className="inner">
                 <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
@@ -1949,7 +1985,13 @@ return (
             background: var(--card) !important;
             border-color: var(--border) !important;
           }
-        `}</style>
+       html { scroll-behavior: smooth; }
+
+/* Sticky header’a çarpmaması için nefes payı */
+.scroll-anchor{
+  scroll-margin-top: calc(var(--header-h, 80px) + 8px);
+}
+ `}</style>
       </div>
     </div>
   </>
