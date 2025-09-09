@@ -871,7 +871,8 @@ return (
                 <>
                   <div style={{ position: "relative" }}>
                     <button
-                      onClick={() => setLoginDropdown(prev => !prev)}
+  className="login-btn"
+  onClick={() => setLoginDropdown(prev => !prev)}
                       style={{
                         background: 'var(--primary, #0ea5e9)',
                         color: '#fff',
@@ -939,7 +940,8 @@ return (
                   </div>
 
                   <button
-                    onClick={() => window.location.href = '/kayit'}
+  className="signup-btn"
+  onClick={() => window.location.href = '/kayit'}
                     style={{
                       background: 'var(--accent, #10b981)',
                       color: '#fff',
