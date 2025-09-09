@@ -1098,28 +1098,7 @@ return (
           </section>
 
           {/* Kategori çipleri */}
-          {kategoriSayilari
-            .filter(k => k.sayi > 0)
-            .slice(0, 12)
-            .map(k => (
-              <button
-                key={k.id}
-                onClick={() => {
-  setAktifKategori({ ad:k.ad, id:k.id });
-  requestAnimationFrame(scrollToProducts);
-}}
-
-                style={{
-                  border:'1px solid #dbeafe', background:'#fff', borderRadius:999,
-                  padding:'6px 12px', cursor:'pointer',
-                  fontWeight:800, fontSize:13, display:'flex', alignItems:'center', gap:8
-                }}
-              >
-                {iconMap[k.ad] || <FiMoreHorizontal size={18}/>} {k.ad}
-                <span style={{color:'#94a3b8', fontWeight:700}}>({k.sayi})</span>
-              </button>
-            ))
-          }
+          
 
           {/* Trend aramalar */}
           {trendingTerms.length > 0 && (
@@ -1454,6 +1433,42 @@ return (
                 </div>
               </div>
             </section>
+            {/* --- YENİ: Sticky Kategori Bar (header’ın hemen altında gezer) --- */}
+<div className="sticky-catbar">
+  <div className="inner">
+    <div className="cat-scroller">
+      <button
+        onClick={() => {
+          setAktifKategori({ ad:'Tümü', id: undefined });
+          requestAnimationFrame(scrollToProducts);
+        }}
+        className={`chip ${aktifKategori.ad === 'Tümü' ? 'active' : ''}`}
+      >
+        {iconMap['Tümü'] || <FiMoreHorizontal size={18}/> } Tümü
+      </button>
+
+      {kategoriSayilari
+        .filter(k => k.sayi > 0)
+        .slice(0, 12)
+        .map(k => (
+          <button
+            key={k.id}
+            onClick={() => {
+              setAktifKategori({ ad:k.ad, id:k.id });
+              requestAnimationFrame(scrollToProducts);
+            }}
+            className={`chip ${aktifKategori.id === k.id ? 'active' : ''}`}
+          >
+            {iconMap[k.ad] || <FiMoreHorizontal size={18}/> } {k.ad}
+            <span className="count">({k.sayi})</span>
+          </button>
+        ))}
+    </div>
+  </div>
+</div>
+
+<div id="urunler" className="scroll-anchor" />
+
 <div id="urunler" className="scroll-anchor" />
 
              {/* STANDART İLANLAR */}
@@ -1990,6 +2005,57 @@ return (
 /* Sticky header’a çarpmaması için nefes payı */
 .scroll-anchor{
   scroll-margin-top: calc(var(--header-h, 80px) + 8px);
+}
+/* --- Sticky kategori bar --- */
+.sticky-catbar{
+  position: sticky;
+  top: calc(var(--header-h, 80px)); /* header yüksekliği kadar aşağı yapışır */
+  z-index: 900;                      /* header (1000) altında kalsın */
+  background: var(--surface, #f8fafc);
+  border-bottom: 1px solid var(--border, #dbeafe);
+  /* hafif cam efekti istersen aç: */
+  /* backdrop-filter: saturate(1.05) blur(6px); */
+}
+
+/* yatay kaydırılabilir çipler */
+.sticky-catbar .cat-scroller{
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;     /* iç .inner zaten yan padding veriyor */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sticky-catbar .cat-scroller::-webkit-scrollbar{ display: none; }
+
+/* Çip butonları */
+.sticky-catbar .chip{
+  border: 1px solid var(--border, #dbeafe);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.sticky-catbar .chip .count{
+  color:#94a3b8;
+  font-weight:700;
+}
+
+/* Aktif kategori vurgusu */
+.sticky-catbar .chip.active{
+  background: var(--dropdown-active, #e0f2fe);
+  border-color: var(--primary, #0ea5e9);
+  color: var(--primary, #0ea5e9);
+}
+
+/* Anchor’a sticky bar yüksekliğini de hesaplat (header + catbar) */
+.scroll-anchor{
+  scroll-margin-top: calc(var(--header-h, 80px) + 48px + 8px); /* 48px ~ catbar yüksekliği */
 }
  `}</style>
       </div>
