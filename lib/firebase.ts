@@ -1,44 +1,70 @@
+// lib/firebase.ts
 import { initializeApp, getApps } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  isSupported,
+  Messaging
+} from "firebase/messaging";
 
-// Firebase config (env değişkenlerinden okunuyor)
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
 };
 
-// Tekrar tekrar initialize olmasın
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+export const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Messaging sadece tarayıcıda aktif olsun
-let messaging: any = null;
-if (typeof window !== "undefined") {
+// Messaging'i her yerde değil, sadece desteklenen client'ta kullan
+export async function getMessagingSafe(): Promise<Messaging | null> {
+  if (typeof window === "undefined") return null;
+  const supported = await isSupported().catch(() => false);
+  if (!supported) return null;
   try {
-    messaging = getMessaging(app);
-  } catch (err) {
-    console.warn("Messaging init skipped:", err);
+    return getMessaging(app);
+  } catch {
+    return null;
   }
 }
 
-// Token alma fonksiyonu
-export const getFcmToken = async () => {
-  if (!messaging) return null; // SSR sırasında hata çıkmaz
+// Token alma (izin, SW kaydı dahil)
+export async function getFcmToken(): Promise<string | null> {
+  const messaging = await getMessagingSafe();
+  if (!messaging) return null;
+  if (!("serviceWorker" in navigator)) return null;
+
+  // İzin
+  if (Notification.permission !== "granted") {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") return null;
+  }
+
+  // SW kaydı (kökte olmalı: /firebase-messaging-sw.js)
+  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
 
   try {
     const token = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+      serviceWorkerRegistration: registration,
     });
-    console.log("FCM Token:", token);
-    return token;
+    return token || null;
   } catch (err) {
     console.error("FCM token alınamadı:", err);
     return null;
   }
-};
+}
 
-export { app, messaging, onMessage };
+// Foreground mesaj dinleme helper
+export async function listenForegroundMessages(
+  cb: (payload: any) => void
+): Promise<() => void> {
+  const messaging = await getMessagingSafe();
+  if (!messaging) return () => {};
+  const unsub = onMessage(messaging, cb);
+  return unsub;
+}

@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabaseClient';
 import SloganBar from "../components/SloganBar";
 import { FiChevronDown } from 'react-icons/fi'
 import { useRouter } from 'next/router'
-import { getMessaging, getToken } from "firebase/messaging";
+import { getFcmToken, listenForegroundMessages } from "../lib/firebase";
 
 // Ortalama puan hesaplama (TEK sorgu)
 async function ilanlaraOrtalamaPuanEkle(ilanlar: Ilan[]) {
@@ -193,8 +193,6 @@ const parsePrice = (p?: string) => {
 const Index2: NextPage = () => {
   const [loginDropdown, setLoginDropdown] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false)
-  const messaging = getMessaging();
-const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
   const [firmaAdMap, setFirmaAdMap] = useState<Record<string, FirmaInfo>>({});
   const [dbKategoriler, setDbKategoriler] = useState<Kategori[]>([]);
   const [populerIlanlar, setPopulerIlanlar] = useState<Ilan[]>([]);
@@ -255,6 +253,30 @@ const scrollHero = (idx: number) => {
   if (scrollEndTimer.current) window.clearTimeout(scrollEndTimer.current);
   scrollEndTimer.current = window.setTimeout(() => { isAutoScrolling.current = false; }, 450) as unknown as number;
 };
+useEffect(() => {
+  let unsub: (() => void) | undefined;
+
+  (async () => {
+    const token = await getFcmToken();
+    if (token) {
+      console.log("FCM Token:", token);
+      // İstersen Supabase'e kaydet:
+      // await supabase.from("fcm_tokens").upsert({ user_id: user?.id, token });
+    } else {
+      console.log("FCM token alınamadı veya izin verilmedi.");
+    }
+
+    // Foreground mesaj dinle (tab açıkken)
+    unsub = await listenForegroundMessages((payload) => {
+      const n = payload?.notification;
+      if (!n) return;
+      // Burada toast/snackbar gösterebilirsin
+      alert(`${n.title}\n${n.body || ""}`);
+    });
+  })();
+
+  return () => { if (unsub) unsub(); };
+}, []);
 
 useEffect(() => {
   if (heroTimer.current) clearInterval(heroTimer.current);
