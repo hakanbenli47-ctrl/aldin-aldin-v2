@@ -1,5 +1,5 @@
 // lib/firebase.ts
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getMessaging,
   getToken,
@@ -18,7 +18,10 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
 };
 
-export const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+// Firebase uygulamasını güvenli bir şekilde başlatan fonksiyon
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+export { app };
 
 // Messaging'i her yerde değil, sadece desteklenen client'ta kullan
 export async function getMessagingSafe(): Promise<Messaging | null> {
