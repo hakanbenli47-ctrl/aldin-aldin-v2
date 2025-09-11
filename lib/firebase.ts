@@ -28,7 +28,7 @@ if (typeof window !== "undefined") {
 export const getFcmToken = async () => {
   try {
     const token = await getToken(messaging, {
-      vapidKey: "BURAYA_FIREBASE_CONSOLE_DAN_ALDIĞIN_PUBLIC_VAPID_KEY",
+      vapidKey: "BDgEzYFX7Jdx7ch28xHMXLRuWOhwSeyTZkYOszOOSj8DORBO2JagAMVT47hxn4MeyBx8NkIsVj0tJuJXINAUc_4",
     });
     console.log("FCM Token:", token);
     return token;
