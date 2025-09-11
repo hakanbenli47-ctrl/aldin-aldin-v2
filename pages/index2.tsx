@@ -17,7 +17,7 @@ import { supabase } from '../lib/supabaseClient';
 import SloganBar from "../components/SloganBar";
 import { FiChevronDown } from 'react-icons/fi'
 import { useRouter } from 'next/router'
-import { getFcmToken } from "../lib/firebase";
+import { getMessaging, getToken } from "firebase/messaging";
 
 // Ortalama puan hesaplama (TEK sorgu)
 async function ilanlaraOrtalamaPuanEkle(ilanlar: Ilan[]) {
@@ -193,6 +193,8 @@ const parsePrice = (p?: string) => {
 const Index2: NextPage = () => {
   const [loginDropdown, setLoginDropdown] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const messaging = getMessaging();
+const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
   const [firmaAdMap, setFirmaAdMap] = useState<Record<string, FirmaInfo>>({});
   const [dbKategoriler, setDbKategoriler] = useState<Kategori[]>([]);
   const [populerIlanlar, setPopulerIlanlar] = useState<Ilan[]>([]);
@@ -233,9 +235,6 @@ useEffect(() => {
     setUser(usr); setIsLoggedIn(!!usr);
   });
   return () => { mounted = false; subscription.unsubscribe(); };
-}, []);
-useEffect(() => {
-  getFcmToken();
 }, []);
 
 // === HERO AUTOPLAY ===
