@@ -1,77 +1,16 @@
+// pages/_app.tsx DOSYASININ OLMASI GEREKEN DOĞRU VE TEK HALİ
+
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import Head from "next/head";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { AuthProvider } from '../lib/AuthContext'; // Eğer AuthContext kullanıyorsan bu satır kalmalı
+import { app } from '../lib/firebase'; // Sadece bu import satırı Firebase ile ilgili kalmalı
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyAz_ZEDKke3Pg0SyA2uV5jIOuu5pvRuKRM",
-  authDomain: "birapp-67573.firebaseapp.com",
-  projectId: "birapp-67573",
-  storageBucket: "birapp-67573.firebasestorage.app",
-  messagingSenderId: "575930274632",
-  appId: "1:575930274632:web:760add3bcb2558e8d0d97d",
-  measurementId: "G-SR16YENH0L"
-};
+// NOT: Bu kod senin projenin yapısına göre düzenlenmiştir.
+// Eğer AuthProvider kullanmıyorsan o satırları silebilirsin.
+// Önemli olan Firebase başlatma kodlarının tamamen kaldırılmasıdır.
 
 export default function App({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-  const [showButton, setShowButton] = useState(false);
-
-  useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/firebase-messaging-sw.js")
-        .then(() => console.log("Service Worker registered"))
-        .catch((err) => console.error("SW register error:", err));
-    }
-
-    // Firebase başlat
-    const app = initializeApp(firebaseConfig);
-    const messaging = getMessaging(app);
-    
-    // Token al
-    getToken(messaging, {
-      vapidKey:
-        "BDgEzYFX7Jdx7ch28xHMXLRuWOhwSeyTZkYOszOOSj8DORBO2JagAMVT47hxn4MeyBx8NkIsVj0tJuJXINAUc_4",
-    })
-      .then((currentToken) => {
-        if (currentToken) {
-          console.log("FCM Token:", currentToken);
-
-          // API’ye gönder → Supabase’e kaydetsin
-          fetch("/api/save-token", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: currentToken }),
-          });
-        } else {
-          console.log("No registration token available.");
-        }
-      })
-      .catch((err) => {
-        console.error("An error occurred while retrieving token.", err);
-      });
-
-    // Foreground mesaj dinleme
-    onMessage(messaging, (payload) => {
-      console.log("Message received. ", payload);
-
-      // Eğer url datası geldiyse → siteye yönlendir
-      if (payload.data?.url) {
-        window.location.href = payload.data.url;
-      } else {
-        alert(payload.notification?.title || "Yeni bildirim!");
-      }
-    });
-
-    // Buton görünürlüğü (alıcıya göre filtre istersen buraya ekleriz)
-    setShowButton(true);
-  }, []);
-
   return (
     <>
       <Head>
@@ -85,8 +24,13 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <Component {...pageProps} />
+      {/* Eğer AuthProvider kullanıyorsan bu yapı doğru */}
+      <AuthProvider>
+        <Component {...pageProps} />
+      </AuthProvider>
+
+      {/* Eğer AuthProvider kullanmıyorsan, sadece aşağıdaki satır yeterli */}
+      {/* <Component {...pageProps} /> */}
     </>
   );
 }
-
