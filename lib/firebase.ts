@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 const firebaseConfig = {
@@ -11,18 +11,19 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-let messaging: any;
+let messaging: any = null;
 if (typeof window !== "undefined") {
   try {
     messaging = getMessaging(app);
-  } catch (e) {
-    console.error("Messaging init error:", e);
+  } catch (err) {
+    console.warn("Messaging init skipped:", err);
   }
 }
 
 export const getFcmToken = async () => {
+  if (!messaging) return null;
   try {
     const token = await getToken(messaging, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
