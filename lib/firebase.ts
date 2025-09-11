@@ -1,20 +1,18 @@
 import { initializeApp } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
-// 🔑 Senin Firebase config’in
 const firebaseConfig = {
-  apiKey: "AIzaSyBvd_VoZsK6WeoAQulITwp9Q6c5FlbHSM",
-  authDomain: "birapp-44f8a.firebaseapp.com",
-  projectId: "birapp-44f8a",
-  storageBucket: "birapp-44f8a.appspot.com",
-  messagingSenderId: "987619236912",
-  appId: "1:987619236912:web:b71a7398523e5590221f5",
-  measurementId: "G-BTLZMP04HS",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
 
-// 🔔 Messaging objesi
 let messaging: any;
 if (typeof window !== "undefined") {
   try {
@@ -24,11 +22,10 @@ if (typeof window !== "undefined") {
   }
 }
 
-// 📌 Token alma (BURAYA kendi VAPID key’ini koymalısın!)
 export const getFcmToken = async () => {
   try {
     const token = await getToken(messaging, {
-      vapidKey: "BDgEzYFX7Jdx7ch28xHMXLRuWOhwSeyTZkYOszOOSj8DORBO2JagAMVT47hxn4MeyBx8NkIsVj0tJuJXINAUc_4",
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
     });
     console.log("FCM Token:", token);
     return token;

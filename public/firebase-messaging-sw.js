@@ -22,7 +22,7 @@ messaging.onBackgroundMessage((payload) => {
     body: payload.notification?.body || "Bir güncelleme var!",
     icon: "/logo192.png",
     data: {
-      url: payload.data?.url || "https://80bir.com", // varsayılan yönlendirme
+      url: payload.data?.url || "https://80bir.com.tr", // varsayılan yönlendirme
     },
   };
 
@@ -32,6 +32,6 @@ messaging.onBackgroundMessage((payload) => {
 // Bildirime tıklandığında → siteye yönlendir
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
-  const url = event.notification?.data?.url || "https://80bir.com";
+  const url = event.notification?.data?.url || "https://80bir.com.tr";
   event.waitUntil(clients.openWindow(url));
 });
