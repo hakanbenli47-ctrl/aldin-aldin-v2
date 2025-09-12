@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // 🔹 CORS / preflight
+  // ✅ CORS / preflight
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -23,7 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { token, user_id } = req.body;
-    if (!token) return res.status(400).json({ error: "Token eksik" });
+    if (!token) {
+      return res.status(400).json({ error: "Token eksik" });
+    }
 
     const { error } = await supabase
       .from("notification_tokens")

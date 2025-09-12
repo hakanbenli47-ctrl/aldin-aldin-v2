@@ -45,14 +45,20 @@ async function saveFcmToken(userId: string) {
     });
     if (!token) return;
 
-    const res = await fetch(`${window.location.origin}/api/save-token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, user_id: userId }),
-    });
+   const res = await fetch(`${window.location.origin}/api/save-token`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ token, user_id: userId }),
+});
 
-    const text = await res.text();
-    console.log("save-token response:", res.status, text);
+let result;
+try {
+  result = await res.json();
+} catch {
+  result = await res.text();
+}
+console.log("save-token response:", res.status, result);
+
   } catch (e) {
     console.warn("FCM token kaydedilemedi:", e);
   }
