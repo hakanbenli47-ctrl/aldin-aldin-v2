@@ -11,6 +11,7 @@ type Order = {
   iade_kargo_takip_no?: string;
   iade_aciklama?: string; // <-- DB ile uyumlu (önceden iade_aciklamasi yazıyordu)
   created_at: string;
+  
   teslim_tarihi?: string | null;
   kargo_firma?: string | null;
   kargo_takip_no?: string | null;
