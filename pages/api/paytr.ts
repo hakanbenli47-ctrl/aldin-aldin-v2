@@ -15,7 +15,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ success: false, message: "Eksik parametre" });
     }
 
-    // 🔹 Siparişi Supabase'e kaydet
+    // ✅ ENV kontrolü
+    const merchant_id = process.env.PAYTR_MERCHANT_ID;
+    const merchant_key = process.env.PAYTR_MERCHANT_KEY;
+    const merchant_salt = process.env.PAYTR_MERCHANT_SALT;
+    if (!merchant_id || !merchant_key || !merchant_salt) {
+      console.error("❌ PayTR ENV eksik:", { merchant_id, merchant_key, merchant_salt });
+      return res.status(500).json({ success: false, message: "Sunucu yapılandırması eksik (ENV boş)" });
+    }
+
+    // 🔹 Siparişi DB'ye kaydet
     const { data: newOrder, error: insertError } = await supabase
       .from("orders")
       .insert([
@@ -36,18 +45,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ success: false, message: "Sipariş kaydedilemedi" });
     }
 
-    // 🔹 Basket format fix → fiyatlar string
-    const basketFixed = (paytrBasket || []).map((it: any) => [
-      String(it[0]),
-      Number(it[1]).toFixed(2), // fiyat string olacak
-      Number(it[2]) || 1,
-    ]);
-
-    const user_basket = Buffer.from(JSON.stringify(basketFixed)).toString("base64");
-
-    const merchant_id = process.env.PAYTR_MERCHANT_ID!;
-    const merchant_key = process.env.PAYTR_MERCHANT_KEY!;
-    const merchant_salt = process.env.PAYTR_MERCHANT_SALT!;
+    // 🔹 Sepet formatı → Base64
+    const user_basket = Buffer.from(JSON.stringify(paytrBasket)).toString("base64");
 
     const user_ip =
       req.headers["x-forwarded-for"]?.toString() ||
@@ -55,13 +54,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       "127.0.0.1";
 
     const merchant_oid = String(newOrder.id);
+    const payment_amount = Math.round(amount * 100); // kuruş
 
     const params: Record<string, any> = {
       merchant_id,
       user_ip,
       merchant_oid,
       email,
-      payment_amount: amount * 100, // kuruş
+      payment_amount,
       currency: "TL",
       test_mode: "0",
       no_installment: 1,
@@ -77,22 +77,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user_basket,
     };
 
-    // 🔹 imza
-    const hash_str = `${merchant_id}${user_ip}${merchant_oid}${email}${params.payment_amount}${params.merchant_ok_url}${params.merchant_fail_url}${merchant_salt}`;
-    const paytr_token = crypto
-      .createHmac("sha256", merchant_key)
-      .update(hash_str)
-      .digest("base64");
+    // ✅ Debug log
+    console.log("📦 Basket:", paytrBasket);
+    console.log("📄 HASH_STR INPUT:", {
+      merchant_id,
+      user_ip,
+      merchant_oid,
+      email,
+      payment_amount,
+      ok_url: params.merchant_ok_url,
+      fail_url: params.merchant_fail_url,
+      merchant_salt,
+    });
+
+    // 🔹 Hash oluştur
+    const hash_str = `${merchant_id}${user_ip}${merchant_oid}${email}${payment_amount}${params.merchant_ok_url}${params.merchant_fail_url}${merchant_salt}`;
+    const paytr_token = crypto.createHmac("sha256", merchant_key).update(hash_str).digest("base64");
 
     params.paytr_token = paytr_token;
 
-    // 🔎 DEBUG LOG
-    console.log("🔑 ENV:", { merchant_id, merchant_key, merchant_salt });
-    console.log("📦 Basket:", basketFixed);
-    console.log("📄 HASH_STR:", hash_str);
-    console.log("🔒 TOKEN:", paytr_token);
-
-    // 🔹 PayTR API
+    // 🔹 PayTR API çağrısı
     const response = await fetch("https://www.paytr.com/odeme/api/get-token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -102,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
 
     if (data.status !== "success") {
-      console.error("PayTR hata:", data);
+      console.error("❌ PayTR error:", data);
       return res.status(400).json({
         success: false,
         message: data.reason || "PayTR token alınamadı",
