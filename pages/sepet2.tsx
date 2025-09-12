@@ -521,6 +521,38 @@ export default function Sepet2() {
 
     fetchCart();
   }, [currentUser]);
+// Kullanıcının kayıtlı adres & kartlarını otomatik seç
+useEffect(() => {
+  async function fetchUserData() {
+    if (!currentUser) return;
+
+    // 📍 Adresleri çek
+    const { data: addrData } = await supabase
+      .from("user_addresses")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: true });
+
+    if (addrData && addrData.length > 0) {
+      setAddresses(addrData);
+      setSelectedAddressId(addrData[0].id); // 🔹 ilk adresi otomatik seç
+    }
+
+    // 💳 Kartları çek
+    const { data: cardData } = await supabase
+      .from("user_cards")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: true });
+
+    if (cardData && cardData.length > 0) {
+      setCards(cardData);
+      setSelectedCardId(cardData[0].id); // 🔹 ilk kartı otomatik seç
+    }
+  }
+
+  fetchUserData();
+}, [currentUser]);
 
   useEffect(() => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
@@ -1696,7 +1728,7 @@ export default function Sepet2() {
                 border: "none",
                 cursor: allAgreed && currentUser ? "pointer" : "not-allowed",
               }}
-            >
+             >
               {currentUser ? "✅ Sipariş Ver" : "🔒 Giriş Yapın"}
             </button>
           </>
