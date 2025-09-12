@@ -19,6 +19,7 @@ import { FiChevronDown } from 'react-icons/fi'
 import { useRouter } from 'next/router'
 import { getFcmToken, listenForegroundMessages } from "../lib/firebase";
 
+
 // Ortalama puan hesaplama (TEK sorgu)
 async function ilanlaraOrtalamaPuanEkle(ilanlar: Ilan[]) {
   if (!ilanlar?.length) return ilanlar;

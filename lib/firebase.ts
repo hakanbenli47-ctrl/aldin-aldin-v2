@@ -1,12 +1,6 @@
 // lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  getMessaging,
-  getToken,
-  onMessage,
-  isSupported,
-  Messaging
-} from "firebase/messaging";
+import { getMessaging, getToken, onMessage, MessagePayload } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -15,59 +9,46 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Firebase uygulamasını güvenli bir şekilde başlatan fonksiyon
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// Firebase app init
+export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export { app };
+// Tanı koymak için 1 kere logla (sonra kaldırabilirsin)
+if (typeof window !== "undefined") {
+  console.log("Firebase projectId:", app.options.projectId);
+}
 
-// Messaging'i her yerde değil, sadece desteklenen client'ta kullan
-export async function getMessagingSafe(): Promise<Messaging | null> {
-  if (typeof window === "undefined") return null;
-  const supported = await isSupported().catch(() => false);
-  if (!supported) return null;
+// ---- Firebase Messaging (FCM) ----
+let messaging: ReturnType<typeof getMessaging> | null = null;
+if (typeof window !== "undefined") {
   try {
-    return getMessaging(app);
-  } catch {
-    return null;
+    messaging = getMessaging(app);
+  } catch (err) {
+    console.warn("Messaging init failed:", err);
   }
 }
 
-// Token alma (izin, SW kaydı dahil)
+/** Tarayıcıdan FCM token alır */
 export async function getFcmToken(): Promise<string | null> {
-  const messaging = await getMessagingSafe();
   if (!messaging) return null;
-  if (!("serviceWorker" in navigator)) return null;
-
-  // İzin
-  if (Notification.permission !== "granted") {
-    const perm = await Notification.requestPermission();
-    if (perm !== "granted") return null;
-  }
-
-  // SW kaydı (kökte olmalı: /firebase-messaging-sw.js)
-  const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-
   try {
     const token = await getToken(messaging, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-      serviceWorkerRegistration: registration,
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY, // Firebase Console → Project Settings → Cloud Messaging → Web Push Certificates → VAPID Key
     });
-    return token || null;
+    console.log("FCM Token:", token);
+    return token;
   } catch (err) {
     console.error("FCM token alınamadı:", err);
     return null;
   }
 }
 
-// Foreground mesaj dinleme helper
-export async function listenForegroundMessages(
-  cb: (payload: any) => void
-): Promise<() => void> {
-  const messaging = await getMessagingSafe();
-  if (!messaging) return () => {};
-  const unsub = onMessage(messaging, cb);
-  return unsub;
+/** Foreground bildirimleri dinler */
+export function listenForegroundMessages(cb: (payload: MessagePayload) => void) {
+  if (!messaging) return undefined;
+  const unsubscribe = onMessage(messaging, cb);
+  return unsubscribe; // cleanup fonksiyonunu döndür
 }
+
