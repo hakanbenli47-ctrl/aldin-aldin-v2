@@ -29,7 +29,7 @@ export default function YorumBadge({ user }: { user: any }) {
 
       setUnreadCount(count || 0);
     }
-
+ 
     fetchUnread();
 
     // belli aralıklarla yenile
