@@ -1592,12 +1592,7 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
               <p style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
                 Ödeme altyapısı güvenli olarak İyzico tarafından sağlanmaktadır
               </p>
-              <img
-                src="/iyzico/iyzico-logo-pack/footer_iyzico_ile_ode/Colored/logo_band_colored@2x.png"
-                alt="İyzico Güvenli Ödeme"
-                width={160}
-                style={{ display: "block", margin: "0 auto", height: "auto" }}
-              />
+              
             </div>
 
             {!currentUser && (
