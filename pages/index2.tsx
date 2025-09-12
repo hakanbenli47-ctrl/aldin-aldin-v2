@@ -253,30 +253,47 @@ const scrollHero = (idx: number) => {
   if (scrollEndTimer.current) window.clearTimeout(scrollEndTimer.current);
   scrollEndTimer.current = window.setTimeout(() => { isAutoScrolling.current = false; }, 450) as unknown as number;
 };
+// ---- EK: Token kaydetme fonksiyonu ----
+async function saveUserToken(userId: string, token: string) {
+  try {
+    const res = await fetch("/api/save-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, token }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      console.error("❌ Token kaydedilemedi:", data);
+    } else {
+      console.log("✅ Token kaydedildi:", data);
+    }
+  } catch (err) {
+    console.error("saveUserToken error:", err);
+  }
+}
+
+// ---- Mevcut useEffect’i bu şekilde güncelle ----
 useEffect(() => {
   let unsub: (() => void) | undefined;
 
   (async () => {
     const token = await getFcmToken();
-    if (token) {
-      console.log("FCM Token:", token);
-      // İstersen Supabase'e kaydet:
-      // await supabase.from("fcm_tokens").upsert({ user_id: user?.id, token });
+    if (token && user?.id) {
+      await saveUserToken(user.id, token);  // ✅ token + user_id kaydet
     } else {
-      console.log("FCM token alınamadı veya izin verilmedi.");
+      console.log("⚠️ Token alınamadı veya kullanıcı yok");
     }
 
-    // Foreground mesaj dinle (tab açıkken)
     unsub = await listenForegroundMessages((payload) => {
       const n = payload?.notification;
       if (!n) return;
-      // Burada toast/snackbar gösterebilirsin
       alert(`${n.title}\n${n.body || ""}`);
     });
   })();
 
   return () => { if (unsub) unsub(); };
-}, []);
+}, [user]);
+
 
 useEffect(() => {
   if (heroTimer.current) clearInterval(heroTimer.current);
