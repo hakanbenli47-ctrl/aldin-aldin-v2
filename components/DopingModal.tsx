@@ -10,22 +10,21 @@ type Props = {
 
 // Paket tanımları (fiyat / gün)
 const PAKETLER = {
-   gunluk:   { label: "1 Günlük",  price: 500, days: 1 },
-   haftalik: { label: "1 Haftalık", price: 800, days: 7 },
-   aylik:    { label: "1 Aylık",    price: 1250, days: 30 },
+  gunluk:   { label: "1 Günlük",  price: 500,  days: 1 },
+  haftalik: { label: "1 Haftalık", price: 800,  days: 7 },
+  aylik:    { label: "1 Aylık",    price: 1250, days: 30 },
 } as const;
 type PaketKey = keyof typeof PAKETLER;
 
 export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
   const [paket, setPaket] = useState<PaketKey | null>(null);
 
-  // kart bilgileri
-  const [card, setCard] = useState({ name: "", number: "", expiry: "", cvc: "" });
+  // sadece bilgi amaçlı state'ler
   const [submitting, setSubmitting] = useState(false);
 
   // ödeme için kullanıcı bilgisi
   const [userEmail, setUserEmail] = useState<string>("");
-  const [userId, setUserId] = useState<string>("");
+  const [userId,    setUserId]    = useState<string>("");
 
   // promosyon kodu
   const [promoCode, setPromoCode] = useState("");
@@ -40,29 +39,17 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
 
   const amount = paket ? PAKETLER[paket].price : 0;
 
-  // basit format yardımcıları
-  const fmtNumber = (v: string) =>
-    v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})(?=\d)/g, "$1 ");
-  const fmtExpiry = (v: string) => {
-    const raw = v.replace(/\D/g, "").slice(0, 4);
-    if (raw.length <= 2) return raw;
-    return `${raw.slice(0, 2)}/${raw.slice(2)}`;
-  };
-
   async function handleOdeVeOnaCikar() {
     if (!paket) return alert("Lütfen bir paket seçin.");
 
-    // ✅ Promosyon kodu kontrolü
+    // ✅ Promosyon kodu: FREEWEEK → 7 gün ücretsiz
     if (promoCode.trim().toUpperCase() === "FREEWEEK") {
       const until = new Date();
       until.setDate(until.getDate() + 7);
 
       const { error } = await supabase
         .from("ilan")
-        .update({
-          doped: true,
-          doped_expiration: until.toISOString(),
-        })
+        .update({ doped: true, doped_expiration: until.toISOString() })
         .eq("id", ilan.id);
 
       if (error) {
@@ -73,92 +60,76 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
       alert("✅ Promosyon kodu ile ilan 1 hafta ücretsiz öne çıkarıldı!");
       onSuccess();
       onClose();
-      return; // ödeme kısmına girmeden çık
+      return; // ödeme yok
     }
 
-    // ---- Normal ödeme akışı ----
-    const numRaw = card.number.replace(/\s/g, "");
-    if (!card.name || numRaw.length !== 16 || !/^\d{2}\/\d{2}$/.test(card.expiry) || card.cvc.length < 3) {
-      alert("Kart bilgilerini eksiksiz girin.");
-      return;
-    }
-
+    // ---- PayTR ile ödeme akışı ----
     setSubmitting(true);
     try {
-      // 1) Ödeme isteği
-      const res = await fetch("/api/payment", {
+      // PayTR sepeti (tek satır: seçilen paket)
+      const itemName = `Öne Çıkar (${PAKETLER[paket].label}) - #${ilan.id}`;
+      const paytrBasket: [string, number, number][] = [[itemName, amount, 1]];
+
+      // (opsiyonel) raporlama için okunur format
+      const basketItems = [{
+        id: `feature-${ilan.id}`,
+        name: itemName,
+        category1: "Feature",
+        unitPrice: amount,
+        quantity: 1,
+        price: amount,
+      }];
+
+      const res = await fetch("/api/paytr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "payRaw",
           amount,
-          card: {
-            name_on_card: card.name,
-            card_number: numRaw,
-            expiry: card.expiry, // MM/YY
-            cvv: card.cvc,
-          },
-          buyer: {
-            id: userId || `seller-${userEmail}`,
-            name: userEmail?.split("@")[0] || "Seller",
-            surname: "Seller",
-            email: userEmail || "test@example.com",
-            gsmNumber: "+905555555555",
-          },
+          user_id: userId || `seller-${userEmail}`,
+          email: userEmail || "seller@example.com",
+          // PayTR zorunlu alanları için basit adres bilgisi
           address: {
-            address: "Feature",
+            address: "Feature Purchase",
             city: "Istanbul",
             country: "Turkey",
             postal_code: "",
           },
-          basketItems: [
-            {
-              id: `feature-${ilan.id}`,
-              name: `Öne Çıkar (${PAKETLER[paket].label}) - #${ilan.id}`,
-              category1: "Feature",
-              price: amount,
-            },
-          ],
+          paytrBasket,   // PayTR'in beklediği format
+          basketItems,   // sizin raporlamanız için
+          // callback tarafında ilan/paket ayırt edebilmek için meta
+          meta: {
+            type: "feature",
+            ilanId: ilan.id,
+            paket: paket,
+            days: PAKETLER[paket].days,
+            title: ilan.title,
+          },
         }),
       });
 
-      // 2) Response güvenli çöz
       const text = await res.text();
-      let payJson: any = null;
-      try { payJson = JSON.parse(text); } catch { /* no-op */ }
+      let data: any = null;
+      try { data = JSON.parse(text); } catch { /* ignore */ }
 
-      if (!res.ok || !payJson || payJson.success !== true) {
-        const msg = payJson?.message || text || "Ödeme sırasında beklenmeyen bir hata.";
-        alert("💳 Ödeme başarısız: " + msg);
+      if (!res.ok || !data?.success || !data?.token) {
+        const msg = data?.message || text || "Ödeme başlatılırken beklenmeyen bir hata.";
+        alert("💳 Ödeme başlatılamadı: " + msg);
         setSubmitting(false);
         return;
       }
 
-      // 3) Supabase: doped + doped_expiration
-      const until = new Date();
-      until.setDate(until.getDate() + PAKETLER[paket].days);
+      // ✅ PayTR güvenli ödeme sayfasına yönlendir
+      window.location.href = `https://www.paytr.com/odeme/guvenli/${data.token}`;
 
-      const { error } = await supabase
-        .from("ilan")
-        .update({
-          doped: true,
-          doped_expiration: until.toISOString(),
-        })
-        .eq("id", ilan.id);
-
-      if (error) {
-        alert("Ödeme alındı fakat ilan işaretlenemedi: " + error.message);
-        setSubmitting(false);
-        return;
-      }
-
-      alert("✅ Ödeme alındı ve ilan öne çıkarıldı.");
-      onSuccess();
-      onClose();
+      // Not: Ödeme başarılı olduğunda PayTR -> callback_url’inize bildirim gönderir.
+      // O callback’te:
+      //  - ilan.doped = true
+      //  - ilan.doped_expiration = now + PAKETLER[paket].days
+      //  - log/kayıt/fiş işlemleri
+      // yapmanızı öneririz.
     } catch (e: any) {
       console.error(e);
-      alert("Ödeme sırasında hata: " + (e?.message || "Bilinmeyen hata"));
-    } finally {
+      alert("Ödeme servisine ulaşılamadı: " + (e?.message || "Bilinmeyen hata"));
       setSubmitting(false);
     }
   }
@@ -206,35 +177,17 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
           style={inp}
         />
 
-        {/* Kart bilgileri */}
-        <input
-          placeholder="Kart Sahibi"
-          value={card.name}
-          onChange={(e) => setCard({ ...card, name: e.target.value })}
-          style={inp}
-        />
-        <input
-          placeholder="Kart Numarası (16 hane)"
-          value={card.number}
-          onChange={(e) => setCard({ ...card, number: fmtNumber(e.target.value) })}
-          style={inp}
-          inputMode="numeric"
-        />
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            placeholder="SKT (AA/YY)"
-            value={card.expiry}
-            onChange={(e) => setCard({ ...card, expiry: fmtExpiry(e.target.value) })}
-            style={{ ...inp, flex: 1 }}
-            inputMode="numeric"
-          />
-          <input
-            placeholder="CVC"
-            value={card.cvc}
-            onChange={(e) => setCard({ ...card, cvc: e.target.value.replace(/\D/g, "").slice(0, 4) })}
-            style={{ ...inp, flex: 1 }}
-            inputMode="numeric"
-          />
+        {/* Bilgilendirme: Kart PayTR sayfasında girilecek */}
+        <div style={{
+          background: "#ecfeff",
+          border: "1px solid #a5f3fc",
+          color: "#0c4a6e",
+          borderRadius: 8,
+          padding: 10,
+          fontSize: 14,
+          marginBottom: 8
+        }}>
+          Kart bilgileri PayTR’in güvenli sayfasında girilecektir. Bu pencerede kart bilgisi istemiyoruz.
         </div>
 
         {/* Özet */}
@@ -252,7 +205,7 @@ export default function DopingModal({ ilan, onClose, onSuccess }: Props) {
             cursor: submitting ? "not-allowed" : "pointer", marginTop: 14, opacity: submitting ? 0.8 : 1
           }}
         >
-          {submitting ? "Ödeniyor..." : "Öde ve Öne Çıkar"}
+          {submitting ? "Yönlendiriliyor..." : "Öde ve Öne Çıkar"}
         </button>
 
         <button

@@ -2,12 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
+
 // Geçerli kuponlar (küçük harf eşleştirme)
 const VALID_COUPONS: Record<string, number> = {
   ilkindirim: 3, // %3
   // örn: "kis2025": 10
 };
 const COUPON_MIN_TL = 1000;
+
 // ----- MAIL GÖNDERME
 async function sendOrderEmails({
   aliciMail,
@@ -164,7 +166,6 @@ function extractFoodFields(opts: Record<string, string[]>) {
   }
   return { sonTuketim, birim, miktar };
 }
-
 /* ------------------------ Bileşen ------------------------ */
 export default function Sepet2() {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -199,13 +200,13 @@ export default function Sepet2() {
     cvv: "",
     title: "",
   });
-// %3 kupon state'i
-const [coupon, setCoupon] = useState<{ code: string; applied: boolean; error?: string }>({
-  code: "",
-  applied: false,
-  error: "",
-});
-const [showCouponBox, setShowCouponBox] = useState(false);
+  // %3 kupon state'i
+  const [coupon, setCoupon] = useState<{ code: string; applied: boolean; error?: string }>({
+    code: "",
+    applied: false,
+    error: "",
+  });
+  const [showCouponBox, setShowCouponBox] = useState(false);
 
   async function saveAgreementLogs() {
     if (!currentUser) return;
@@ -422,7 +423,6 @@ const [showCouponBox, setShowCouponBox] = useState(false);
       </header>
     );
   }
-
   // KULLANICIYI AL
   useEffect(() => {
     async function getUser() {
@@ -581,7 +581,6 @@ const [showCouponBox, setShowCouponBox] = useState(false);
       );
     }
   };
-
   // İNDİRİMLİ FİYATLI TOPLAM + KARGO (firma bazında)
   function hesaplaGenelToplam(cartItems: any[]) {
     const sellerGroups: Record<string, any[]> = {};
@@ -615,33 +614,30 @@ const [showCouponBox, setShowCouponBox] = useState(false);
   }
 
   const toplamFiyat = hesaplaGenelToplam(cartItems);
-// Ürünlerin kargo öncesi toplamı (indirimli varsa onu alır)
-const urunAraToplam = cartItems.reduce(
-  (a, ci) => a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * (ci.adet || 1),
-  0
-);
+  // Ürünlerin kargo öncesi toplamı (indirimli varsa onu alır)
+  const urunAraToplam = cartItems.reduce(
+    (a, ci) => a + Number(ci.product?.indirimli_fiyat || ci.product?.price) * (ci.adet || 1),
+    0
+  );
 
-// Kargo toplamı = Genel Toplam - Ürünler
-const kargoToplam = Math.max(0, toplamFiyat - urunAraToplam);
-// Kupon indirimi (sadece ürün toplamına uygulanır)
-const indirimYuzde = coupon.applied
-  ? (VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] ?? 0)
-  : 0;
+  // Kargo toplamı = Genel Toplam - Ürünler
+  const kargoToplam = Math.max(0, toplamFiyat - urunAraToplam);
+  // Kupon indirimi (sadece ürün toplamına uygulanır)
+  const indirimYuzde = coupon.applied
+    ? (VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] ?? 0)
+    : 0;
 
-const indirimTutar = (urunAraToplam * indirimYuzde) / 100;
-const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
+  const indirimTutar = (urunAraToplam * indirimYuzde) / 100;
+  const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
 
-
-  // SİPARİŞ VER — aynı satıcıya tek order
- async function handleSiparisVer(siparisBilgi: any) {
-  if (!currentUser) { alert("Giriş yapmanız gerekiyor."); return; }
-  if (cartItems.length === 0) {
-    alert("Sepetiniz boş!");
-    return;
-  }
-  try {
-    // ...
-
+  // SİPARİŞ VER — aynı satıcıya tek order (mevcut fonksiyon — ödeme sonrası backend callback’inde çağırmanız önerilir)
+  async function handleSiparisVer(siparisBilgi: any) {
+    if (!currentUser) { alert("Giriş yapmanız gerekiyor."); return; }
+    if (cartItems.length === 0) {
+      alert("Sepetiniz boş!");
+      return;
+    }
+    try {
       type Grup = {
         sellerId: string;
         sellerEmail: string;
@@ -869,7 +865,6 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
                     >
                       {item.product?.title}
                     </h3>
-
                     {/* GIDA: sabit sıra ve sadece satıcının girdikleri (esnek eşleşmeli) */}
                     {item.product?.kategori_id === 7 ? (
                       (() => {
@@ -1047,155 +1042,152 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
                 </div>
               );
             })}
-{/* Kupon Alanı */}
-{/* Kupon Alanı */}
-<div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-  {!showCouponBox ? (
-    <button
-      onClick={() => setShowCouponBox(true)}
-      style={{
-        padding: "8px 12px",
-        borderRadius: 8,
-        border: "1px dashed #94a3b8",
-        background: "#f8fafc",
-        color: "#334155",
-        cursor: "pointer",
-        fontWeight: 600,
-      }}
-    >
-      Kupon kodunuz var mı?
-    </button>
-  ) : (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <input
-        type="text"
-        placeholder="Kupon kodunu girin..."
-        value={coupon.code}
-        onChange={(e) => setCoupon({ ...coupon, code: e.target.value, error: "" })}
-        style={{
-          width: 200,
-          padding: 10,
-          border: "1px solid #e5e7eb",
-          borderRadius: 8,
-          fontWeight: 600,
-        }}
-      />
-      {!coupon.applied ? (
-        <button
-         onClick={async () => {
-  const key = (coupon.code || "").trim().toLowerCase();
-  const percent = VALID_COUPONS[key];
+            {/* Kupon Alanı */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              {!showCouponBox ? (
+                <button
+                  onClick={() => setShowCouponBox(true)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px dashed #94a3b8",
+                    background: "#f8fafc",
+                    color: "#334155",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Kupon kodunuz var mı?
+                </button>
+              ) : (
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    type="text"
+                    placeholder="Kupon kodunu girin..."
+                    value={coupon.code}
+                    onChange={(e) => setCoupon({ ...coupon, code: e.target.value, error: "" })}
+                    style={{
+                      width: 200,
+                      padding: 10,
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 8,
+                      fontWeight: 600,
+                    }}
+                  />
+                  {!coupon.applied ? (
+                    <button
+                      onClick={async () => {
+                        const key = (coupon.code || "").trim().toLowerCase();
+                        const percent = VALID_COUPONS[key];
 
-  if (!percent) {
-    setCoupon({ ...coupon, error: "Geçersiz veya süresi dolmuş kupon." });
-    return;
-  }
+                        if (!percent) {
+                          setCoupon({ ...coupon, error: "Geçersiz veya süresi dolmuş kupon." });
+                          return;
+                        }
 
-  if (!currentUser) {
-    setCoupon({ ...coupon, error: "Kupon kullanmak için giriş yapın." });
-    return;
-  }
+                        if (!currentUser) {
+                          setCoupon({ ...coupon, error: "Kupon kullanmak için giriş yapın." });
+                          return;
+                        }
 
-  // Eşik: ürün ara toplamı (kargo hariç)
-  if (urunAraToplam < COUPON_MIN_TL) {
-    setCoupon({
-      ...coupon,
-      error: `Kupon için minimum ürün tutarı ${COUPON_MIN_TL.toLocaleString("tr-TR")} ₺ olmalı.`,
-    });
-    return;
-  }
+                        // Eşik: ürün ara toplamı (kargo hariç)
+                        if (urunAraToplam < COUPON_MIN_TL) {
+                          setCoupon({
+                            ...coupon,
+                            error: `Kupon için minimum ürün tutarı ${COUPON_MIN_TL.toLocaleString("tr-TR")} ₺ olmalı.`,
+                          });
+                          return;
+                        }
 
-  // Aynı kullanıcı aynı kodu daha önce kullanmış mı?
-  const { data: usedRows, error } = await supabase
-    .from("coupon_redemptions")
-    .select("id")
-    .eq("user_id", currentUser.id)
-    .eq("code", key)
-    .limit(1);
+                        // Aynı kullanıcı aynı kodu daha önce kullanmış mı?
+                        const { data: usedRows, error } = await supabase
+                          .from("coupon_redemptions")
+                          .select("id")
+                          .eq("user_id", currentUser.id)
+                          .eq("code", key)
+                          .limit(1);
 
-  if (error) {
-    console.error("coupon check error:", error);
-    setCoupon({ ...coupon, error: "Kupon doğrulanamadı. Lütfen tekrar deneyin." });
-    return;
-  }
-  if (usedRows && usedRows.length > 0) {
-    setCoupon({ ...coupon, error: "Bu kuponu daha önce kullandınız." });
-    return;
-  }
+                        if (error) {
+                          console.error("coupon check error:", error);
+                          setCoupon({ ...coupon, error: "Kupon doğrulanamadı. Lütfen tekrar deneyin." });
+                          return;
+                        }
+                        if (usedRows && usedRows.length > 0) {
+                          setCoupon({ ...coupon, error: "Bu kuponu daha önce kullandınız." });
+                          return;
+                        }
 
-  // ✅ tüm kontroller geçti → uygula
-  setCoupon({ code: coupon.code, applied: true, error: "" });
-}}
+                        // ✅ tüm kontroller geçti → uygula
+                        setCoupon({ code: coupon.code, applied: true, error: "" });
+                      }}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #22c55e",
+                        background: "#eafff4",
+                        color: "#065f46",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Onayla
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setCoupon({ code: "", applied: false, error: "" })}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #ef4444",
+                        background: "#fff1f2",
+                        color: "#991b1b",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Kaldır
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowCouponBox(false)}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #e2e8f0",
+                      background: "#fff",
+                      color: "#475569",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                    title="Kupon kutusunu gizle"
+                  >
+                    Gizle
+                  </button>
+                </div>
+              )}
+            </div>
 
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid #22c55e",
-            background: "#eafff4",
-            color: "#065f46",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          Onayla
-        </button>
-      ) : (
-        <button
-          onClick={() => setCoupon({ code: "", applied: false, error: "" })}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid #ef4444",
-            background: "#fff1f2",
-            color: "#991b1b",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          Kaldır
-        </button>
-      )}
-      <button
-        onClick={() => setShowCouponBox(false)}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 8,
-          border: "1px solid #e2e8f0",
-          background: "#fff",
-          color: "#475569",
-          cursor: "pointer",
-          fontWeight: 600,
-        }}
-        title="Kupon kutusunu gizle"
-      >
-        Gizle
-      </button>
-    </div>
-  )}
-</div>
-
-{coupon.error && (
-  <div style={{ color: "#dc2626", fontSize: 13, marginTop: -6, marginBottom: 8 }}>
-    {coupon.error}
-  </div>
-)}
-{coupon.applied && (
-  <div
-    style={{
-      fontSize: 14,
-      color: "#065f46",
-      background: "#eafff4",
-      border: "1px solid #22c55e",
-      padding: "6px 10px",
-      borderRadius: 8,
-      marginTop: -6,
-      marginBottom: 8,
-    }}
-  >
-    Kupon uygulandı: {coupon.code} (%{VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] || 3})
-  </div>
-)}
-
+            {coupon.error && (
+              <div style={{ color: "#dc2626", fontSize: 13, marginTop: -6, marginBottom: 8 }}>
+                {coupon.error}
+              </div>
+            )}
+            {coupon.applied && (
+              <div
+                style={{
+                  fontSize: 14,
+                  color: "#065f46",
+                  background: "#eafff4",
+                  border: "1px solid #22c55e",
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  marginTop: -6,
+                  marginBottom: 8,
+                }}
+              >
+                Kupon uygulandı: {coupon.code} (%{VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] || 3})
+              </div>
+            )}
 
             <div
               style={{
@@ -1232,35 +1224,32 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
                           </span>
                         )}
                       </div>
-                      {/* İstersen: Ücret yansıyacak olan (ucret) alt satırda */}
                       <div style={{ fontSize: 14, color: "#475569" }}>
                         Sepete yansıyacak kargo: {ucret} ₺
                       </div>
                     </div>
                   );
                 })}
-<div>Ürünler Toplamı: {urunAraToplam.toLocaleString("tr-TR")} ₺</div>
-<div>Kargo Toplamı: {kargoToplam.toLocaleString("tr-TR")} ₺</div>
+              <div>Ürünler Toplamı: {urunAraToplam.toLocaleString("tr-TR")} ₺</div>
+              <div>Kargo Toplamı: {kargoToplam.toLocaleString("tr-TR")} ₺</div>
 
-{coupon.applied && indirimYuzde > 0 ? (
-  <>
-    <div style={{ marginTop: 10 }}>
-      Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
-    </div>
-    <div style={{ color: "#16a34a", fontWeight: 700 }}>
-      Kupon İndirimi (%{indirimYuzde}): -{indirimTutar.toLocaleString("tr-TR")} ₺
-    </div>
-    <div style={{ fontSize: 18, fontWeight: 800, color: "#223555" }}>
-      Ödenecek Toplam: {odemeToplami.toLocaleString("tr-TR")} ₺
-    </div>
-  </>
-) : (
-  <div style={{ fontSize: 18, fontWeight: 800, color: "#223555", marginTop: 10 }}>
-    Ödenecek Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
-  </div>
-)}
-
-
+              {coupon.applied && indirimYuzde > 0 ? (
+                <>
+                  <div style={{ marginTop: 10 }}>
+                    Genel Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
+                  </div>
+                  <div style={{ color: "#16a34a", fontWeight: 700 }}>
+                    Kupon İndirimi (%{indirimYuzde}): -{indirimTutar.toLocaleString("tr-TR")} ₺
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#223555" }}>
+                    Ödenecek Toplam: {odemeToplami.toLocaleString("tr-TR")} ₺
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#223555", marginTop: 10 }}>
+                  Ödenecek Toplam: {toplamFiyat.toLocaleString("tr-TR")} ₺
+                </div>
+              )}
             </div>
 
             {/* Adres Seçim Alanı */}
@@ -1403,7 +1392,7 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
               )}
             </div>
 
-            {/* Kart Seçim Alanı */}
+            {/* Kart Seçim Alanı (opsiyonel) */}
             <div style={{ marginTop: 20, paddingTop: 10, borderTop: "1px solid #ddd" }}>
               <h3
                 style={{
@@ -1590,9 +1579,8 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
 
             <div style={{ marginTop: 20, textAlign: "center" }}>
               <p style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                Ödeme altyapısı güvenli olarak İyzico tarafından sağlanmaktadır
+                Ödeme altyapısı güvenli olarak PayTR tarafından sağlanmaktadır
               </p>
-              
             </div>
 
             {!currentUser && (
@@ -1602,142 +1590,115 @@ const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
             )}
 
             <button
-  ref={openModalBtnRef}
-  disabled={!allAgreed || !currentUser}
-  onClick={async () => {
-    if (!allAgreed) { alert("Lütfen sözleşmeleri onaylayın."); return; }
-    if (!currentUser) {
-      alert("❌ Sipariş verebilmek için giriş yapmanız gerekiyor!");
-      return;
-    }
+              ref={openModalBtnRef}
+              disabled={!allAgreed || !currentUser}
+              onClick={async () => {
+                if (!allAgreed) { alert("Lütfen sözleşmeleri onaylayın."); return; }
+                if (!currentUser) { alert("❌ Sipariş verebilmek için giriş yapmanız gerekiyor!"); return; }
                 if (!selectedAddressId) return alert("Adres seçiniz");
-                if (!selectedCardId) return alert("Kart seçiniz");
+                // ❗ Kart zorunlu değil (PayTR iframe'de girilecek)
 
                 const addr = addresses.find((a) => Number(a.id) === Number(selectedAddressId));
-                const card = cards.find((c) => Number(c.id) === Number(selectedCardId));
                 if (!addr) return alert("Adres bulunamadı");
-                if (!card) return alert("Kart bulunamadı");
 
+                // Ürün satırları (unitPrice + quantity)
                 const basketItems = cartItems.map((it: any) => {
                   const indirimVar =
                     it.product?.indirimli_fiyat && it.product?.indirimli_fiyat !== it.product?.price;
-                  const birim = indirimVar ? Number(it.product.indirimli_fiyat) : Number(it.product?.price);
-                  const toplam = birim * (it.adet || 1);
+                  const unitPrice = indirimVar ? Number(it.product.indirimli_fiyat) : Number(it.product?.price);
+                  const quantity = it.adet || 1;
                   return {
                     id: it.product?.id ?? it.product_id,
                     name: it.product?.title,
                     category1: "Genel",
-                    price: toplam,
+                    unitPrice,
+                    quantity,
+                    price: unitPrice * quantity, // geriye dönük alan
                   };
                 });
 
-                let paymentRes: Response;
+                // PayTR sepet formatı
+                const paytrBasket: [string, number, number][] = [];
+                for (const it of basketItems) {
+                  paytrBasket.push([it.name, Number(it.unitPrice.toFixed(2)), it.quantity]);
+                }
+
+                // Kupon indirimi (negatif satır)
+                const indirimYuzdeLoc = coupon.applied
+                  ? (VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] ?? 0)
+                  : 0;
+                const urunAraToplamLoc = basketItems.reduce((a, i) => a + i.unitPrice * i.quantity, 0);
+                const kuponIndirimTutar = Number(((urunAraToplamLoc * indirimYuzdeLoc) / 100).toFixed(2));
+                if (kuponIndirimTutar > 0) {
+                  paytrBasket.push(["Kupon İndirimi", -kuponIndirimTutar, 1]);
+                }
+
+                // Kargo satırı (varsa)
+                if (kargoToplam > 0) {
+                  paytrBasket.push(["Kargo", Number(kargoToplam.toFixed(2)), 1]);
+                }
+
+                // Nihai tutar (ekrandaki ile aynı)
+                const payAmount = Number(Math.max(0, urunAraToplamLoc - kuponIndirimTutar + kargoToplam).toFixed(2));
+
                 try {
-                  paymentRes = await fetch("/api/payment", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      action: "payRaw",
-                      amount: Number(odemeToplami.toFixed(2)),
-                      card: {
-                        name_on_card: card.name_on_card,
-                        card_number: card.card_number,
-                        expiry: card.expiry,
-                        cvv: card.cvv,
-                      },
-                      buyer: {
-                        id: currentUser.id,
-                        name: addr.first_name || "Ad",
-                        surname: addr.last_name || "Soyad",
-                        email: currentUser.email,
-                        gsmNumber: addr.phone || "",
-                      },
-                      address: {
-                        address: addr.address,
-                        city: addr.city,
-                        country: addr.country,
-                        postal_code: addr.postal_code || "",
-                      },
-                      basketItems,
-                    }),
-                  });
+                 const res = await fetch("/api/paytr", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    amount: payAmount,
+    user_id: currentUser.id,
+    email: currentUser.email,
+    address: { ...addr },
+    basketItems,
+    paytrBasket,
+    meta: {
+      coupon: coupon.applied
+        ? { code: (coupon.code || "").trim().toLowerCase(), percent: indirimYuzdeLoc, discountAmount: kuponIndirimTutar }
+        : null,
+      agreements, // { mesafeli: true, teslimat: true, gizlilik: true }
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+    },
+  }),
+});
+
+
+                  if (!res.ok) {
+                    const raw = await res.text().catch(() => "");
+                    console.error("paytr not ok:", res.status, raw);
+                    alert("Ödeme API hatası (HTTP " + res.status + ")");
+                    return;
+                  }
+
+                  const data = await res.json();
+                  if (!data?.success || !data?.token) {
+                    alert("💳 Ödeme başlatılamadı: " + (data?.message || "bilinmeyen hata"));
+                    return;
+                  }
+
+                  // ✅ PayTR güvenli ödeme sayfasına yönlendir
+                  window.location.href = `https://www.paytr.com/odeme/guvenli/${data.token}`;
+                  // Not: Sipariş oluşturma / kupon kaydı / sözleşme logları back-end callback_url'de yapılmalı.
                 } catch (e) {
-                  console.error("payment fetch error:", e);
+                  console.error("paytr fetch error:", e);
                   alert("Ödeme servisine ulaşılamadı.");
                   return;
                 }
-
-                if (!paymentRes.ok) {
-                  const raw = await paymentRes.text().catch(() => "");
-                  console.error("payment not ok:", paymentRes.status, raw);
-                  alert("Ödeme API hatası (HTTP " + paymentRes.status + ")");
-                  return;
-                }
-
-                let paymentData: any = null;
-                try {
-                  paymentData = await paymentRes.json();
-
-                } catch (e) {
-                  const raw = await paymentRes.text().catch(() => "");
-                  console.error("payment json parse:", e, raw);
-                  alert("Ödeme servisinden beklenmeyen yanıt.");
-                  return;
-                }
-
-                if (!paymentData?.success) {
-  alert("💳 Ödeme başarısız: " + (paymentData?.message || "bilinmeyen hata"));
-  return;
-}
-
-if (paymentData?.success) {
-  // Kupon kullanıldıysa tek-kullanım kaydı
-  if (coupon.applied) {
-    const key = (coupon.code || "").trim().toLowerCase();
-    try {
-      await supabase.from("coupon_redemptions").insert([
-        { user_id: currentUser.id, code: key }
-      ]);
-    } catch (e) {
-      console.error("coupon redemption insert error:", e);
-      // ödeme başarılı; bu hata kullanıcıyı durdurmasın
-    }
-  }
-
-  // Sözleşme onay logları
-  await saveAgreementLogs();
-
-  // Siparişleri oluştur
-  await handleSiparisVer({
-    addressId: parseInt(selectedAddressId),
-    cardId: parseInt(selectedCardId),
-    isCustom: false,
-  });
-
-  // Kullanıcıya bilgilendirme
-  alert(
-    coupon.applied
-      ? "✅ Siparişiniz alındı. Kupon indiriminiz başarıyla uygulandı."
-      : "✅ Siparişiniz alındı."
-  );
-}
-
-    
               }}
-            style={{
-    width: "100%",
-    padding: "12px 16px",
-    backgroundColor: allAgreed && currentUser ? "#16a34a" : "#9ca3af",
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "bold",
-    borderRadius: "8px",
-    border: "none",
-    cursor: allAgreed && currentUser ? "pointer" : "not-allowed",
-  }}
->
-  {currentUser ? "✅ Sipariş Ver" : "🔒 Giriş Yapın"}
-</button>
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                backgroundColor: allAgreed && currentUser ? "#16a34a" : "#9ca3af",
+                color: "#fff",
+                fontSize: "16px",
+                fontWeight: "bold",
+                borderRadius: "8px",
+                border: "none",
+                cursor: allAgreed && currentUser ? "pointer" : "not-allowed",
+              }}
+            >
+              {currentUser ? "✅ Sipariş Ver" : "🔒 Giriş Yapın"}
+            </button>
           </>
         )}
       </div>
