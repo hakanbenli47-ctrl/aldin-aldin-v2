@@ -29,36 +29,35 @@ const VAPID_KEY =
 async function saveFcmToken(userId: string) {
   try {
     if (typeof window === "undefined") return;
-    if (!(await isSupported())) return; // Safari/uygunsuz tarayıcı vs.
+    if (!(await isSupported())) return;
 
-    // izin al
     const perm = await Notification.requestPermission();
     if (perm !== "granted") return;
 
-    // SW kaydı (public/firebase-messaging-sw.js mevcut olmalı)
     const swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
 
-    // app init (idempotent)
     if (!getApps().length) initializeApp(firebaseConfig);
     const messaging = getMessaging();
 
-    // token al
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: swReg,
     });
     if (!token) return;
 
-    // Supabase'e kaydet (senin endpointin)
-    await fetch("/api/save-token", {
+    const res = await fetch(`${window.location.origin}/api/save-token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, user_id: userId }),
     });
+
+    const text = await res.text();
+    console.log("save-token response:", res.status, text);
   } catch (e) {
     console.warn("FCM token kaydedilemedi:", e);
   }
 }
+
 
 export default function Giris() {
   const [message, setMessage] = useState("");

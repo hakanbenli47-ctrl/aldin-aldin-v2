@@ -258,10 +258,14 @@ const scrollHero = (idx: number) => {
 async function saveUserToken(userId: string, token: string) {
   try {
     const res = await fetch("/api/save-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, token }),
-    });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ token, user_id: userId }),
+});
+
+const text = await res.text(); // debug için
+console.log("save-token response:", res.status, text);
+
     const data = await res.json();
     if (!data.success) {
       console.error("❌ Token kaydedilemedi:", data);
