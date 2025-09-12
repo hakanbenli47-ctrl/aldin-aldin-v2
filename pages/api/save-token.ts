@@ -1,4 +1,4 @@
-// /pages/api/save-token.ts
+// pages/api/save-token.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 

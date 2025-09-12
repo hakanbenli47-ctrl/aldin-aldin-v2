@@ -255,49 +255,9 @@ const scrollHero = (idx: number) => {
   scrollEndTimer.current = window.setTimeout(() => { isAutoScrolling.current = false; }, 450) as unknown as number;
 };
 // ---- EK: Token kaydetme fonksiyonu ----
-async function saveUserToken(userId: string, token: string) {
-  try {
-    const res = await fetch("/api/save-token", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ token, user_id: userId }),
-});
 
-const text = await res.text(); // debug için
-console.log("save-token response:", res.status, text);
-
-    const data = await res.json();
-    if (!data.success) {
-      console.error("❌ Token kaydedilemedi:", data);
-    } else {
-      console.log("✅ Token kaydedildi:", data);
-    }
-  } catch (err) {
-    console.error("saveUserToken error:", err);
-  }
-}
 
 // ---- Mevcut useEffect’i bu şekilde güncelle ----
-useEffect(() => {
-  let unsub: (() => void) | undefined;
-
-  (async () => {
-    const token = await getFcmToken();
-    if (token && user?.id) {
-      await saveUserToken(user.id, token);  // ✅ token + user_id kaydet
-    } else {
-      console.log("⚠️ Token alınamadı veya kullanıcı yok");
-    }
-
-    unsub = await listenForegroundMessages((payload) => {
-      const n = payload?.notification;
-      if (!n) return;
-      alert(`${n.title}\n${n.body || ""}`);
-    });
-  })();
-
-  return () => { if (unsub) unsub(); };
-}, [user]);
 
 
 useEffect(() => {
