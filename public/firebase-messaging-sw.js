@@ -3,7 +3,7 @@ importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"
 importScripts("https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "AIza...KRM",
+  apiKey: "AIzaSyAz_ZEDKke3Pg0SyA2uV5jIOuu5pvRuKRM",
   authDomain: "birapp-67573.firebaseapp.com",
   projectId: "birapp-67573",
   storageBucket: "birapp-67573.appspot.com", // ✅ düzeltildi
