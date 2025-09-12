@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .single();
 
     if (insertError || !newOrder) {
-      console.error("Supabase insert error:", insertError);
+      console.error("❌ Supabase insert error:", insertError);
       return res.status(500).json({ success: false, message: "Sipariş kaydedilemedi" });
     }
 
@@ -48,7 +48,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       req.socket.remoteAddress ||
       "127.0.0.1";
 
-    // 🔹 orders.id’yi merchant_oid olarak gönderiyoruz
     const merchant_oid = String(newOrder.id);
 
     const params: Record<string, any> = {
@@ -56,7 +55,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       user_ip,
       merchant_oid,
       email,
-      payment_amount: amount * 100, // kuruş
+      payment_amount: Math.round(amount * 100), // kuruş
       currency: "TL",
       test_mode: "0",
       no_installment: 1,
@@ -69,10 +68,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       timeout_limit: "30",
       debug_on: 1,
       lang: "tr",
-      user_basket, // ✅ doğru alan
+      user_basket,
     };
 
-    // 🔹 imza sırası çok önemli!
+    // 🔹 imza sırası
     const hash_str = `${merchant_id}${user_ip}${merchant_oid}${email}${params.payment_amount}${params.merchant_ok_url}${params.merchant_fail_url}${merchant_salt}`;
     const paytr_token = crypto
       .createHmac("sha256", merchant_key)
@@ -80,6 +79,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .digest("base64");
 
     params.paytr_token = paytr_token;
+
+    // 🟢 DEBUG LOGS
+    console.log("📦 PAYTR REQUEST PARAMS:", params);
 
     // 🔹 PayTR API çağrısı
     const response = await fetch("https://www.paytr.com/odeme/api/get-token", {
@@ -89,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     const data = await response.json();
+    console.log("📥 PAYTR RESPONSE:", data);
 
     if (data.status !== "success") {
       return res.status(400).json({
@@ -103,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       merchant_oid,
     });
   } catch (e: any) {
-    console.error("paytr api error:", e);
+    console.error("❌ paytr api error:", e);
     return res.status(500).json({ success: false, message: e.message || "Sunucu hatası" });
   }
 }
