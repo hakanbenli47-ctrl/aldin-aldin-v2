@@ -1650,28 +1650,25 @@ useEffect(() => {
                 });
 
                 // PayTR sepet formatı
-                const paytrBasket: [string, number, number][] = [];
-                for (const it of basketItems) {
-                  paytrBasket.push([it.name, Number(it.unitPrice.toFixed(2)), it.quantity]);
-                }
+                const paytrBasket: [string, string, number][] = [];
+for (const it of basketItems) {
+  paytrBasket.push([it.name, it.unitPrice.toFixed(2), it.quantity]); // fiyat string
+}
 
-                // Kupon indirimi (negatif satır)
-                const indirimYuzdeLoc = coupon.applied
-                  ? (VALID_COUPONS[(coupon.code || "").trim().toLowerCase()] ?? 0)
-                  : 0;
-                const urunAraToplamLoc = basketItems.reduce((a, i) => a + i.unitPrice * i.quantity, 0);
-                const kuponIndirimTutar = Number(((urunAraToplamLoc * indirimYuzdeLoc) / 100).toFixed(2));
-                if (kuponIndirimTutar > 0) {
-                  paytrBasket.push(["Kupon İndirimi", -kuponIndirimTutar, 1]);
-                }
+// Kupon indirimi (negatif satır)
+if (indirimTutar > 0) {
+  paytrBasket.push(["Kupon İndirimi", (-indirimTutar).toFixed(2), 1]);
+}
 
-                // Kargo satırı (varsa)
-                if (kargoToplam > 0) {
-                  paytrBasket.push(["Kargo", Number(kargoToplam.toFixed(2)), 1]);
-                }
+// Kargo satırı (varsa)
+if (kargoToplam > 0) {
+  paytrBasket.push(["Kargo", kargoToplam.toFixed(2), 1]);
+}
 
-                // Nihai tutar (ekrandaki ile aynı)
-                const payAmount = Number(Math.max(0, urunAraToplamLoc - kuponIndirimTutar + kargoToplam).toFixed(2));
+// Nihai tutar
+const payAmount = Number(
+  Math.max(0, urunAraToplam - indirimTutar + kargoToplam).toFixed(2)
+);
 
                 try {
                  const res = await fetch("/api/paytr", {
@@ -1685,12 +1682,17 @@ useEffect(() => {
     basketItems,
     paytrBasket,
     meta: {
-      coupon: coupon.applied
-        ? { code: (coupon.code || "").trim().toLowerCase(), percent: indirimYuzdeLoc, discountAmount: kuponIndirimTutar }
-        : null,
-      agreements, // { mesafeli: true, teslimat: true, gizlilik: true }
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
-    },
+  coupon: coupon.applied
+    ? { 
+        code: (coupon.code || "").trim().toLowerCase(),
+        percent: indirimYuzde,          // 🔹 indirimYuzdeLoc yerine
+        discountAmount: indirimTutar,   // 🔹 kuponIndirimTutar yerine
+      }
+    : null,
+  agreements, // { mesafeli: true, teslimat: true, gizlilik: true }
+  userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+},
+
   }),
 });
 
