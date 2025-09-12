@@ -31,35 +31,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const { data: order, error: orderErr } = await supabase
         .from("orders")
         .select("id,user_id,meta")
-        .eq("merchant_oid", merchant_oid) // ⚡ merchant_oid ile eşleştir
+        .eq("merchant_oid", merchant_oid)
         .single();
 
       if (orderErr || !order) {
         console.error("Order bulunamadı:", merchant_oid, orderErr);
       } else {
         // ✅ siparişi ödenmiş yap
-        const { error: updateErr } = await supabase
-          .from("orders")
-          .update({ status: "odendi" })
-          .eq("merchant_oid", merchant_oid);
-        if (updateErr) console.error("Order update error:", updateErr);
+        await supabase.from("orders").update({ status: "odendi" }).eq("merchant_oid", merchant_oid);
 
         // ✅ doping kontrolü
         if (order.meta?.dopingIlanId) {
-          const { error: dopingErr } = await supabase
+          await supabase
             .from("ilan")
             .update({
               doped: true,
               doped_expiration: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             })
             .eq("id", order.meta.dopingIlanId);
-          if (dopingErr) console.error("Doping update error:", dopingErr);
         }
 
         // ✅ kupon kaydı
         if (order.meta?.coupon) {
           const coupon = order.meta.coupon;
-          const { error: couponErr } = await supabase.from("coupon_redemptions").insert([
+          await supabase.from("coupon_redemptions").insert([
             {
               user_id: order.user_id,
               code: coupon.code,
@@ -68,7 +63,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               created_at: new Date().toISOString(),
             },
           ]);
-          if (couponErr) console.error("Coupon insert error:", couponErr);
         }
 
         // ✅ sözleşme logları
@@ -110,8 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
 
           if (rows.length) {
-            const { error: logErr } = await supabase.from("user_agreement_logs").insert(rows);
-            if (logErr) console.error("Agreement log insert error:", logErr);
+            await supabase.from("user_agreement_logs").insert(rows);
           }
         }
 
@@ -136,7 +129,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }),
           });
 
-          // satıcı mail (meta içine kaydetmen lazım: saticiMail)
           if (order.meta?.saticiMail) {
             await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-mail`, {
               method: "POST",
@@ -157,16 +149,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } else {
       // ödeme başarısız → siparişi iptal et
-      const { error: cancelErr } = await supabase
-        .from("orders")
-        .update({ status: "iptal" })
-        .eq("merchant_oid", merchant_oid);
-      if (cancelErr) console.error("Order cancel error:", cancelErr);
+      await supabase.from("orders").update({ status: "iptal" }).eq("merchant_oid", merchant_oid);
     }
   } catch (err) {
     console.error("callback error:", err);
   }
 
-  // ✅ PayTR'e mutlaka 200 OK dönmek gerekiyor
   res.status(200).send("OK");
 }

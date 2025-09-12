@@ -13,16 +13,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Eksik veri: token veya user_id yok" });
   }
 
-  // Aynı kullanıcı için aynı token varsa tekrar ekleme
- const { data, error } = await supabase
-  .from("notification_tokens")
-  .upsert(
-    { user_id, token, created_at: new Date().toISOString() },
-    { onConflict: "user_id,token" } // artık çalışır çünkü unique key var
-  );
-
+  // 🔹 Aynı kullanıcı + aynı token için tekrar ekleme yapma
+  const { data, error } = await supabase
+    .from("notification_tokens")
+    .upsert(
+      {
+        user_id,
+        token,
+        created_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "user_id,token", // ✅ string olmalı
+      }
+    )
+    .select();
 
   if (error) {
+    console.error("save-token error:", error);
     return res.status(500).json({ error: error.message });
   }
 
