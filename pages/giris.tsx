@@ -12,13 +12,13 @@ const DESTEK_EMAILS = ["destek80bir@gmail.com"]; // ✅ destek admin mailleri
 
 // ✅ Senin Firebase config'in
 const firebaseConfig = {
-  apiKey: "AIzaSyBVsd_UoZSk6WE0AQu1lWpgOESf1bHSM",
-  authDomain: "birapp-44f8a.firebaseapp.com",
-  projectId: "birapp-44f8a",
-  storageBucket: "birapp-44f8a.appspot.com",
-  messagingSenderId: "987619236912",
-  appId: "1:987619236912:web:7b1a7398523e5590221f5",
-  measurementId: "G-BTLZMP04HS",
+ apiKey: "AIzaSyAz_ZEDKke3Pg0SyA2uV5jIOuu5pvRuKRM",
+  authDomain: "birapp-67573.firebaseapp.com",
+  projectId: "birapp-67573",
+  storageBucket: "birapp-67573.appspot.com", // <-- .appspot.com OLMALI
+  messagingSenderId: "575930274632",
+  appId: "1:575930274632:web:760add3bcb2558e8d0d97d",
+  measurementId: "G-SR16YENH0L"
 };
 
 // 🔑 Web Push sertifika (VAPID)
