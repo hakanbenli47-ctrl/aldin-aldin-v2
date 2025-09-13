@@ -1085,7 +1085,7 @@ return (
               gap:20
             }}>
               {[
-                { title:"🛡️ Hakkımızda", text:"80bir, Türkiye’nin dört bir yanındaki güvenilir satıcıları sizlerle buluşturan modern bir pazaryeridir." },
+                { title:"🛡️ Hakkımızda", text:"80bir, Türkiye’nin dört bir yanındaki güvenilir satıcıları sizlerle buluşturan modern bir pazaryeridir. Tel:05515550302 Adres:HüsnüKarakaş Mah. Elmalılı Hamdi Yazır Cad. No19/B KEPEZ ANTALYA" },
                 { title:"🚀 Neden Biz?", text:"Hızlı kargo, güvenli ödeme ve kolay iade avantajlarımızla alışverişinizi güvenle yapabilirsiniz." },
                 { title:"⭐ Müşteri Yorumları", text:"Müşteri memnuniyeti bizim için önceliktir. Yüzlerce olumlu geri bildirim alıyoruz." }
               ].map((item, i)=>(

@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { amount, user_id, email, address, paytrBasket, meta, client_ip } = req.body || {};
+    const { amount, user_id, email, address, paytrBasket, basketItems, meta, client_ip } = req.body || {};
 
     if (!amount || !user_id || !email || !Array.isArray(paytrBasket) || paytrBasket.length === 0) {
       return res.status(400).json({ success: false, message: "Eksik parametre" });
@@ -42,6 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         created_at: new Date().toISOString(),
         custom_address: address,
         meta,
+        cart_items: basketItems || [], // ✅ ekledik
       }])
       .select()
       .single();
@@ -80,9 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const currency        = "TL";
     const test_mode       = "0"; // canlıda "0"
 
-    // 5) iFrame HASH SIRASI (resmi araca göre)
-    // merchant_id + user_ip + merchant_oid + email + payment_amount
-    // + user_basket + no_installment + max_installment + currency + test_mode + merchant_salt
+    // 5) iFrame HASH SIRASI
     const hash_str =
       merchant_id +
       user_ip +
@@ -98,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const paytr_token = crypto.createHmac("sha256", merchant_key).update(hash_str).digest("base64");
 
-    // 6) POST edilecek form (non_3d YOK!)
+    // 6) POST edilecek form
     const form: Record<string, string> = {
       merchant_id,
       user_ip,
@@ -126,7 +125,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       paytr_token,
     };
 
-    // (İstersen) debug — gizli anahtarları göstermiyoruz
+    // Debug
     console.log("📦 PayTR POST:", {
       ...form,
       user_basket_decoded: Buffer.from(user_basket, "base64").toString("utf8"),
