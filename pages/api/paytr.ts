@@ -3,9 +3,80 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { supabase } from "../../lib/supabaseClient";
 
+/* ---------------- Basit bellek içi rate-limit ---------------- */
+type Hit = { count: number; resetAt: number };
+const ipHits = new Map<string, Hit>();
+const WINDOW_MS = 30_000; // 30 sn
+const MAX_HITS = 3;       // 30 sn içinde en fazla 3 istek
+
+function hitOK(ip: string) {
+  const now = Date.now();
+  const rec = ipHits.get(ip);
+  if (!rec || now > rec.resetAt) {
+    ipHits.set(ip, { count: 1, resetAt: now + WINDOW_MS });
+    return true;
+  }
+  if (rec.count < MAX_HITS) {
+    rec.count++;
+    return true;
+  }
+  return false;
+}
+/* -------------------------------------------------------------- */
+
 function isIPv4(ip?: string | null) {
   return !!ip && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip);
 }
+function isPrivateIPv4(ip: string) {
+  if (!isIPv4(ip)) return true;
+  const [a, b] = ip.split(".").map(Number);
+  // 10.0.0.0/8 , 172.16.0.0/12 , 192.168.0.0/16 , 127.0.0.0/8 , 169.254.0.0/16 , 100.64.0.0/10
+  if (a === 10) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 127) return true;
+  if (a === 169 && b === 254) return true;
+  if (a === 100 && b >= 64 && b <= 127) return true;
+  return false;
+}
+function firstIPv4FromCSV(s?: string | null) {
+  if (!s) return null;
+  for (const part of s.split(",").map(x => x.trim())) {
+    const m = part.match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/);
+    if (m && !isPrivateIPv4(m[0])) return m[0];
+  }
+  return null;
+}
+function extractIPv4(input?: string | null): string | null {
+  if (!input) return null;
+  const m = input.match(/\b\d{1,3}(?:\.\d{1,3}){3}\b/);
+  return m ? m[0] : null;
+}
+function getClientIPv4(req: NextApiRequest, bodyClientIp?: string | null): string | null {
+  const headers = req.headers;
+  const cand: (string | null | undefined)[] = [
+    headers["cf-connecting-ip"] as string,              // Cloudflare varsa
+    headers["x-real-ip"] as string,
+    headers["x-client-ip"] as string,
+    firstIPv4FromCSV(headers["x-forwarded-for"] as string),
+    // RFC Forwarded: for=1.2.3.4
+    (() => {
+      const f = headers["forwarded"] as string;
+      if (!f) return null;
+      const m = f.match(/for="?(\d{1,3}(?:\.\d{1,3}){3})"?/i);
+      return m ? m[1] : null;
+    })(),
+    bodyClientIp,
+    typeof req.socket?.remoteAddress === "string" ? extractIPv4(req.socket.remoteAddress) : null,
+  ];
+
+  for (const ip of cand) {
+    if (ip && isIPv4(ip) && !isPrivateIPv4(ip)) return ip;
+  }
+  return null;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -13,37 +84,71 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { amount, user_id, email, address, paytrBasket, basketItems, meta, client_ip } = req.body || {};
+    const {
+      amount,
+      user_id,
+      email,
+      address,
+      paytrBasket,
+      basketItems,
+      meta,
+      client_ip, // frontend'den public IPv4 gelirse buradan alırız
+    } = req.body || {};
 
+    // Girdi doğrulama
     if (!amount || !user_id || !email || !Array.isArray(paytrBasket) || paytrBasket.length === 0) {
       return res.status(400).json({ success: false, message: "Eksik parametre" });
     }
 
-    // (Opsiyonel) sepet toplamı ile amount doğrulaması
+    // Gerçek public IPv4 bul (CF 429’ları asıl tetikleyen konu bu)
+    let user_ip = getClientIPv4(req, client_ip);
+    const test_mode = process.env.NODE_ENV === "production" ? "0" : "1";
+    if (!user_ip) {
+      // Public IPv4 bulamadıysak 127.0.0.1 gibi adreslerle devam etmeyelim → CF engeller.
+      return res.status(400).json({
+        success: false,
+        message:
+          "İstemci public IPv4 bulunamadı. Lütfen front-end’den 'client_ip' gönderin (api.ipify.org ile alın).",
+      });
+    }
+
+    // Basit rate-limit (PayTR'a gitmeden)
+    if (!hitOK(user_ip)) {
+      return res.status(429).json({
+        success: false,
+        message: "Çok fazla deneme (IP). Lütfen 20-30 sn sonra tekrar deneyiniz.",
+      });
+    }
+
+    // Sepet toplamı kontrolü
     const basketSum = Number(
-      paytrBasket.reduce(
-        (acc: number, [_, priceStr, qty]: [string, string, number]) =>
-          acc + Number(priceStr) * Number(qty),
-        0
-      ).toFixed(2)
+      paytrBasket
+        .reduce(
+          (acc: number, [_, priceStr, qty]: [string, string, number]) =>
+            acc + Number(priceStr) * Number(qty),
+          0
+        )
+        .toFixed(2)
     );
     const amountNum = Number(Number(amount).toFixed(2));
     if (Math.abs(basketSum - amountNum) > 0.01) {
       return res.status(400).json({ success: false, message: "Tutar uyuşmazlığı" });
     }
 
-    // 1) Siparişi beklemede kaydet
+    // Siparişi beklemede kaydet
     const { data: newOrder, error: insertError } = await supabase
       .from("orders")
-      .insert([{
-        user_id,
-        total_price: amountNum,
-        status: "beklemede",
-        created_at: new Date().toISOString(),
-        custom_address: address,
-        meta,
-        cart_items: basketItems || [], // ✅ ekledik
-      }])
+      .insert([
+        {
+          user_id,
+          total_price: amountNum,
+          status: "beklemede",
+          created_at: new Date().toISOString(),
+          custom_address: address,       // jsonb
+          meta,                          // jsonb
+          cart_items: basketItems || [], // jsonb
+        },
+      ])
       .select()
       .single();
 
@@ -52,36 +157,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ success: false, message: "Sipariş kaydedilemedi" });
     }
 
-    // 2) ENV anahtarları
-    const merchant_id   = String(process.env.PAYTR_MERCHANT_ID || "");
-    const merchant_key  = String(process.env.PAYTR_MERCHANT_KEY || "");
+    // ENV
+    const merchant_id = String(process.env.PAYTR_MERCHANT_ID || "");
+    const merchant_key = String(process.env.PAYTR_MERCHANT_KEY || "");
     const merchant_salt = String(process.env.PAYTR_MERCHANT_SALT || "");
-    const ok_url        = String(process.env.PAYTR_SUCCESS_URL || "");
-    const fail_url      = String(process.env.PAYTR_FAIL_URL || "");
+    const ok_url = String(process.env.PAYTR_SUCCESS_URL || "");
+    const fail_url = String(process.env.PAYTR_FAIL_URL || "");
+    const site_url = String(process.env.NEXT_PUBLIC_SITE_URL || "");
 
-    if (!merchant_id || !merchant_key || !merchant_salt || !ok_url || !fail_url) {
+    if (!merchant_id || !merchant_key || !merchant_salt || !ok_url || !fail_url || !site_url) {
       return res.status(500).json({ success: false, message: "PAYTR env değişkenleri eksik" });
     }
 
-    // 3) IP (mümkünse public IPv4)
-    const xfwd = (req.headers["x-forwarded-for"] as string) || "";
-    let user_ip =
-      (isIPv4(client_ip) && client_ip) ||
-      (xfwd ? xfwd.split(",")[0].trim() : "") ||
-      (typeof req.socket?.remoteAddress === "string" ? req.socket.remoteAddress : "") ||
-      "127.0.0.1";
-    if (!isIPv4(user_ip)) user_ip = "127.0.0.1"; // dev'de ::1 ise düşür
-
-    // 4) iFrame parametreleri (hepsi string)
-    const merchant_oid   = String(newOrder.id);
+    // PayTR parametreleri
+    const merchant_oid = String(newOrder.id);
     const payment_amount = String(Math.round(amountNum * 100)); // kuruş
-    const user_basket    = Buffer.from(JSON.stringify(paytrBasket), "utf8").toString("base64");
-    const no_installment  = "1";
+    const user_basket = Buffer.from(JSON.stringify(paytrBasket), "utf8").toString("base64");
+    const no_installment = "1";
     const max_installment = "1";
-    const currency        = "TL";
-    const test_mode       = "0"; // canlıda "0"
+    const currency = "TL";
 
-    // 5) iFrame HASH SIRASI
+    // Hash
     const hash_str =
       merchant_id +
       user_ip +
@@ -97,7 +193,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const paytr_token = crypto.createHmac("sha256", merchant_key).update(hash_str).digest("base64");
 
-    // 6) POST edilecek form
+    // Form verisi
     const form: Record<string, string> = {
       merchant_id,
       user_ip,
@@ -111,46 +207,84 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       test_mode,
       merchant_ok_url: ok_url,
       merchant_fail_url: fail_url,
-      timeout_limit: "30",
-      debug_on: "1",
+      callback_url: site_url.replace(/\/+$/, "") + "/api/paytr/callback",
+      timeout_limit: "60",
+      debug_on: test_mode === "1" ? "1" : "0",
       lang: "tr",
       user_name:
         String(
           address?.fullName ||
-          [address?.first_name, address?.last_name].filter(Boolean).join(" ") ||
-          email
-        ),
+            [address?.first_name, address?.last_name].filter(Boolean).join(" ")
+        ) || email,
       user_address: String(address?.address || "Adres girilmedi"),
-      user_phone:   String(address?.phone || "05555555555"),
+      user_phone: String(address?.phone || "05555555555"),
       paytr_token,
     };
 
-    // Debug
-    console.log("📦 PayTR POST:", {
-      ...form,
-      user_basket_decoded: Buffer.from(user_basket, "base64").toString("utf8"),
-      merchant_key: "HIDDEN",
-      merchant_salt: "HIDDEN",
-      _hash_str: hash_str,
-    });
+    // ---- PayTR'a istek: tek okuma + nazik retry (429/403/503) ----
+    const headers = {
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      "Accept": "application/json,text/plain,*/*",
+      // Sunucu-sunucu istekte Referer/Origin göndermemek CF açısından daha stabil olabiliyor
+      "User-Agent": process.env.PAYTR_USER_AGENT || "80bir/1.0 (+https://www.80bir.com.tr)",
+      "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+      Connection: "close", // bazı ağlarda reuse sorunlarını azaltır
+    } as Record<string, string>;
 
-    // 7) Token iste
-    const resp = await fetch("https://www.paytr.com/odeme/api/get-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(form).toString(),
-    });
+    async function getTokenOnce() {
+      const resp = await fetch("https://www.paytr.com/odeme/api/get-token", {
+        method: "POST",
+        headers,
+        body: new URLSearchParams(form).toString(),
+      });
 
-    const data = await resp.json().catch(async () => ({ status: "failed", reason: await resp.text() }));
-
-    if (data.status !== "success") {
-      console.error("❌ PayTR response error:", data);
-      return res.status(400).json({ success: false, message: data.reason || "PayTR token alınamadı" });
+      const raw = await resp.text(); // tek okuma
+      return { status: resp.status, ok: resp.ok, raw };
     }
 
+    // 1 deneme + eğer 429/403/503 ise 1 kez bekleyip tekrar
+    let r = await getTokenOnce();
+    if (!r.ok && [429, 403, 503].includes(r.status)) {
+      await sleep(1200 + Math.floor(Math.random() * 800));
+      r = await getTokenOnce();
+    }
+
+    if (!r.ok) {
+      console.error("❌ PayTR HTTP error:", r.status, r.raw?.slice(0, 500));
+      return res.status(502).json({
+        success: false,
+        message: `PayTR HTTP ${r.status}`,
+        detail: r.raw?.slice(0, 500),
+      });
+    }
+
+    let data: any = null;
+    try {
+      data = r.raw ? JSON.parse(r.raw) : null;
+    } catch {
+      console.error("❌ PayTR non-JSON response:", r.raw?.slice(0, 500));
+      return res.status(502).json({
+        success: false,
+        message: "PayTR beklenmeyen yanıt",
+        detail: r.raw?.slice(0, 500),
+      });
+    }
+
+    if (!data || data.status !== "success" || !data.token) {
+      console.error("❌ PayTR response error:", data || r.raw?.slice(0, 500));
+      return res.status(400).json({
+        success: false,
+        message: data?.reason || "PayTR token alınamadı",
+        detail: typeof data === "object" ? undefined : r.raw?.slice(0, 500),
+      });
+    }
+
+    // Başarılı
     return res.status(200).json({ success: true, token: data.token, merchant_oid });
   } catch (e: any) {
     console.error("❌ paytr api error:", e);
-    return res.status(500).json({ success: false, message: e.message || "Sunucu hatası" });
+    return res.status(500).json({ success: false, message: e?.message || "Sunucu hatası" });
   }
 }

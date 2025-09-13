@@ -663,142 +663,7 @@ useEffect(() => {
   const odemeToplami = Math.max(0, urunAraToplam - indirimTutar + kargoToplam);
 
   // SİPARİŞ VER — aynı satıcıya tek order (mevcut fonksiyon — ödeme sonrası backend callback’inde çağırmanız önerilir)
-  async function handleSiparisVer(siparisBilgi: any) {
-    if (!currentUser) { alert("Giriş yapmanız gerekiyor."); return; }
-    if (cartItems.length === 0) {
-      alert("Sepetiniz boş!");
-      return;
-    }
-    try {
-      type Grup = {
-        sellerId: string;
-        sellerEmail: string;
-        firmaAdi?: string;
-        items: any[];
-      };
-      const gruplar = new Map<string, Grup>();
-
-      // Satıcıya göre ürünleri grupla
-      for (const it of cartItems) {
-        const sellerId = it?.product?.user_id;
-        const sellerEmail = it?.product?.user_email || "";
-        const firmaAdi = it?.product?.firma_adi;
-        if (!sellerId) continue;
-        if (!gruplar.has(sellerId))
-          gruplar.set(sellerId, { sellerId, sellerEmail, firmaAdi, items: [] });
-        gruplar.get(sellerId)!.items.push(it);
-      }
-
-      for (const [, grup] of gruplar) {
-        const items = grup.items.map((sepetItem: any) => {
-          const prodOpts = normalizeOzellikler(sepetItem.product?.ozellikler) || {};
-
-          // GIDA için default ekleme YOK; Giyim vb. için hafif defaultlar
-          let kategoriOzellikleri: Record<string, string[]> = {};
-          if (sepetItem.product?.kategori_id === 3) {
-            if (!prodOpts["Renk"]) kategoriOzellikleri["Renk"] = ["Beyaz", "Siyah", "Kırmızı"];
-            if (!prodOpts["Beden"]) kategoriOzellikleri["Beden"] = ["S", "M", "L", "XL"];
-          }
-
-          const combined: Record<string, string[]> = { ...kategoriOzellikleri, ...prodOpts };
-
-          // tek seçenek/tekil alanları varsayılan kabul et
-          const defaults: Record<string, string> = {};
-          for (const [k, arr] of Object.entries(combined)) {
-            const a = (arr || []).filter(Boolean) as string[];
-            if (a.length === 1) defaults[k] = a[0];
-          }
-          const finalOzellikler = { ...defaults, ...(sepetItem.ozellikler || {}) };
-
-          return {
-            product_id: sepetItem.product?.id ?? sepetItem.product_id,
-            title: sepetItem.product?.title,
-            price: sepetItem.product?.price,
-            adet: sepetItem.adet,
-            resim_url: sepetItem.product?.resim_url,
-            ozellikler: finalOzellikler,
-          };
-        });
-
-        const total = items.reduce(
-          (acc: number, it: any) => acc + (parseFloat(it.price) || 0) * (it.adet || 1),
-          0
-        );
-
-        // Adres bilgisi
-        const { data: addressData, error: addressError } = await supabase
-          .from("user_addresses")
-          .select("*")
-          .eq("id", siparisBilgi.addressId)
-          .single();
-        if (addressError) throw addressError;
-
-        // 1️⃣ Kullanıcı için kayıt
-        const userPayload: any = {
-          user_id: currentUser.id,
-          seller_id: grup.sellerId,
-          cart_items: items,
-          total_price: total,
-          status: "beklemede",
-          created_at: new Date(),
-          custom_address: addressData,
-        };
-
-        if (!siparisBilgi.isCustom) {
-          userPayload.address_id = siparisBilgi.addressId;
-          userPayload.card_id = siparisBilgi.cardId;
-        }
-
-        const { data: insertedOrder, error: orderError } = await supabase
-          .from("orders")
-          .insert([userPayload])
-          .select()
-          .single();
-        if (orderError) throw orderError;
-
-        // 2️⃣ Satıcı için kayıt
-        const sellerPayload: any = {
-          seller_id: grup.sellerId,
-          order_id: insertedOrder.id,
-          total_price: total,
-          status: "beklemede",
-          created_at: new Date(),
-          first_name: addressData?.first_name,
-          last_name: addressData?.last_name,
-          phone: addressData?.phone,
-          city: addressData?.city,
-          address: addressData?.address,
-          custom_features: items.map((i: any) => ({
-            title: i.title,
-            adet: i.adet,
-            ozellikler: i.ozellikler,
-          })),
-        };
-
-        const { error: sellerError } = await supabase.from("seller_orders").insert([sellerPayload]);
-        if (sellerError) throw sellerError;
-
-        const urunBaslik =
-          items.length > 1 ? `${items[0].title} +${items.length - 1} ürün` : items[0].title;
-
-        await sendOrderEmails({
-          aliciMail: currentUser.email,
-          saticiMail: grup.sellerEmail,
-          urunBaslik,
-          urunFiyat: total,
-          siparisNo: insertedOrder?.id,
-        });
-      }
-
-      await supabase.from("cart").delete().eq("user_id", currentUser.id);
-      setCartItems([]);
-      alert("Sipariş(ler) başarıyla oluşturuldu!");
-    } catch (err: any) {
-      console.error("orders/seller_orders insert error:", err);
-      alert("Sipariş kaydedilemedi: " + (err?.message || JSON.stringify(err)));
-    }
-  }
-
+  
   if (loading) {
     return <p style={{ textAlign: "center", padding: 40 }}>⏳ Kullanıcı bilgisi yükleniyor...</p>;
   }
@@ -1646,6 +1511,8 @@ useEffect(() => {
                     unitPrice,
                     quantity,
                     price: unitPrice * quantity, // geriye dönük alan
+                    seller_id: it.product?.user_id || null,
+                    seller_email: it.product?.user_email || null,
                   };
                 });
 
@@ -1678,7 +1545,17 @@ const payAmount = Number(
     amount: payAmount,
     user_id: currentUser.id,
     email: currentUser.email,
-    address: { ...addr },
+     address: {
+    id: addr.id,
+    first_name: addr.first_name,
+    last_name: addr.last_name,
+    phone: addr.phone,
+    title: addr.title,
+    address: addr.address,
+    city: addr.city,
+    postal_code: addr.postal_code,
+    country: addr.country,
+  },
     basketItems,
     paytrBasket,
     meta: {
