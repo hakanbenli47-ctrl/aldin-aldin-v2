@@ -51,13 +51,15 @@ async function saveFcmToken(userId: string) {
   body: JSON.stringify({ token, user_id: userId }),
 });
 
-let result;
+const raw = await res.text();
+let result: any;
 try {
-  result = await res.json();
+  result = JSON.parse(raw);
 } catch {
-  result = await res.text();
+  result = raw;
 }
 console.log("save-token response:", res.status, result);
+
 
   } catch (e) {
     console.warn("FCM token kaydedilemedi:", e);
