@@ -1,12 +1,10 @@
 // /pages/api/paytr/callback.ts
-
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { supabase } from "../../../lib/supabaseClient";
-console.log("📩 CALLBACK GELDİ!");
+
 /** PayTR form-urlencoded gönderir → bodyParser kapat */
 export const config = { api: { bodyParser: false } };
-
 
 type AddressFields = {
   fullName?: string;
@@ -23,7 +21,7 @@ type AddressFields = {
 type PaytrPost = {
   merchant_oid: string;
   status: "success" | "failed";
-  total_amount: string; // kuruş: "3456"
+  total_amount: string; // kuruş, ör: "3456"
   hash: string;
   [k: string]: any;
 };
@@ -70,7 +68,6 @@ function verifyPaytrHash(post: PaytrPost): boolean {
     console.error("❌ PAYTR hash verify: missing key/salt");
     return false;
   }
-
   const raw =
     String(post.merchant_oid || "") +
     merchant_salt +
@@ -128,6 +125,9 @@ async function sendOrderEmails({
 /* ------------------------------------------------- */
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // 🔎 CALLBACK gerçekten tetiklendi mi?
+  console.log("📩 CALLBACK GELDİ! Method:", req.method, "UA:", req.headers["user-agent"]);
+
   if (req.method !== "POST") {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     return res.status(405).send("Method Not Allowed");
@@ -136,7 +136,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // 1) Ham gövdeyi oku ve formu parse et
     const raw = await readRawBody(req);
+    console.log("📩 CALLBACK RAW BODY:", raw);
     const post = parseForm(raw) as unknown as PaytrPost;
+    console.log("📩 CALLBACK PARSED:", post);
 
     // 2) Hash doğrulaması
     if (!verifyPaytrHash(post)) {
@@ -147,6 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { merchant_oid, status, total_amount } = post;
     if (!merchant_oid) {
+      console.warn("⚠️ merchant_oid boş, OK dönüyorum.");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
@@ -158,6 +161,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("id", merchant_oid)
       .single();
 
+    console.log("📦 ORDER_ROW:", orderRow);
+
     if (orderFetchErr || !orderRow) {
       console.error("❌ Orders fetch error:", orderFetchErr);
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -166,6 +171,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Idempotency
     if (["Ödendi", "odeme_onaylandi", "odeme_basarisiz"].includes(orderRow.status)) {
+      console.log("ℹ️ Order zaten finalize edilmiş, OK.");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
@@ -194,6 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 5) Sepet / ürünler
     const urunlerRaw = safeJSON<any[]>(orderRow.cart_items, []);
     const urunler = Array.isArray(urunlerRaw) ? urunlerRaw : [];
+    console.log("🧺 CART_ITEMS (urunler):", urunler);
 
     // 6) Orders güncelle
     const payedTL = Number(total_amount || 0) / 100;
@@ -219,14 +226,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
+    console.log("✅ ORDER updated:", orderData);
 
     // 7) Ödeme başarısızsa seller_orders yazmayız
     if (status !== "success") {
+      console.warn("⚠️ Ödeme başarısız, seller_orders yazılmadı.");
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
 
     // 8) seller_orders: her ürün için
+    if (!urunler.length) {
+      console.warn("⚠️ CART boş, seller_orders insert atlanıyor.");
+    }
+
     for (const item of urunler) {
       const qty = Number(item.quantity ?? item.adet ?? 1);
       const unit = Number(item.unitPrice ?? item.price ?? 0);
@@ -234,6 +247,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const sellerId =
         item.seller_id ?? item.satici_id ?? item.firma_id ?? item.satici_firma_id ?? null;
+
+      if (!sellerId) {
+        console.error("❌ seller_id yok, bu item için seller_orders atlanıyor:", item);
+        continue;
+      }
 
       const sellerRow = {
         order_id: orderData.id,
@@ -255,7 +273,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             product_id: item.id ?? item.product_id ?? null,
             title: item.name ?? item.title ?? "Ürün",
-            image: item.image ?? item.resim_url ?? item.images?.[0] ?? null, // 🔑 görsel eklendi
+            image: item.image ?? item.resim_url ?? item.images?.[0] ?? null,
             quantity: qty,
             unit_price: unit,
             line_total: Number(lineTotal.toFixed(2)),
@@ -266,15 +284,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       const { error: sErr } = await supabase.from("seller_orders").insert([sellerRow]);
+      if (sErr) {
+        console.error("❌ seller_orders insert error:", sErr, sellerRow);
+      } else {
+        console.log("✅ seller_orders insert success:", sellerRow);
+      }
 
-if (sErr) {
-  console.error("❌ seller_orders insert error:", sErr, sellerRow);
-} else {
-  console.log("✅ seller_orders insert success:", sellerRow);
-}
-
-
-      // Satıcı e-postasına bildirim
+      // Satıcı e-postasına bildirim (varsa)
       try {
         const { data: firma } = await supabase
           .from("satici_firmalar")
@@ -307,6 +323,7 @@ if (sErr) {
     return res.status(200).send("OK");
   } catch (e) {
     console.error("❌ PAYTR callback exception:", e);
+    // PayTR tekrar denemesin diye yine OK döneriz
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     return res.status(200).send("OK");
   }
