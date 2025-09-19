@@ -64,7 +64,10 @@ function verifyPaytrHash(post: PaytrPost): boolean {
     process.env.PAYTR_MERCHANT_KEY ?? process.env.PAYTR_KEY ?? "";
   const merchant_salt =
     process.env.PAYTR_MERCHANT_SALT ?? process.env.PAYTR_SALT ?? "";
-  if (!merchant_key || !merchant_salt) return false;
+  if (!merchant_key || !merchant_salt) {
+    console.error("❌ PAYTR hash verify: missing key/salt");
+    return false;
+  }
 
   const raw =
     String(post.merchant_oid || "") +
@@ -75,7 +78,7 @@ function verifyPaytrHash(post: PaytrPost): boolean {
   return token === post.hash;
 }
 
-/** Basit mail helper (var olan /api/send-mail’ini kullanır) */
+/** Basit mail helper */
 async function sendOrderEmails({
   aliciMail,
   saticiMail,
@@ -159,22 +162,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).send("OK");
     }
 
-    // Idempotency: zaten finalize ise tekrar işlem yapma
+    // Idempotency
     if (["Ödendi", "odeme_onaylandi", "odeme_basarisiz"].includes(orderRow.status)) {
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
 
-    // 4) Buyer snapshot’ı çıkar
+    // 4) Buyer snapshot
     const addr = safeJSON<AddressFields>(orderRow.custom_address, {});
     const fullName = pick(addr.fullName, undefined);
-    const fn = pick(addr.first_name, addr.firstName) ?? splitFullName(fullName).first ?? null;
-    const ln = pick(addr.last_name, addr.lastName) ?? splitFullName(fullName).last ?? null;
-    const phone = pick(addr.phone, undefined) ?? null;
-    const city = pick(addr.city, undefined) ?? null;
-    const address = pick(addr.address, undefined) ?? null;
+    const fn = pick(addr.first_name, addr.firstName) ?? splitFullName(fullName).first ?? "Müşteri";
+    const ln = pick(addr.last_name, addr.lastName) ?? splitFullName(fullName).last ?? "";
+    const phone = pick(addr.phone, undefined) ?? "";
+    const city = pick(addr.city, undefined) ?? "";
+    const address = pick(addr.address, undefined) ?? "";
 
-    // e-posta: address.email → orders.email → user_profiles.email
+    // e-posta
     let buyerEmail = pick(addr.email, orderRow.email);
     if (!buyerEmail) {
       const { data: prof } = await supabase
@@ -184,7 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .maybeSingle();
       buyerEmail = prof?.email;
     }
-    const email = buyerEmail ?? null;
+    const email = buyerEmail ?? "";
 
     // 5) Sepet / ürünler
     const urunlerRaw = safeJSON<any[]>(orderRow.cart_items, []);
@@ -202,7 +205,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         phone,
         city,
         address,
-        email, // buyer email
+        email,
         updated_at: new Date().toISOString(),
       })
       .eq("id", merchant_oid)
@@ -221,7 +224,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).send("OK");
     }
 
-    // 8) seller_orders: her ürün için (senin akışına sadık kalarak)
+    // 8) seller_orders: her ürün için
     for (const item of urunler) {
       const qty = Number(item.quantity ?? item.adet ?? 1);
       const unit = Number(item.unitPrice ?? item.price ?? 0);
@@ -233,11 +236,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const sellerRow = {
         order_id: orderData.id,
         seller_id: sellerId,
-        user_id: orderRow.user_id, // alıcı user_id
+        buyer_id: orderRow.user_id, // alıcı user_id
         total_price: Number(lineTotal.toFixed(2)),
         status: "beklemede",
 
-        // ---- ALICI SNAPSHOT (HEP DOLU) ----
+        // ---- ALICI SNAPSHOT ----
         first_name: fn,
         last_name: ln,
         phone,
@@ -245,10 +248,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         address,
         email,
 
+        // ---- ÜRÜN SNAPSHOT ----
         custom_features: [
           {
             product_id: item.id ?? item.product_id ?? null,
             title: item.name ?? item.title ?? "Ürün",
+            image: item.image ?? item.resim_url ?? item.images?.[0] ?? null, // 🔑 görsel eklendi
             quantity: qty,
             unit_price: unit,
             line_total: Number(lineTotal.toFixed(2)),
@@ -259,9 +264,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       const { error: sErr } = await supabase.from("seller_orders").insert([sellerRow]);
-      if (sErr) console.error("❌ seller_orders insert error:", sErr);
 
-      // Satıcı e-postasına bildirim (varsa)
+if (sErr) {
+  console.error("❌ seller_orders insert error:", sErr, sellerRow);
+} else {
+  console.log("✅ seller_orders insert success:", sellerRow);
+}
+
+
+      // Satıcı e-postasına bildirim
       try {
         const { data: firma } = await supabase
           .from("satici_firmalar")
@@ -280,7 +291,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    // 9) Alıcıya mail (email bulunabildiyse)
+    // 9) Alıcıya mail
     if (email) {
       await sendOrderEmails({
         aliciMail: email,
@@ -294,7 +305,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).send("OK");
   } catch (e) {
     console.error("❌ PAYTR callback exception:", e);
-    // PayTR tekrar denemesin diye yine OK döneriz
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     return res.status(200).send("OK");
   }
