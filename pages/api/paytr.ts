@@ -7,7 +7,7 @@ import { supabase } from "../../lib/supabaseClient";
 type Hit = { count: number; resetAt: number };
 const ipHits = new Map<string, Hit>();
 const WINDOW_MS = 30_000; // 30 sn
-const MAX_HITS = 3;       // 30 sn içinde en fazla 3 istek
+const MAX_HITS = 3;
 
 function hitOK(ip: string) {
   const now = Date.now();
@@ -81,8 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    console.log("PAYTR BODY RAW:", req.body);
-
+    console.log(">>> /api/paytr başladı");
     let {
       amount,
       user_id,
@@ -102,44 +101,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch {}
     }
 
-    // ---- TEST / CANLI MOD ----
-    const FORCE_TEST_MODE: string = "1"; // test için "1" yapabilirsin
+    const FORCE_TEST_MODE: string = "1";
     const queryTest = req.query?.test === "1";
     const bodyTest = testModeFromBody === 1 || testModeFromBody === "1";
     const test_mode = (queryTest || bodyTest || FORCE_TEST_MODE === "1") ? "1" : "0";
-    // --------------------------
 
-    // Girdi doğrulama
     if (!amount || !user_id || !email || !Array.isArray(paytrBasket) || !paytrBasket.length) {
-      console.error("❌ Eksik parametre:", { amount, user_id, email, paytrBasket });
       return res.status(400).json({ success: false, message: "Eksik parametre" });
     }
 
-    // Gerçek public IPv4 bul
     let user_ip = getClientIPv4(req, client_ip);
-
-    // Dev ortam fallback
     if (process.env.NODE_ENV !== "production" && !user_ip) {
-      user_ip = "93.184.216.34"; // örnek public IP (example.com)
-      console.log("⚠ Dev mode: user_ip fallback kullanıldı:", user_ip);
+      user_ip = "93.184.216.34";
     }
-
     if (!user_ip) {
-      return res.status(400).json({
-        success: false,
-        message: "İstemci public IPv4 bulunamadı. Frontend’den 'client_ip' gönderin (api.ipify.org).",
-      });
+      return res.status(400).json({ success: false, message: "IP bulunamadı" });
     }
-
-    // Basit rate-limit
     if (!hitOK(user_ip)) {
-      return res.status(429).json({
-        success: false,
-        message: "Çok fazla deneme (IP). Lütfen 20-30 sn sonra tekrar deneyiniz.",
-      });
+      return res.status(429).json({ success: false, message: "Çok fazla deneme" });
     }
 
-    // Sepet toplamı kontrolü
     const basketSum = paytrBasket.reduce(
       (acc: number, [_, priceStr, qty]: [string, string, number]) =>
         acc + parseFloat(priceStr) * qty,
@@ -147,33 +128,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
     const amountNum = parseFloat(amount);
     if (Math.abs(basketSum - amountNum) > 0.5) {
-      console.error("❌ Tutar uyuşmazlığı:", { basketSum, amountNum, paytrBasket });
       return res.status(400).json({ success: false, message: "Tutar uyuşmazlığı" });
     }
 
-    // Siparişi beklemede kaydet
+    // ✅ order insert
     const { data: newOrder, error: insertError } = await supabase
-      .from("orders")
-      .insert([
-        {
-          user_id,
-          total_price: amountNum,
-          status: "beklemede",
-          created_at: new Date().toISOString(),
-          custom_address: address,
-          meta,
-          cart_items: basketItems || [],
-        },
-      ])
-      .select()
-      .single();
+  .from("orders")
+  .insert([{
+    user_id,
+    total_price: amountNum,
+    status: "beklemede",
+    created_at: new Date().toISOString(),
+    custom_address: address,
+    meta,
+    cart_items: basketItems || [], 
+  }])
+  .select()
+  .single();
+
+
+    console.log("order insert:", newOrder, insertError);
 
     if (insertError || !newOrder) {
-      console.error("❌ Supabase insert error:", insertError);
       return res.status(500).json({ success: false, message: "Sipariş kaydedilemedi" });
     }
 
-    // ENV
     const merchant_id = String(process.env.PAYTR_MERCHANT_ID || "");
     const merchant_key = String(process.env.PAYTR_MERCHANT_KEY || "");
     const merchant_salt = String(process.env.PAYTR_MERCHANT_SALT || "");
@@ -181,12 +160,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const fail_url = String(process.env.PAYTR_FAIL_URL || "");
     const site_url = String(process.env.NEXT_PUBLIC_SITE_URL || "");
 
-    if (!merchant_id || !merchant_key || !merchant_salt || !ok_url || !fail_url || !site_url) {
-      console.error("❌ PAYTR env eksik");
-      return res.status(500).json({ success: false, message: "PAYTR env değişkenleri eksik" });
-    }
-
-    // PayTR parametreleri
     const merchant_oid = String(newOrder.id);
     const payment_amount = String(Math.round(amountNum * 100));
     const user_basket = Buffer.from(JSON.stringify(paytrBasket), "utf8").toString("base64");
@@ -194,7 +167,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const max_installment = "1";
     const currency = "TL";
 
-    // Hash
     const hash_str =
       merchant_id +
       user_ip +
@@ -228,34 +200,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       debug_on: test_mode === "1" ? "1" : "0",
       lang: "tr",
       user_name:
-        String(
-          address?.fullName ||
-            [address?.first_name, address?.last_name].filter(Boolean).join(" ")
-        ) || email,
+        String(address?.fullName || [address?.first_name, address?.last_name].filter(Boolean).join(" ")) || email,
       user_address: String(address?.address || "Adres girilmedi"),
       user_phone: String(address?.phone || "05555555555"),
       paytr_token,
     };
 
-    // PayTR'a istek
-    const headers = {
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-      "Accept": "application/json,text/plain,*/*",
-      "User-Agent": process.env.PAYTR_USER_AGENT || "80bir/1.0 (+https://www.80bir.com.tr)",
-      "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
-      "Cache-Control": "no-cache",
-      "Pragma": "no-cache",
-      Connection: "close",
-    } as Record<string, string>;
+    console.log("form gönderiliyor:", form);
 
     async function getTokenOnce() {
       const resp = await fetch("https://www.paytr.com/odeme/api/get-token", {
         method: "POST",
-        headers,
+        headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
         body: new URLSearchParams(form).toString(),
       });
-      const raw = await resp.text();
-      return { status: resp.status, ok: resp.ok, raw };
+
+      const text = await resp.text();
+      let parsed: any;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = { status: "error", reason: text };
+      }
+
+      return { status: resp.status, ok: resp.ok, data: parsed, raw: text };
     }
 
     let r = await getTokenOnce();
@@ -264,27 +232,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       r = await getTokenOnce();
     }
 
+    console.log("PayTR response:", r);
+
     if (!r.ok) {
-      console.error("❌ PayTR HTTP error:", r.status, r.raw?.slice(0, 500));
-      return res.status(502).json({ success: false, message: `PayTR HTTP ${r.status}` });
+      return res.status(502).json({ success: false, message: `PayTR HTTP ${r.status}`, raw: r.raw });
     }
 
-    let data: any = null;
-    try {
-      data = r.raw ? JSON.parse(r.raw) : null;
-    } catch {
-      console.error("❌ PayTR non-JSON response:", r.raw?.slice(0, 500));
-      return res.status(502).json({ success: false, message: "PayTR beklenmeyen yanıt" });
+    if (!r.data || r.data.status !== "success" || !r.data.token) {
+      return res.status(400).json({ success: false, message: "PayTR token alınamadı", raw: r.raw });
     }
 
-    if (!data || data.status !== "success" || !data.token) {
-      console.error("❌ PayTR response error:", data);
-      return res.status(400).json({ success: false, message: "PayTR token alınamadı" });
-    }
+    return res.status(200).json({
+      success: true,
+      token: r.data.token,
+      merchant_oid,
+    });
 
-    return res.status(200).json({ success: true, token: data.token, merchant_oid });
   } catch (e: any) {
-    console.error("❌ paytr api error:", e);
-    return res.status(500).json({ success: false, message: e?.message || "Sunucu hatası" });
+    console.error("❌ /api/paytr hata:", e);
+    return res.status(500).json({
+      success: false,
+      message: e?.message || "Sunucu hatası",
+      stack: e?.stack,
+    });
   }
 }
