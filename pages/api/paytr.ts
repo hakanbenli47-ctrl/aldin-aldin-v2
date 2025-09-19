@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       } catch {}
     }
 
-    const FORCE_TEST_MODE: string = "1";
+    const FORCE_TEST_MODE: string = "0";
     const queryTest = req.query?.test === "1";
     const bodyTest = testModeFromBody === 1 || testModeFromBody === "1";
     const test_mode = (queryTest || bodyTest || FORCE_TEST_MODE === "1") ? "1" : "0";
