@@ -17,7 +17,7 @@ export default function OdemeBasarili() {
       <p style={{ marginTop: 12, fontSize: "18px", color: "#334155" }}>
         Siparişiniz hazırlanıyor. Teşekkür ederiz 🙏
       </p>
-      <Link href="/profil">
+      <Link href="/profil2">
         <button style={{
           marginTop: 24,
           padding: "10px 20px",
