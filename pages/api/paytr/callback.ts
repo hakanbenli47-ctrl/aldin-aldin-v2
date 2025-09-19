@@ -1,10 +1,12 @@
 // /pages/api/paytr/callback.ts
+
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 import { supabase } from "../../../lib/supabaseClient";
-
+console.log("📩 CALLBACK GELDİ!");
 /** PayTR form-urlencoded gönderir → bodyParser kapat */
 export const config = { api: { bodyParser: false } };
+
 
 type AddressFields = {
   fullName?: string;
