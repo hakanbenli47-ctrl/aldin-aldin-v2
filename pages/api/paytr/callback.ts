@@ -125,8 +125,7 @@ async function sendOrderEmails({
 /* ------------------------------------------------- */
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // 🔎 CALLBACK gerçekten tetiklendi mi?
-  console.log("📩 CALLBACK GELDİ! Method:", req.method, "UA:", req.headers["user-agent"]);
+  console.log("📩 CALLBACK GELDİ! Method:", req.method);
 
   if (req.method !== "POST") {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -134,59 +133,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    // 1) Ham gövdeyi oku ve formu parse et
+    // 1) Ham body
     const raw = await readRawBody(req);
-    console.log("📩 CALLBACK RAW BODY:", raw);
     const post = parseForm(raw) as unknown as PaytrPost;
     console.log("📩 CALLBACK PARSED:", post);
 
-    // 2) Hash doğrulaması
+    // 2) Hash verify
     if (!verifyPaytrHash(post)) {
       console.error("❌ PAYTR callback bad hash", post);
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("PAYTR notification failed: bad hash");
     }
 
     const { merchant_oid, status, total_amount } = post;
     if (!merchant_oid) {
       console.warn("⚠️ merchant_oid boş, OK dönüyorum.");
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
 
-    // 3) Order’ı çek
+    // 3) Order çek
     const { data: orderRow, error: orderFetchErr } = await supabase
       .from("orders")
       .select("id, user_id, email, custom_address, cart_items, status")
       .eq("id", merchant_oid)
       .single();
 
-    console.log("📦 ORDER_ROW:", orderRow);
-
     if (orderFetchErr || !orderRow) {
       console.error("❌ Orders fetch error:", orderFetchErr);
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
 
-    // Idempotency
-    if (["Ödendi", "odeme_onaylandi", "odeme_basarisiz"].includes(orderRow.status)) {
+    // Eğer zaten finalize ise çık
+    if (["Ödendi", "ödendi", "odeme_onaylandi", "odeme_basarisiz"].includes(orderRow.status)) {
       console.log("ℹ️ Order zaten finalize edilmiş, OK.");
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
 
     // 4) Buyer snapshot
     const addr = safeJSON<AddressFields>(orderRow.custom_address, {});
-    const fullName = pick(addr.fullName, undefined);
-    const fn = pick(addr.first_name, addr.firstName) ?? splitFullName(fullName).first ?? "Müşteri";
-    const ln = pick(addr.last_name, addr.lastName) ?? splitFullName(fullName).last ?? "";
-    const phone = pick(addr.phone, undefined) ?? "";
-    const city = pick(addr.city, undefined) ?? "";
-    const address = pick(addr.address, undefined) ?? "";
-
-    // e-posta
+    const fn = pick(addr.first_name, addr.firstName) ?? splitFullName(addr.fullName).first ?? "Müşteri";
+    const ln = pick(addr.last_name, addr.lastName) ?? splitFullName(addr.fullName).last ?? "";
+    const phone = pick(addr.phone) ?? "";
+    const city = pick(addr.city) ?? "";
+    const address = pick(addr.address) ?? "";
     let buyerEmail = pick(addr.email, orderRow.email);
+
     if (!buyerEmail) {
       const { data: prof } = await supabase
         .from("user_profiles")
@@ -197,12 +187,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     const email = buyerEmail ?? "";
 
-    // 5) Sepet / ürünler
+    // 5) Ürünler
     const urunlerRaw = safeJSON<any[]>(orderRow.cart_items, []);
     const urunler = Array.isArray(urunlerRaw) ? urunlerRaw : [];
-    console.log("🧺 CART_ITEMS (urunler):", urunler);
 
-    // 6) Orders güncelle
+    // 6) Orders update
     const payedTL = Number(total_amount || 0) / 100;
     const { data: orderData, error: orderErr } = await supabase
       .from("orders")
@@ -223,52 +212,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (orderErr || !orderData) {
       console.error("❌ Orders update error:", orderErr);
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
-    console.log("✅ ORDER updated:", orderData);
 
-    // 7) Ödeme başarısızsa seller_orders yazmayız
+    // 7) Başarısızsa çık
     if (status !== "success") {
       console.warn("⚠️ Ödeme başarısız, seller_orders yazılmadı.");
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
       return res.status(200).send("OK");
     }
 
-    // 8) seller_orders: her ürün için
-    if (!urunler.length) {
-      console.warn("⚠️ CART boş, seller_orders insert atlanıyor.");
-    }
-
+    // 8) seller_orders
     for (const item of urunler) {
       const qty = Number(item.quantity ?? item.adet ?? 1);
       const unit = Number(item.unitPrice ?? item.price ?? 0);
-      const lineTotal = Number.isFinite(qty * unit) ? qty * unit : 0;
+      const lineTotal = qty * unit;
 
       const sellerId =
         item.seller_id ?? item.satici_id ?? item.firma_id ?? item.satici_firma_id ?? null;
 
       if (!sellerId) {
-        console.error("❌ seller_id yok, bu item için seller_orders atlanıyor:", item);
+        console.error("❌ seller_id yok, atlandı:", item);
         continue;
       }
 
       const sellerRow = {
         order_id: orderData.id,
         seller_id: sellerId,
-        buyer_id: orderRow.user_id, // alıcı user_id
+        buyer_id: orderRow.user_id,
         total_price: Number(lineTotal.toFixed(2)),
-        status: "beklemede",
-
-        // ---- ALICI SNAPSHOT ----
+        status: "ödendi", // 🔹 artık ödendi
         first_name: fn,
         last_name: ln,
         phone,
         city,
         address,
         email,
-
-        // ---- ÜRÜN SNAPSHOT ----
         custom_features: [
           {
             product_id: item.id ?? item.product_id ?? null,
@@ -284,32 +262,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       const { error: sErr } = await supabase.from("seller_orders").insert([sellerRow]);
-      if (sErr) {
-        console.error("❌ seller_orders insert error:", sErr, sellerRow);
-      } else {
-        console.log("✅ seller_orders insert success:", sellerRow);
-      }
-
-      // Satıcı e-postasına bildirim (varsa)
-      try {
-        const { data: firma } = await supabase
-          .from("satici_firmalar")
-          .select("email")
-          .eq("user_id", sellerId)
-          .maybeSingle();
-        if (firma?.email) {
-          await sendOrderEmails({
-            saticiMail: firma.email,
-            siparis: orderData,
-            urunler: [item],
-          });
-        }
-      } catch (e) {
-        console.error("⚠️ Satıcı mail arama hatası:", e);
-      }
+      if (sErr) console.error("❌ seller_orders insert error:", sErr);
+      else console.log("✅ seller_orders insert:", sellerRow);
     }
 
-    // 9) Alıcıya mail
+    // 9) Mails
     if (email) {
       await sendOrderEmails({
         aliciMail: email,
@@ -318,13 +275,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // 10) PayTR'e yalın OK
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    // 🔟 Cart temizle
+    const { error: cartDelErr } = await supabase
+      .from("cart")
+      .delete()
+      .eq("user_id", orderRow.user_id);
+
+    if (cartDelErr) {
+      console.error("❌ Cart temizlenemedi:", cartDelErr);
+    } else {
+      console.log("🛒 Cart temizlendi:", orderRow.user_id);
+    }
+
+    // ✅ Son
     return res.status(200).send("OK");
   } catch (e) {
     console.error("❌ PAYTR callback exception:", e);
-    // PayTR tekrar denemesin diye yine OK döneriz
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
     return res.status(200).send("OK");
   }
 }
